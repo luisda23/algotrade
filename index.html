@@ -5,14 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>AlgoTrade · Bots de Trading Profesionales</title>
 <script>
-  // URL del backend — cambiar BACKEND_URL al deployar a producción
-  // Local: http://localhost:5000/api
-  // Producción: https://TU-BACKEND.railway.app/api
-  const BACKEND_URL = ''; // ← Pegar aquí la URL de Railway al deployar (ej: 'https://algotrade-backend.railway.app')
+  // URL del backend
+  const BACKEND_URL = 'https://algotrade-backend-production-5f1f.up.railway.app';
 
   window.API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5000/api'
-    : (BACKEND_URL ? BACKEND_URL + '/api' : 'http://localhost:5000/api');
+    : BACKEND_URL + '/api';
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
