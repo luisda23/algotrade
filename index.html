@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AlgoTrade · Bots de Trading Profesionales</title>
+<script>
+  // URL del backend — cambiar BACKEND_URL al deployar a producción
+  // Local: http://localhost:5000/api
+  // Producción: https://TU-BACKEND.railway.app/api
+  const BACKEND_URL = ''; // ← Pegar aquí la URL de Railway al deployar (ej: 'https://algotrade-backend.railway.app')
+
+  window.API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:5000/api'
+    : (BACKEND_URL ? BACKEND_URL + '/api' : 'http://localhost:5000/api');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(2.4); opacity: 0; } }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+  /* hide scrollbars in iframes */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  /* tweaks panel */
+  .tweaks {
+    position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+    background: #fff; border-radius: 16px; padding: 14px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06);
+    font-family: 'Inter', system-ui; min-width: 200px;
+    display: none;
+  }
+  .tweaks.open { display: block; }
+  .tweaks h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: #888; font-weight: 600; }
+  .tweaks-row { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tweaks-btn { flex: 1; padding: 6px 8px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; cursor: pointer; font-size: 11px; font-weight: 600; color: #555; }
+  .tweaks-btn.on { background: #111; color: #fff; border-color: #111; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Tweaks panel (only mode toggle) -->
+<div id="tweaks" class="tweaks">
+  <h4>Modo</h4>
+  <div class="tweaks-row" id="tw-mode">
+    <button class="tweaks-btn" data-mode="light">Light</button>
+    <button class="tweaks-btn" data-mode="dark">Dark</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="lib/ios-frame.jsx?v=32"></script>
+<script type="text/babel" src="lib/themes.jsx?v=32"></script>
+<script type="text/babel" src="lib/icons.jsx?v=32"></script>
+<script type="text/babel" src="lib/app-state.jsx?v=32"></script>
+<script type="text/babel" src="lib/ui.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/dashboard.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/wizard.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/bot-detail.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/deploy-guide.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/auth.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/account.jsx?v=32"></script>
+<script type="text/babel" src="lib/screens/account-sections.jsx?v=32"></script>
+<script type="text/babel" src="lib/app.jsx?v=32"></script>
+
+<script type="text/babel">
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "mono",
+  "mode": "light",
+  "view": "single"
+}/*EDITMODE-END*/;
+
+function Root() {
+  // Versioned storage so updated TWEAK_DEFAULTS take precedence over old sessions
+  const STORAGE_VERSION = 'v3';
+  const STORAGE_KEY = 'botapp-tweaks-' + STORAGE_VERSION;
+  // Cleanup older versions
+  try { localStorage.removeItem('botapp-tweaks'); localStorage.removeItem('botapp-tweaks-v2'); } catch(e) {}
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { return null; } })() || {};
+  const [mode, setMode] = React.useState(saved.mode || TWEAK_DEFAULTS.mode);
+
+  // expose for tweaks panel
+  React.useEffect(() => {
+    window.__setMode = (m) => { setMode(m); save({ mode: m }); };
+    function save(patch) {
+      const cur = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const next = { ...cur, ...patch };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    }
+    refreshTweaksUI();
+  }, [mode]);
+
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: mode === 'dark' ? '#000000' : '#FAFAFA', padding: 32,
+    }}>
+      <BotApp themeKey="mono" mode={mode} setMode={setMode} setThemeKey={() => {}}/>
+    </div>
+  );
+}
+
+function refreshTweaksUI() {
+  setTimeout(() => {
+    const cur = JSON.parse(localStorage.getItem('botapp-tweaks-v3') || '{}');
+    const tdef = { mode: TWEAK_DEFAULTS.mode, ...cur };
+    document.querySelectorAll('#tw-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === tdef.mode));
+  }, 50);
+}
+
+document.querySelectorAll('#tw-mode button').forEach(b => b.onclick = () => window.__setMode(b.dataset.mode));
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+
+// Tweaks toggle protocol
+window.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if (e.data.type === '__activate_edit_mode') document.getElementById('tweaks').classList.add('open');
+  if (e.data.type === '__deactivate_edit_mode') document.getElementById('tweaks').classList.remove('open');
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+</script>
+</body>
+</html>

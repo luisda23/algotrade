@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Environment variables (NUNCA subir esto)
+.env
+.env.local
+.env.production
+backend/.env
+backend/.env.local
+
+# Build output
+backend/dist/
+backend/server.log
+backend/seed-templates.js
+backend/update-prices.js
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Playwright outputs
+.playwright-mcp/
+*.png
+!screenshots/*.png
+
+# Tests output
+*-test.png
+test-output/
+
+# Misc
+.cache/
+*.tsbuildinfo
