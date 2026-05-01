@@ -2,8 +2,33 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
 <title>AlgoTrade · Bots de Trading Profesionales</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#000000"/>
+<meta name="description" content="Crea bots de trading personalizados para MetaTrader 4 y 5. Pago único €9.99."/>
+
+<!-- iOS PWA support -->
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AlgoTrade"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+
+<!-- Icons -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
+
+<!-- Service Worker registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+    });
+  }
+</script>
+
 <script>
   // URL del backend
   const BACKEND_URL = 'https://algotrade-backend-production-5f1f.up.railway.app';
@@ -54,19 +79,19 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-<script type="text/babel" src="lib/ios-frame.jsx?v=33"></script>
-<script type="text/babel" src="lib/themes.jsx?v=33"></script>
-<script type="text/babel" src="lib/icons.jsx?v=33"></script>
-<script type="text/babel" src="lib/app-state.jsx?v=33"></script>
-<script type="text/babel" src="lib/ui.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/dashboard.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/wizard.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/bot-detail.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/deploy-guide.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/auth.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/account.jsx?v=33"></script>
-<script type="text/babel" src="lib/screens/account-sections.jsx?v=33"></script>
-<script type="text/babel" src="lib/app.jsx?v=33"></script>
+<script type="text/babel" src="lib/ios-frame.jsx?v=34"></script>
+<script type="text/babel" src="lib/themes.jsx?v=34"></script>
+<script type="text/babel" src="lib/icons.jsx?v=34"></script>
+<script type="text/babel" src="lib/app-state.jsx?v=34"></script>
+<script type="text/babel" src="lib/ui.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/dashboard.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/wizard.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/bot-detail.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/deploy-guide.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/auth.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/account.jsx?v=34"></script>
+<script type="text/babel" src="lib/screens/account-sections.jsx?v=34"></script>
+<script type="text/babel" src="lib/app.jsx?v=34"></script>
 
 <script type="text/babel">
 
