@@ -78,38 +78,8 @@ function Auth({ t, onAuth, onClose, authError }) {
         </div>
       </div>
 
-      {/* Social auth */}
-      <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button onClick={() => onAuth({ provider: 'google' })} style={{
-          height: 54, borderRadius: t.radius.lg,
-          background: t.isDark ? t.bgElev : '#fff',
-          border: `1px solid ${t.border}`, color: t.text, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-          fontFamily: t.fontBody, fontSize: 15, fontWeight: t.weight.med,
-        }}>
-          <Icon name="google" size={20}/> Continuar con Google
-        </button>
-        <button onClick={() => onAuth({ provider: 'apple' })} style={{
-          height: 54, borderRadius: t.radius.lg,
-          background: t.isDark ? '#fff' : '#000', border: 'none',
-          color: t.isDark ? '#000' : '#fff', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          fontFamily: t.fontBody, fontSize: 15, fontWeight: t.weight.med,
-        }}>
-          <Icon name="apple" size={20}/> Continuar con Apple
-        </button>
-      </div>
-
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 24px' }}>
-        <div style={{ flex: 1, height: 1, background: t.border }}/>
-        <div style={{ fontFamily: t.fontBody, fontSize: 11, color: t.textMute, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          O con email
-        </div>
-        <div style={{ flex: 1, height: 1, background: t.border }}/>
-      </div>
-
       {/* Email + password */}
+      <div style={{ paddingTop: 12 }}/>
       <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Input t={t} icon="mail" placeholder="tu@email.com" value={email} onChange={setEmail} type="email"/>
         <Input t={t} icon="lock" placeholder="Contraseña" value={password} onChange={setPassword} type="password"/>
