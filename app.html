@@ -732,6 +732,8 @@ const state = {
 //  PERSISTENCE
 // =====================================================
 function loadAuth() {
+  // Solo cargar si no hay sesión ya iniciada (evita reset en cada render)
+  if (state.token) return;
   try {
     const t = localStorage.getItem('token');
     const u = localStorage.getItem('user');
