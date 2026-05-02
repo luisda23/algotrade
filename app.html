@@ -725,6 +725,59 @@ svg { display: block; }
   border-color: var(--text);
   box-shadow: 0 6px 20px rgba(127,127,127,0.15);
 }
+
+.firm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.firm-card {
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  color: inherit;
+}
+.firm-card:hover { border-color: var(--border-strong); background: var(--bg-elev); transform: translateY(-1px); }
+.firm-card.selected { border-color: var(--text); background: var(--bg-elev); }
+.firm-card-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.firm-card-name {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+}
+.firm-policy-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 4px 8px; border-radius: 6px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.firm-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+.firm-card-grid > div { display: flex; flex-direction: column; gap: 1px; }
+.firm-meta-lbl {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-mute);
+}
+.firm-meta-val {
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.firm-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  font-size: 13px;
+}
+.firm-detail-grid > div > div { font-weight: 600; color: var(--text); margin-top: 2px; }
 .option-card svg { width: 22px; height: 22px; }
 
 .chip-row {
@@ -1268,35 +1321,240 @@ const MARKETS = [
 ];
 
 const STRATEGIES = [
-  { id: 'scalping', name: 'Scalping', desc: 'Operaciones rápidas (segundos a minutos)', tf: '1m – 5m' },
-  { id: 'swing', name: 'Swing trading', desc: 'Posiciones de días a semanas', tf: '4h – 1d' },
-  { id: 'momentum', name: 'Momentum', desc: 'Sigue la fuerza del movimiento', tf: '5m – 1h' },
-  { id: 'mean', name: 'Mean reversion', desc: 'Apuesta a la reversión a la media', tf: '15m – 4h' },
-  { id: 'breakout', name: 'Breakout', desc: 'Entra en rupturas de rango', tf: '15m – 4h' },
-  { id: 'grid', name: 'Grid trading', desc: 'Compra y vende en niveles definidos', tf: 'Continuo' },
+  { id: 'scalping',  name: 'Scalping',          desc: 'Operaciones rápidas (segundos a minutos). Muchos trades pequeños buscando ganancias frecuentes.', tf: '1m – 5m',   risk: 'Medio',  freq: 'Muy alta' },
+  { id: 'swing',     name: 'Swing trading',     desc: 'Posiciones de días a semanas. Captura movimientos grandes con menos operaciones.',                  tf: '4h – 1d',   risk: 'Bajo',   freq: 'Baja' },
+  { id: 'momentum',  name: 'Momentum',          desc: 'Sigue la fuerza del movimiento. Entra cuando hay tendencia clara y la cierra al primer signo de debilidad.', tf: '5m – 1h',  risk: 'Medio',  freq: 'Alta' },
+  { id: 'mean',      name: 'Mean reversion',    desc: 'Apuesta a la reversión a la media. Compra en sobreventa y vende en sobrecompra.',                   tf: '15m – 4h', risk: 'Medio',  freq: 'Media' },
+  { id: 'breakout',  name: 'Breakout',          desc: 'Entra en rupturas de rango. Espera consolidaciones y opera la salida con volumen.',                  tf: '15m – 4h', risk: 'Alto',   freq: 'Media' },
+  { id: 'grid',      name: 'Grid trading',      desc: 'Compra y vende en niveles equidistantes. Ideal en rangos laterales.',                                tf: 'Continuo', risk: 'Alto',   freq: 'Continua' },
+  { id: 'trend',     name: 'Trend following',   desc: 'Identifica tendencias largas y mantiene la posición hasta que se invierta. Pocas operaciones, pero grandes.', tf: '1h – 1d',  risk: 'Bajo',   freq: 'Muy baja' },
+  { id: 'dca',       name: 'DCA (Dollar Cost Averaging)', desc: 'Promedia entradas a precios decrecientes para reducir el coste medio. Requiere capital y disciplina.', tf: 'Continuo', risk: 'Alto',   freq: 'Media' },
+  { id: 'hedge',     name: 'Hedging',           desc: 'Abre posiciones opuestas para cubrir riesgo. Limita pérdidas máximas pero también ganancias.',       tf: 'Continuo', risk: 'Bajo',   freq: 'Baja' },
+  { id: 'reversal',  name: 'Reversal',          desc: 'Detecta agotamiento de tendencia y opera el giro. Alta tasa de fallo, pero ratios R:R muy buenos.',  tf: '15m – 4h', risk: 'Alto',   freq: 'Baja' },
 ];
 
 const INDICATORS = [
-  { id: 'rsi', name: 'RSI', cat: 'Momentum' },
-  { id: 'ema', name: 'EMA', cat: 'Tendencia' },
-  { id: 'sma', name: 'SMA', cat: 'Tendencia' },
-  { id: 'macd', name: 'MACD', cat: 'Tendencia' },
-  { id: 'bb', name: 'Bollinger', cat: 'Volatilidad' },
-  { id: 'atr', name: 'ATR', cat: 'Volatilidad' },
-  { id: 'stoch', name: 'Estocástico', cat: 'Momentum' },
-  { id: 'adx', name: 'ADX', cat: 'Tendencia' },
-  { id: 'ichi', name: 'Ichimoku', cat: 'Tendencia' },
-  { id: 'vol', name: 'Volume', cat: 'Volumen' },
-  { id: 'fib', name: 'Fibonacci', cat: 'S/R' },
-  { id: 'pivots', name: 'Pivot Points', cat: 'S/R' },
+  // Momentum
+  { id: 'rsi',       name: 'RSI',          cat: 'Momentum',    desc: 'Mide sobrecompra/sobreventa (0-100). Clásico para timing de entradas.' },
+  { id: 'stoch',     name: 'Estocástico',  cat: 'Momentum',    desc: 'Compara cierre con rango reciente. Cruces en zonas extremas dan señales.' },
+  { id: 'stochrsi',  name: 'Stoch RSI',    cat: 'Momentum',    desc: 'Aplica el estocástico al RSI. Más sensible que el RSI puro.' },
+  { id: 'cci',       name: 'CCI',          cat: 'Momentum',    desc: 'Commodity Channel Index. Detecta extremos de precio en cualquier mercado.' },
+  { id: 'williams',  name: 'Williams %R',  cat: 'Momentum',    desc: 'Similar al estocástico pero invertido. Bueno para reversiones.' },
+  { id: 'roc',       name: 'ROC',          cat: 'Momentum',    desc: 'Rate of Change. Mide velocidad del movimiento del precio.' },
+
+  // Tendencia
+  { id: 'ema',       name: 'EMA',          cat: 'Tendencia',   desc: 'Media exponencial. Reacciona más rápido que la SMA.' },
+  { id: 'sma',       name: 'SMA',          cat: 'Tendencia',   desc: 'Media simple. Suaviza el precio para ver la tendencia general.' },
+  { id: 'macd',      name: 'MACD',         cat: 'Tendencia',   desc: 'Cruce de medias + histograma. Señal clásica de cambio de tendencia.' },
+  { id: 'adx',       name: 'ADX',          cat: 'Tendencia',   desc: 'Mide la FUERZA de la tendencia (no la dirección). >25 = tendencia fuerte.' },
+  { id: 'ichi',      name: 'Ichimoku',     cat: 'Tendencia',   desc: 'Sistema completo: tendencia, soporte/resistencia y momentum en una vista.' },
+  { id: 'psar',      name: 'Parabolic SAR', cat: 'Tendencia',  desc: 'Puntos sobre/bajo el precio. Stop-loss dinámico que sigue la tendencia.' },
+  { id: 'supertrend', name: 'SuperTrend',  cat: 'Tendencia',   desc: 'Combina ATR con tendencia. Línea visible que indica long o short.' },
+
+  // Volatilidad
+  { id: 'bb',        name: 'Bollinger',    cat: 'Volatilidad', desc: 'Bandas alrededor de la media. Toques en bandas indican extremos.' },
+  { id: 'atr',       name: 'ATR',          cat: 'Volatilidad', desc: 'Rango medio verdadero. Mide la volatilidad para ajustar SL/TP.' },
+  { id: 'donchian',  name: 'Donchian',     cat: 'Volatilidad', desc: 'Canal con máximos y mínimos de N periodos. Clásico para breakouts.' },
+  { id: 'kc',        name: 'Keltner',      cat: 'Volatilidad', desc: 'Canales tipo Bollinger pero con ATR en lugar de desviación estándar.' },
+
+  // Volumen
+  { id: 'vol',       name: 'Volume',       cat: 'Volumen',     desc: 'Volumen por barra. Confirma o desmiente movimientos del precio.' },
+  { id: 'obv',       name: 'OBV',          cat: 'Volumen',     desc: 'On-Balance Volume. Suma volumen acumulado para detectar acumulación.' },
+  { id: 'vwap',      name: 'VWAP',         cat: 'Volumen',     desc: 'Precio medio ponderado por volumen. Referencia institucional.' },
+  { id: 'mfi',       name: 'MFI',          cat: 'Volumen',     desc: 'Money Flow Index. Como el RSI pero ponderado por volumen.' },
+
+  // Soporte/Resistencia
+  { id: 'fib',       name: 'Fibonacci',    cat: 'S/R',         desc: 'Niveles clave de retroceso (38.2%, 50%, 61.8%) tras un movimiento.' },
+  { id: 'pivots',    name: 'Pivot Points', cat: 'S/R',         desc: 'Niveles diarios de soporte/resistencia calculados desde sesión anterior.' },
+  { id: 'sr',        name: 'S/R Auto',     cat: 'S/R',         desc: 'Detecta automáticamente niveles donde el precio ha rebotado.' },
 ];
 
+// Política sobre EAs/bots:
+//   allowed     = uso de EAs explícitamente permitido sin restricciones especiales
+//   conditional = permitido pero con condiciones (estrategia revisable, no copy-trading, no high-freq)
+//   restricted  = solo discrecional, scalping/HFT prohibidos
+//   banned      = uso de EAs prohibido o con sanción casi segura
 const FUNDED_FIRMS = [
-  { id: 'ftmo', name: 'FTMO' },
-  { id: 'mff', name: 'MyForexFunds' },
-  { id: 'the5', name: 'The5ers' },
-  { id: 'funded', name: 'FundedNext' },
-  { id: 'e8', name: 'E8 Funding' },
+  {
+    id: 'ftmo', name: 'FTMO',
+    bots: 'conditional',
+    profitSplit: 'Hasta 90%',
+    maxAccount: '$200k (escalable hasta $2M)',
+    eval: '2 fases (8% + 5%)',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días (sin mínimo desde 2023)',
+    consistency: 'No (recomendado <50% de un día)',
+    weekend: 'No (cierra posiciones)',
+    news: 'Permitido en cuenta funded',
+    notes: 'EAs permitidos. Prohibido: HFT, latency arb, copy trading entre cuentas, hedging entre cuentas, tick scalping. Tu bot debe tener lógica propia.',
+    warning: ''
+  },
+  {
+    id: 'fundednext', name: 'FundedNext',
+    bots: 'allowed',
+    profitSplit: '80%-95%',
+    maxAccount: '$300k',
+    eval: '1 fase, 2 fases o Express',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días',
+    consistency: 'Sí en algunos planes (40-50%)',
+    weekend: 'Permitido (planes con holding)',
+    news: 'Permitido',
+    notes: 'Permite EAs y copy trading. Buena opción para automatizar. Revisa que el plan elegido permita holding overnight si tu bot opera fuera de horario.',
+    warning: ''
+  },
+  {
+    id: 'e8', name: 'E8 Markets',
+    bots: 'allowed',
+    profitSplit: '80%-90%',
+    maxAccount: '$400k',
+    eval: '1 o 2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '8%',
+    minDays: '0 días',
+    consistency: 'Sí (consistencia 30%)',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'Permite EAs sin restricciones explícitas. Cuidado con la regla de consistencia: si un día representa >30% del beneficio total, no se cobra esa parte.',
+    warning: 'Regla de consistencia 30% — bots con días explosivos pueden tener problemas para cobrar.'
+  },
+  {
+    id: 'the5', name: 'The5ers',
+    bots: 'allowed',
+    profitSplit: '50%-100%',
+    maxAccount: '$4M (programa High Stakes)',
+    eval: 'Programas variados (Bootcamp / Hyper Growth / Instant)',
+    maxDailyLoss: '4-5% (varía)',
+    maxLoss: '8-10%',
+    minDays: 'Varía por programa',
+    consistency: 'Depende del programa',
+    weekend: 'Permitido en la mayoría',
+    news: 'Permitido',
+    notes: 'EAs y copy trading permitidos. The5ers es bot-friendly y tiene programas de fondeo instantáneo (sin challenge).',
+    warning: ''
+  },
+  {
+    id: 'fundingpips', name: 'Funding Pips',
+    bots: 'allowed',
+    profitSplit: 'Hasta 100% (con bonus)',
+    maxAccount: '$200k',
+    eval: '1, 2 o 3 fases',
+    maxDailyLoss: '4%',
+    maxLoss: '8%',
+    minDays: '0 días',
+    consistency: 'No (en planes estándar)',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'Una de las prop firms más jóvenes y agresivas en condiciones. Permite EAs. Profit split puede llegar al 100% con bonificaciones.',
+    warning: ''
+  },
+  {
+    id: 'ftp', name: 'Funded Trading Plus',
+    bots: 'allowed',
+    profitSplit: '80%-90%',
+    maxAccount: '$2.5M (con escalado)',
+    eval: '1 fase, 2 fases o Direct Funding',
+    maxDailyLoss: '4-5%',
+    maxLoss: '8%',
+    minDays: '0-3 días',
+    consistency: 'No estricta',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'EAs permitidos. Tienen Direct Funding (sin challenge, pago directo). Buen split y escalado.',
+    warning: ''
+  },
+  {
+    id: 'cti', name: 'City Traders Imperium',
+    bots: 'conditional',
+    profitSplit: '70%-100%',
+    maxAccount: '$200k',
+    eval: 'Direct Funding o evaluación',
+    maxDailyLoss: 'No (modelo distinto)',
+    maxLoss: '5-10% según plan',
+    minDays: 'Mínimo 30 días en muchos planes',
+    consistency: 'Sí (riguroso)',
+    weekend: 'Permitido',
+    news: 'Permitido con cautela',
+    notes: 'Modelo enfocado en gestión de riesgo a largo plazo. Permite EAs pero auditan estrategia. No es ideal para scalpers ni grid agresivo.',
+    warning: 'Plazos largos y reglas de consistencia: bots agresivos pueden no cumplir.'
+  },
+  {
+    id: 'smartprop', name: 'Smart Prop Trader',
+    bots: 'allowed',
+    profitSplit: '80%-90%',
+    maxAccount: '$200k',
+    eval: '2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '5 días en evaluación',
+    consistency: 'Sí (50%)',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'EAs permitidos. Reglas estándar. Buena opción intermedia.',
+    warning: ''
+  },
+  {
+    id: 'alpha', name: 'Alpha Capital Group',
+    bots: 'allowed',
+    profitSplit: '80%-90%',
+    maxAccount: '$400k',
+    eval: '1 o 2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días',
+    consistency: 'No',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'EAs permitidos sin restricciones especiales. Spreads competitivos.',
+    warning: ''
+  },
+  {
+    id: 'aqua', name: 'Aqua Funded',
+    bots: 'allowed',
+    profitSplit: '80%-95%',
+    maxAccount: '$200k',
+    eval: '1 fase o 2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días',
+    consistency: 'No estricta',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'Prop firm reciente y bot-friendly. Condiciones competitivas.',
+    warning: ''
+  },
+  {
+    id: 'fundingtraders', name: 'Funding Traders',
+    bots: 'allowed',
+    profitSplit: '80%-90%',
+    maxAccount: '$600k',
+    eval: '1 o 2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días',
+    consistency: 'No',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'EAs permitidos. Cuentas escalables hasta $600k.',
+    warning: ''
+  },
+  {
+    id: 'goatfunded', name: 'Goat Funded Trader',
+    bots: 'allowed',
+    profitSplit: '85%-95%',
+    maxAccount: '$200k',
+    eval: '1 o 2 fases',
+    maxDailyLoss: '5%',
+    maxLoss: '10%',
+    minDays: '0 días',
+    consistency: 'No',
+    weekend: 'Permitido',
+    news: 'Permitido',
+    notes: 'Bot-friendly. Profit split generoso.',
+    warning: ''
+  },
 ];
 
 // =====================================================
@@ -1417,16 +1675,21 @@ function renderStepName() {
 
 function renderStepStrategy() {
   const d = state.wizard.data;
+  const riskColor = (r) => r === 'Bajo' ? 'var(--pos)' : r === 'Alto' ? 'var(--neg)' : '#FFB020';
   return `
     <div class="flex flex-col gap-3">
       ${STRATEGIES.map(s => `
         <button class="card card-hover ${d.strategy === s.id ? 'selected-strat' : ''}" data-strategy="${s.id}" style="text-align:left;cursor:pointer;${d.strategy === s.id ? 'border-color:var(--text);background:var(--bg-elev)' : ''}">
-          <div class="flex justify-between items-center">
-            <div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
+            <div style="flex:1;min-width:0">
               <div class="h3">${s.name}</div>
-              <div class="text-dim mt-2" style="font-size:13px">${s.desc}</div>
+              <div class="text-dim mt-2" style="font-size:13px;line-height:1.5">${s.desc}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+                <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--bg-elev);color:var(--text-dim)">${s.tf}</span>
+                <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:${riskColor(s.risk)}22;color:${riskColor(s.risk)}">Riesgo ${s.risk}</span>
+                <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--bg-elev);color:var(--text-dim)">Freq. ${s.freq}</span>
+              </div>
             </div>
-            <div class="mono text-mute" style="font-size:11px;letter-spacing:0.5px">${s.tf}</div>
           </div>
         </button>
       `).join('')}
@@ -1437,22 +1700,35 @@ function renderStepStrategy() {
 function renderStepIndicators() {
   const d = state.wizard.data;
   const cats = [...new Set(INDICATORS.map(i => i.cat))];
+  const selectedDetails = d.indicators
+    .map(id => INDICATORS.find(i => i.id === id))
+    .filter(Boolean);
   return `
-    <p class="text-dim mb-4" style="margin-bottom:20px">Selecciona los indicadores que tu bot usará para tomar decisiones. Recomendamos 2-4.</p>
+    <p class="text-dim mb-4" style="margin-bottom:20px">Selecciona los indicadores que tu bot usará para tomar decisiones. Recomendamos <strong style="color:var(--text)">2-4</strong>. Más de 5 puede generar señales contradictorias.</p>
     ${cats.map(cat => `
       <div style="margin-bottom:20px">
         <div class="field-label">${cat}</div>
         <div class="chip-row">
           ${INDICATORS.filter(i => i.cat === cat).map(i => `
-            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''}" data-indicator="${i.id}">${i.name}</button>
+            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''}" data-indicator="${i.id}" title="${i.desc || ''}">${i.name}</button>
           `).join('')}
         </div>
       </div>
     `).join('')}
     <div class="card" style="background:var(--bg-soft);border-style:dashed;margin-top:14px">
-      <div class="text-dim" style="font-size:13px">
+      <div class="text-dim" style="font-size:13px;margin-bottom:${selectedDetails.length ? '10px' : '0'}">
         <strong style="color:var(--text)">Seleccionados:</strong> ${d.indicators.length} indicador${d.indicators.length === 1 ? '' : 'es'}
       </div>
+      ${selectedDetails.length ? `
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+          ${selectedDetails.map(i => `
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px">
+              <span style="font-family:'JetBrains Mono';font-weight:700;color:var(--text);min-width:80px">${i.name}</span>
+              <span class="text-dim" style="line-height:1.4">${i.desc}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1534,25 +1810,82 @@ function applyRRFeedback() {
 
 function renderStepFunded() {
   const d = state.wizard.data;
+  const policyMeta = {
+    allowed:     { label: 'Bots permitidos',         color: 'var(--pos)',      bg: 'rgba(0,209,122,0.08)' },
+    conditional: { label: 'Permitidos con reglas',   color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
+    restricted:  { label: 'Uso restringido',         color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
+    banned:      { label: 'Bots prohibidos',         color: 'var(--neg)',      bg: 'rgba(255,71,87,0.08)' },
+  };
+  const selected = FUNDED_FIRMS.find(f => f.id === d.funded.firm);
   return `
-    <div class="card" style="margin-bottom:24px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-funded">
+    <div class="card" style="margin-bottom:18px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-funded">
       <div style="width:48px;height:28px;border-radius:14px;background:${d.funded.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
         <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.funded.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
       </div>
       <div style="flex:1">
         <div class="h3">¿Usas cuenta de fondeo?</div>
-        <div class="text-dim mt-2" style="font-size:13px">El bot respetará reglas de drawdown</div>
+        <div class="text-dim mt-2" style="font-size:13px">El bot respetará reglas de drawdown y consistency</div>
       </div>
     </div>
+
     ${d.funded.enabled ? `
-      <div class="field-label">Selecciona tu prop firm</div>
-      <div class="option-grid" style="grid-template-columns:repeat(3,1fr)">
-        ${FUNDED_FIRMS.map(f => `
-          <button class="option-card ${d.funded.firm === f.id ? 'selected' : ''}" data-firm="${f.id}">
-            <span>${f.name}</span>
-          </button>
-        `).join('')}
+      <div class="card" style="background:rgba(255,176,32,0.06);border-color:rgba(255,176,32,0.2);margin-bottom:20px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px;line-height:1.2">⚠️</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#FFB020">Antes de usar un bot en una cuenta funded</div>
+            <div class="text-dim" style="font-size:13px;line-height:1.6">
+              Cada prop firm tiene reglas distintas. Algunas <strong style="color:var(--text)">permiten EAs sin restricciones</strong>, otras los <strong style="color:var(--text)">prohíben totalmente</strong>, y otras tienen condiciones (no HFT, no copy-trading entre cuentas, no martingala). <strong style="color:var(--text)">Lee bien las reglas</strong> de tu firm antes de operar — usar un bot en una cuenta donde no está permitido puede suponer la <strong style="color:var(--text)">pérdida del fondeo sin reembolso</strong>.
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div class="field-label" style="margin-bottom:12px">Selecciona tu prop firm</div>
+      <div class="firm-grid">
+        ${FUNDED_FIRMS.map(f => {
+          const policy = policyMeta[f.bots] || policyMeta.allowed;
+          const isSel = d.funded.firm === f.id;
+          return `
+            <button class="firm-card ${isSel ? 'selected' : ''}" data-firm="${f.id}">
+              <div class="firm-card-head">
+                <span class="firm-card-name">${f.name}</span>
+                <span class="firm-policy-badge" style="background:${policy.bg};color:${policy.color}">${policy.label}</span>
+              </div>
+              <div class="firm-card-grid">
+                <div><span class="firm-meta-lbl">Profit split</span><span class="firm-meta-val">${f.profitSplit}</span></div>
+                <div><span class="firm-meta-lbl">Cuenta máx.</span><span class="firm-meta-val">${f.maxAccount}</span></div>
+                <div><span class="firm-meta-lbl">Daily loss</span><span class="firm-meta-val">${f.maxDailyLoss}</span></div>
+                <div><span class="firm-meta-lbl">Loss total</span><span class="firm-meta-val">${f.maxLoss}</span></div>
+              </div>
+            </button>
+          `;
+        }).join('')}
+      </div>
+
+      ${selected ? `
+        <div class="card" style="margin-top:18px;padding:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="h3">${selected.name} · detalle</div>
+            <span class="firm-policy-badge" style="background:${(policyMeta[selected.bots] || policyMeta.allowed).bg};color:${(policyMeta[selected.bots] || policyMeta.allowed).color}">${(policyMeta[selected.bots] || policyMeta.allowed).label}</span>
+          </div>
+          <div class="firm-detail-grid">
+            <div><span class="firm-meta-lbl">Evaluación</span><div>${selected.eval}</div></div>
+            <div><span class="firm-meta-lbl">Días mínimos</span><div>${selected.minDays}</div></div>
+            <div><span class="firm-meta-lbl">Consistencia</span><div>${selected.consistency}</div></div>
+            <div><span class="firm-meta-lbl">Holding fin de semana</span><div>${selected.weekend}</div></div>
+            <div><span class="firm-meta-lbl">Operar noticias</span><div>${selected.news}</div></div>
+          </div>
+          <div class="text-dim" style="font-size:13px;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            ${selected.notes}
+          </div>
+          ${selected.warning ? `
+            <div style="margin-top:12px;padding:11px 14px;border-radius:10px;background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.2);color:var(--neg);font-size:12.5px">
+              ⚠️ ${selected.warning}
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
     ` : ''}
   `;
 }
