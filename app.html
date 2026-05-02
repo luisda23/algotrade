@@ -186,8 +186,8 @@ input, textarea, select { font-family: inherit; color: inherit; }
   width: 100%; text-align: left;
   transition: background 0.15s, color 0.15s;
 }
-.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
-.nav-item.active { background: #fff; color: #000; font-weight: 600; }
+.nav-item:hover { background: var(--bg-card); color: var(--text); }
+.nav-item.active { background: var(--text); color: var(--bg); font-weight: 600; }
 .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 .sidebar-footer {
@@ -196,13 +196,13 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .user-pill {
   display: flex; align-items: center; gap: 11px;
   padding: 11px;
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
 .user-avatar {
   width: 36px; height: 36px; border-radius: 18px;
-  background: #fff; color: #000;
+  background: var(--text); color: var(--bg);
   display: flex; align-items: center; justify-content: center;
   font-family: 'Inter Tight'; font-weight: 700; font-size: 15px;
   flex-shrink: 0;
@@ -326,15 +326,15 @@ main {
   transition: all 0.2s var(--ease);
   white-space: nowrap;
 }
-.btn-primary { background: #fff; color: #000; }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(255,255,255,0.18); }
+.btn-primary { background: var(--text); color: var(--bg); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(127,127,127,0.18); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn-ghost {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: var(--border-strong); }
+.btn-ghost:hover { background: var(--bg-elev); border-color: var(--border-strong); }
 .btn-soft {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -431,7 +431,7 @@ main {
 }
 .auth-logo {
   width: 56px; height: 56px; border-radius: 14px;
-  background: #fff;
+  background: var(--text); color: var(--bg);
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 24px;
 }
@@ -518,7 +518,7 @@ svg { display: block; }
   display: flex; align-items: center; gap: 20px;
   padding: 28px;
   border-radius: 20px;
-  background: #fff; color: #000;
+  background: var(--text); color: var(--bg);
   cursor: pointer;
   transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
   margin-bottom: clamp(28px, 4vw, 48px);
@@ -526,7 +526,7 @@ svg { display: block; }
 }
 .create-cta:hover {
   transform: translateY(-3px);
-  box-shadow: 0 20px 50px rgba(255,255,255,0.15);
+  box-shadow: 0 20px 50px rgba(127,127,127,0.18);
 }
 .create-cta::after {
   content: '';
@@ -537,7 +537,7 @@ svg { display: block; }
 }
 .create-cta-icon {
   width: 60px; height: 60px; border-radius: 16px;
-  background: #000; color: #fff;
+  background: var(--bg); color: var(--text);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -546,9 +546,9 @@ svg { display: block; }
   font-family: 'Inter Tight'; font-size: 22px; font-weight: 800;
   letter-spacing: -0.02em; margin-bottom: 4px;
 }
-.create-cta-sub { font-size: 14px; color: rgba(0,0,0,0.65); }
+.create-cta-sub { font-size: 14px; opacity: 0.7; }
 .create-cta-btn {
-  background: #000; color: #fff;
+  background: var(--bg); color: var(--text);
   padding: 12px 22px; border-radius: 999px;
   font-size: 14px; font-weight: 600;
   display: flex; align-items: center; gap: 8px;
@@ -626,7 +626,7 @@ svg { display: block; }
 }
 .wizard-header {
   position: sticky; top: 0; z-index: 30;
-  background: rgba(0,0,0,0.85);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   padding: 20px 24px 0;
@@ -641,12 +641,13 @@ svg { display: block; }
 .wizard-back {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 14px; border-radius: 10px;
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-card);
+  color: var(--text);
   border: 1px solid var(--border);
   font-size: 13px; font-weight: 600;
   transition: background 0.15s;
 }
-.wizard-back:hover { background: rgba(255,255,255,0.08); }
+.wizard-back:hover { background: var(--bg-elev); }
 .wizard-counter {
   font-family: 'JetBrains Mono'; font-size: 12px;
   color: var(--text-dim); font-weight: 600;
@@ -656,10 +657,10 @@ svg { display: block; }
 }
 .wizard-progress-bar {
   flex: 1; height: 3px; border-radius: 2px;
-  background: rgba(255,255,255,0.08);
+  background: var(--border);
   transition: background 0.4s var(--ease);
 }
-.wizard-progress-bar.done { background: #fff; }
+.wizard-progress-bar.done { background: var(--text); }
 
 .wizard-body {
   flex: 1;
@@ -682,7 +683,7 @@ svg { display: block; }
 
 .wizard-footer {
   position: sticky; bottom: 0;
-  background: rgba(0,0,0,0.9);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   padding: 18px 24px 24px;
@@ -720,9 +721,9 @@ svg { display: block; }
 }
 .option-card:hover { border-color: var(--border-strong); background: var(--bg-elev); }
 .option-card.selected {
-  background: #fff; color: #000;
-  border-color: #fff;
-  box-shadow: 0 6px 20px rgba(255,255,255,0.15);
+  background: var(--text); color: var(--bg);
+  border-color: var(--text);
+  box-shadow: 0 6px 20px rgba(127,127,127,0.15);
 }
 .option-card svg { width: 22px; height: 22px; }
 
@@ -733,6 +734,7 @@ svg { display: block; }
   padding: 9px 14px;
   border-radius: 999px;
   background: var(--bg-card);
+  color: var(--text);
   border: 1px solid var(--border);
   font-family: 'JetBrains Mono';
   font-size: 13px; font-weight: 600;
@@ -740,7 +742,7 @@ svg { display: block; }
   transition: all 0.15s;
 }
 .chip:hover { border-color: var(--border-strong); }
-.chip.selected { background: #fff; color: #000; border-color: #fff; }
+.chip.selected { background: var(--text); color: var(--bg); border-color: var(--text); }
 
 /* ===================== TOAST ===================== */
 .toast-wrap { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; }
@@ -1418,7 +1420,7 @@ function renderStepStrategy() {
   return `
     <div class="flex flex-col gap-3">
       ${STRATEGIES.map(s => `
-        <button class="card card-hover ${d.strategy === s.id ? 'selected-strat' : ''}" data-strategy="${s.id}" style="text-align:left;cursor:pointer;${d.strategy === s.id ? 'border-color:#fff;background:rgba(255,255,255,0.05)' : ''}">
+        <button class="card card-hover ${d.strategy === s.id ? 'selected-strat' : ''}" data-strategy="${s.id}" style="text-align:left;cursor:pointer;${d.strategy === s.id ? 'border-color:var(--text);background:var(--bg-elev)' : ''}">
           <div class="flex justify-between items-center">
             <div>
               <div class="h3">${s.name}</div>
@@ -1447,7 +1449,7 @@ function renderStepIndicators() {
         </div>
       </div>
     `).join('')}
-    <div class="card" style="background:rgba(255,255,255,0.03);border-style:dashed;margin-top:14px">
+    <div class="card" style="background:var(--bg-soft);border-style:dashed;margin-top:14px">
       <div class="text-dim" style="font-size:13px">
         <strong style="color:var(--text)">Seleccionados:</strong> ${d.indicators.length} indicador${d.indicators.length === 1 ? '' : 'es'}
       </div>
@@ -1580,7 +1582,7 @@ function renderStepGenerate() {
         ${phases.map((p, i) => {
           const done = state.wizard.generationDone;
           const opacity = done ? '1' : '0.3';
-          const bg = done ? 'var(--pos)' : 'rgba(255,255,255,0.08)';
+          const bg = done ? 'var(--pos)' : 'var(--border)';
           const inner = done ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : '';
           return `
           <div class="phase-row" data-phase="${i}" style="display:flex;align-items:center;gap:12px;opacity:${opacity};transition:opacity 0.3s">
@@ -1615,7 +1617,7 @@ function renderStepReview() {
         </div>
       `).join('')}
     </div>
-    <div class="card mt-4" style="background:rgba(255,255,255,0.03);margin-top:14px">
+    <div class="card mt-4" style="background:var(--bg-soft);margin-top:14px">
       <div class="flex items-center justify-between">
         <div>
           <div class="text-dim" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Total a pagar</div>
