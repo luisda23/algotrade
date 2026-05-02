@@ -18,6 +18,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<script>
+// Apply theme before paint to prevent flash. Default is light.
+(() => {
+  const stored = localStorage.getItem('theme');
+  if (stored !== 'dark') document.documentElement.setAttribute('data-theme', 'light');
+})();
+</script>
+
 <style>
 :root {
   --bg: #000000;
@@ -127,7 +135,7 @@ button { font-family: inherit; cursor: pointer; }
   border-bottom: 1px solid transparent;
 }
 .nav.scrolled {
-  background: rgba(0,0,0,0.75);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
 }
@@ -433,13 +441,14 @@ section { position: relative; padding: 140px 32px; }
 .step-icon {
   width: 48px; height: 48px;
   border-radius: 14px;
-  background: rgba(255,255,255,0.06);
+  background: var(--bg-elev);
+  color: var(--text);
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 24px;
   transition: background 0.3s ease, transform 0.4s var(--ease-bounce);
 }
 .step:hover .step-icon {
-  background: rgba(255,255,255,0.12);
+  background: var(--border-strong);
   transform: scale(1.05) rotate(-3deg);
 }
 .step-title {
@@ -799,7 +808,7 @@ footer {
       <div class="step reveal">
         <div class="step-num">01</div>
         <div class="step-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
         </div>
         <h3 class="step-title">Configura</h3>
         <p class="step-desc">Elige mercado, par, estrategia, indicadores y apalancamiento. 8 pasos guiados.</p>
@@ -807,7 +816,7 @@ footer {
       <div class="step reveal">
         <div class="step-num">02</div>
         <div class="step-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
         <h3 class="step-title">IA genera</h3>
         <p class="step-desc">El sistema construye tu bot con backtesting y optimización automática.</p>
@@ -815,7 +824,7 @@ footer {
       <div class="step reveal">
         <div class="step-num">03</div>
         <div class="step-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </div>
         <h3 class="step-title">Descarga</h3>
         <p class="step-desc">Recibe el archivo .mq4 o .mq5 listo para arrastrar a tu MetaTrader.</p>
@@ -823,7 +832,7 @@ footer {
       <div class="step reveal">
         <div class="step-num">04</div>
         <div class="step-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </div>
         <h3 class="step-title">Opera</h3>
         <p class="step-desc">El bot opera en automático 24/7 con tus reglas de riesgo. Tú a otra cosa.</p>
@@ -842,42 +851,42 @@ footer {
     <div class="features stagger">
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
         <h3>Pago único, no suscripción</h3>
         <p>€9.99 una sola vez por bot. Es tuyo para siempre. Sin cargos mensuales, sin sorpresas.</p>
       </div>
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         </div>
         <h3>Apalancamiento personalizado</h3>
         <p>1:1, 1:30, 1:100, 1:500 o el valor exacto que tu broker te ofrezca (ej: 1:90).</p>
       </div>
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
         </div>
         <h3>MT4 y MT5 nativos</h3>
         <p>Genera archivos .mq4 y .mq5 reales. Compatible con cualquier broker que use MetaTrader.</p>
       </div>
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <h3>Compatible con prop firms</h3>
         <p>FTMO, MyForexFunds, The5ers, FundedNext, E8 Funding y más. Respeta drawdown y reglas.</p>
       </div>
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <h3>Operación 24/7</h3>
         <p>Filtro horario configurable. Funciona desde tu PC o un VPS desde $10/mes. Tu bot nunca duerme.</p>
       </div>
       <div class="feature reveal">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         </div>
         <h3>47 indicadores técnicos</h3>
         <p>RSI, EMA, MACD, Bollinger, Ichimoku, Order Blocks, FVG... Configura los que quieras.</p>
@@ -915,12 +924,12 @@ footer {
       </div>
       <div class="price-period">por bot · sin suscripción</div>
       <ul class="price-features">
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Wizard de creación con 8 pasos</li>
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Archivo .mq4 y .mq5 incluidos</li>
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> 47 indicadores técnicos</li>
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Apalancamiento personalizable</li>
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Compatible con prop firms</li>
-        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Soporte vía chatbot 24/7</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Wizard de creación con 8 pasos</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Archivo .mq4 y .mq5 incluidos</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> 47 indicadores técnicos</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Apalancamiento personalizable</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Compatible con prop firms</li>
+        <li><span class="price-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span> Soporte vía chatbot 24/7</li>
       </ul>
       <a href="/app" class="btn btn-primary" style="width: 100%; justify-content: center; position: relative; z-index: 1;">
         Crear mi bot ahora
@@ -1012,10 +1021,10 @@ footer {
 <footer>
   <div class="footer-content">
     <div class="footer-logo">
-      <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
-        <rect width="32" height="32" rx="8" fill="white"/>
-        <path d="M5 22 L11 16 L17 19 L23 11 L28 8" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <circle cx="28" cy="8" r="2" fill="black"/>
+      <svg viewBox="0 0 32 32" fill="none" width="24" height="24" class="logo-svg">
+        <rect width="32" height="32" rx="8" class="logo-rect"/>
+        <path d="M5 22 L11 16 L17 19 L23 11 L28 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" class="logo-line"/>
+        <circle cx="28" cy="8" r="2" class="logo-dot"/>
       </svg>
       AlgoTrade
     </div>
@@ -1256,9 +1265,10 @@ loadThreeJS().then(() => {
 })();
 
 // ============ THEME TOGGLE ============
+// Default theme is light. Only apply dark when the user has explicitly opted in.
 (() => {
   const stored = localStorage.getItem('theme');
-  if (stored === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  if (stored !== 'dark') document.documentElement.setAttribute('data-theme', 'light');
   const btn = document.getElementById('theme-toggle');
   btn?.addEventListener('click', () => {
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
