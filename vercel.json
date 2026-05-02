@@ -3,7 +3,8 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/landing.html" },
-    { "source": "/app", "destination": "/index.html" }
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/app/(.*)", "destination": "/app.html" }
   ],
   "headers": [
     {
