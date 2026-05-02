@@ -2153,24 +2153,13 @@ function loadBotDetail(root) {
       <p class="text-dim mt-2 fade-up">${pair} · ${bot.strategy || 'scalping'}</p>
 
       <div class="card card-pad-lg fade-up" style="margin-top:28px">
-        <div class="flex items-center gap-2" style="margin-bottom:12px">
-          <span class="stat-dot" id="bot-status-dot" style="background:${isRunning ? 'var(--pos)' : 'var(--text-mute)'}"></span>
-          <span class="label-up" id="bot-status-label">${isRunning ? 'Operando · Live' : 'Pausado'}</span>
-        </div>
-        <div class="value mono ${isPos ? 'pos' : 'neg'}" style="font-family:'JetBrains Mono';font-size:42px;font-weight:700;letter-spacing:-0.02em;line-height:1">
-          ${isPos ? '+' : ''}$${Math.abs(pnl).toFixed(2)}
-        </div>
-      </div>
-
-      <div class="card fade-up" style="margin-top:14px">
-        <h3 class="h3" style="margin-bottom:6px">Control del bot</h3>
-        <p class="text-dim" style="font-size:13px;margin-bottom:14px">Activa o pausa la operativa. Si en MetaTrader tienes el "Permitir trading automático" desactivado, el bot no operará aunque esté en activo aquí.</p>
-        <div class="flex gap-3" style="display:flex">
-          <button class="btn ${isRunning ? 'btn-ghost' : 'btn-primary'}" id="btn-activate" style="flex:1;justify-content:center" ${isRunning ? 'disabled' : ''}>
-            ${I.play} Activar bot
-          </button>
-          <button class="btn ${isRunning ? 'btn-primary' : 'btn-ghost'}" id="btn-pause" style="flex:1;justify-content:center" ${!isRunning ? 'disabled' : ''}>
-            ${I.pause} Pausar bot
+        <h3 class="h3" style="margin-bottom:6px">Cómo usar este bot</h3>
+        <p class="text-dim" style="font-size:13px;line-height:1.6">
+          Descarga el archivo <strong style="color:var(--text)">.mq5</strong> (recomendado) o <strong style="color:var(--text)">.mq4</strong>, ábrelo en MetaTrader y arrástralo a un gráfico de <strong style="color:var(--text)">${pair}</strong>. Para iniciar o detener la operativa usa el botón <strong style="color:var(--text)">"Permitir trading automático"</strong> de MetaTrader.
+        </p>
+        <div style="margin-top:14px">
+          <button class="btn btn-soft" data-screen="guide" style="font-size:13px">
+            Ver guía completa →
           </button>
         </div>
       </div>
@@ -2191,20 +2180,12 @@ function loadBotDetail(root) {
   document.getElementById('back-to-dash')?.addEventListener('click', () => {
     state.currentScreen = 'dashboard'; render();
   });
-  const setBotStatus = async (newStatus) => {
-    try {
-      const res = await api(`/bots/${bot.id}`, { method: 'PUT', body: JSON.stringify({ status: newStatus }) });
-      bot.status = res.bot?.status || newStatus;
-      const idx = state.bots.findIndex(b => b.id === bot.id);
-      if (idx >= 0) state.bots[idx] = { ...state.bots[idx], status: bot.status };
+  root.querySelectorAll('[data-screen]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.currentScreen = el.dataset.screen;
       render();
-      toast(newStatus === 'active' ? 'Bot activado' : 'Bot pausado', 'success');
-    } catch (e) {
-      toast('No se pudo actualizar el estado', 'error');
-    }
-  };
-  document.getElementById('btn-activate')?.addEventListener('click', () => setBotStatus('active'));
-  document.getElementById('btn-pause')?.addEventListener('click', () => setBotStatus('paused'));
+    });
+  });
   ['mq4','mq5'].forEach(fmt => {
     document.getElementById(`dl-${fmt}`)?.addEventListener('click', async () => {
       try {
