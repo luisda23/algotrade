@@ -66,6 +66,57 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .fade-up { animation: fadeUp 0.5s var(--ease); }
 .fade-in { animation: fadeIn 0.4s ease; }
 
+/* Modern B/W slider */
+.slider-modern {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right,
+    var(--text) 0%,
+    var(--text) var(--val, 50%),
+    rgba(127,127,127,0.18) var(--val, 50%),
+    rgba(127,127,127,0.18) 100%);
+  outline: none;
+  cursor: pointer;
+  margin: 4px 0;
+}
+.slider-modern::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 4px solid var(--bg);
+  box-shadow: 0 0 0 1px rgba(127,127,127,0.4), 0 4px 14px rgba(0,0,0,0.35);
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.slider-modern::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 1px var(--text), 0 6px 18px rgba(0,0,0,0.4);
+}
+.slider-modern::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.05); }
+.slider-modern::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 4px solid var(--bg);
+  box-shadow: 0 0 0 1px rgba(127,127,127,0.4), 0 4px 14px rgba(0,0,0,0.35);
+  cursor: grab;
+}
+.slider-modern::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(127,127,127,0.18);
+}
+.slider-modern::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--text);
+}
+
 /* ===================== LAYOUT ===================== */
 .app-shell {
   display: grid;
@@ -1188,14 +1239,19 @@ const FUNDED_FIRMS = [
 // =====================================================
 //  WIZARD
 // =====================================================
+let _lastWizardStep = -1;
 function renderWizard() {
   const w = state.wizard;
   const cur = WIZARD_STEPS[w.step];
   const isLast = w.step === WIZARD_STEPS.length - 1;
   const isGenerate = w.step === 5;
+  const stepChanged = _lastWizardStep !== w.step;
+  _lastWizardStep = w.step;
+  const fadeUp = stepChanged ? 'fade-up' : '';
+  const fadeIn = stepChanged ? 'fade-in' : '';
 
   return `
-    <div class="wizard fade-in">
+    <div class="wizard ${fadeIn}">
       <div class="wizard-header">
         <div class="wizard-header-inner">
           <div class="wizard-top-row">
@@ -1212,9 +1268,9 @@ function renderWizard() {
       </div>
       <div class="wizard-body">
         <div class="wizard-body-inner">
-          <h1 class="wizard-title fade-up">${cur.title}</h1>
-          <p class="wizard-subtitle fade-up">${cur.subtitle}</p>
-          <div class="fade-up" style="animation-delay: 0.1s">${renderWizardStep(w.step)}</div>
+          <h1 class="wizard-title ${fadeUp}">${cur.title}</h1>
+          <p class="wizard-subtitle ${fadeUp}">${cur.subtitle}</p>
+          <div class="${fadeUp}" style="${stepChanged ? 'animation-delay: 0.1s' : ''}">${renderWizardStep(w.step)}</div>
         </div>
       </div>
       <div class="wizard-footer">
@@ -1360,24 +1416,24 @@ function renderStepRisk() {
       </div>
     </div>
 
-    <div style="margin-bottom:18px">
-      <div class="field-label">Stop loss · ${d.risk.stopLoss}%</div>
-      <input type="range" id="r-sl" min="0.5" max="10" step="0.1" value="${d.risk.stopLoss}" style="width:100%"/>
+    <div style="margin-bottom:22px">
+      <div class="field-label" id="lbl-sl">Stop loss · ${d.risk.stopLoss}%</div>
+      <input type="range" id="r-sl" class="slider-modern" min="0.5" max="10" step="0.1" value="${d.risk.stopLoss}"/>
     </div>
-    <div style="margin-bottom:18px">
-      <div class="field-label">Take profit · ${d.risk.takeProfit}%</div>
-      <input type="range" id="r-tp" min="0.5" max="20" step="0.1" value="${d.risk.takeProfit}" style="width:100%"/>
+    <div style="margin-bottom:22px">
+      <div class="field-label" id="lbl-tp">Take profit · ${d.risk.takeProfit}%</div>
+      <input type="range" id="r-tp" class="slider-modern" min="0.5" max="20" step="0.1" value="${d.risk.takeProfit}"/>
     </div>
-    <div style="margin-bottom:18px">
-      <div class="field-label">Tamaño posición · ${d.risk.posSize}% del capital</div>
-      <input type="range" id="r-ps" min="0.5" max="10" step="0.1" value="${d.risk.posSize}" style="width:100%"/>
+    <div style="margin-bottom:22px">
+      <div class="field-label" id="lbl-ps">Tamaño posición · ${d.risk.posSize}% del capital</div>
+      <input type="range" id="r-ps" class="slider-modern" min="0.5" max="10" step="0.1" value="${d.risk.posSize}"/>
     </div>
     <div>
-      <div class="field-label">Pérdida diaria máxima · ${d.risk.dailyLoss}%</div>
-      <input type="range" id="r-dl" min="1" max="15" step="0.5" value="${d.risk.dailyLoss}" style="width:100%"/>
+      <div class="field-label" id="lbl-dl">Pérdida diaria máxima · ${d.risk.dailyLoss}%</div>
+      <input type="range" id="r-dl" class="slider-modern" min="1" max="15" step="0.5" value="${d.risk.dailyLoss}"/>
     </div>
     <div class="card" style="background:rgba(0,209,122,0.08);border-color:rgba(0,209,122,0.2);margin-top:18px">
-      <div style="font-size:13px;color:var(--pos);font-weight:600">
+      <div id="lbl-rr" style="font-size:13px;color:var(--pos);font-weight:600">
         Ratio R:R = 1:${(d.risk.takeProfit / d.risk.stopLoss).toFixed(1)}
       </div>
       <div class="text-dim mt-2" style="font-size:12px">Buen balance riesgo/recompensa</div>
@@ -1549,13 +1605,29 @@ function bindWizard() {
     w.data.leverage = val;
   });
   document.getElementById('leverage-custom')?.addEventListener('change', () => render());
+  const sliderMap = { sl: 'stopLoss', tp: 'takeProfit', ps: 'posSize', dl: 'dailyLoss' };
+  const sliderLabels = {
+    sl: (v) => `Stop loss · ${v}%`,
+    tp: (v) => `Take profit · ${v}%`,
+    ps: (v) => `Tamaño posición · ${v}% del capital`,
+    dl: (v) => `Pérdida diaria máxima · ${v}%`,
+  };
+  const updateSliderFill = (el) => {
+    const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
+    el.style.setProperty('--val', ((val - min) / (max - min)) * 100 + '%');
+  };
   ['sl','tp','ps','dl'].forEach(k => {
-    const map = { sl: 'stopLoss', tp: 'takeProfit', ps: 'posSize', dl: 'dailyLoss' };
     const el = document.getElementById('r-' + k);
-    el?.addEventListener('input', (e) => {
-      w.data.risk[map[k]] = parseFloat(e.target.value);
-      // Live update labels without full re-render
-      render();
+    if (!el) return;
+    updateSliderFill(el);
+    el.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      w.data.risk[sliderMap[k]] = v;
+      updateSliderFill(el);
+      const lbl = document.getElementById('lbl-' + k);
+      if (lbl) lbl.textContent = sliderLabels[k](v);
+      const rr = document.getElementById('lbl-rr');
+      if (rr) rr.textContent = `Ratio R:R = 1:${(w.data.risk.takeProfit / w.data.risk.stopLoss).toFixed(1)}`;
     });
   });
 
