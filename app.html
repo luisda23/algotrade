@@ -1432,13 +1432,41 @@ function renderStepRisk() {
       <div class="field-label" id="lbl-dl">Pérdida diaria máxima · ${d.risk.dailyLoss}%</div>
       <input type="range" id="r-dl" class="slider-modern" min="1" max="15" step="0.5" value="${d.risk.dailyLoss}"/>
     </div>
-    <div class="card" style="background:rgba(0,209,122,0.08);border-color:rgba(0,209,122,0.2);margin-top:18px">
-      <div id="lbl-rr" style="font-size:13px;color:var(--pos);font-weight:600">
+    <div class="card" id="rr-card" style="margin-top:18px">
+      <div id="lbl-rr" style="font-size:13px;font-weight:600">
         Ratio R:R = 1:${(d.risk.takeProfit / d.risk.stopLoss).toFixed(1)}
       </div>
-      <div class="text-dim mt-2" style="font-size:12px">Buen balance riesgo/recompensa</div>
+      <div id="lbl-rr-hint" class="text-dim mt-2" style="font-size:12px"></div>
     </div>
   `;
+}
+
+function rrFeedback(ratio) {
+  if (ratio >= 3)   return { msg: 'Excelente — basta con un 25% de aciertos para ser rentable', tone: 'pos' };
+  if (ratio >= 2)   return { msg: 'Bueno — basta con un 33% de aciertos para ser rentable', tone: 'pos' };
+  if (ratio >= 1.5) return { msg: 'Aceptable — necesitas más de 40% de aciertos', tone: 'warn' };
+  if (ratio >= 1)   return { msg: 'Justo — necesitas más del 50% de aciertos', tone: 'warn' };
+  return            { msg: 'Arriesgado — el take profit es menor que el stop loss', tone: 'neg' };
+}
+
+function applyRRFeedback() {
+  const card = document.getElementById('rr-card');
+  const lbl = document.getElementById('lbl-rr');
+  const hint = document.getElementById('lbl-rr-hint');
+  if (!card || !lbl || !hint) return;
+  const w = state.wizard.data.risk;
+  const ratio = w.takeProfit / w.stopLoss;
+  const fb = rrFeedback(ratio);
+  lbl.textContent = `Ratio R:R = 1:${ratio.toFixed(1)}`;
+  hint.textContent = fb.msg;
+  const colors = {
+    pos:  { bg: 'rgba(0,209,122,0.08)',  bd: 'rgba(0,209,122,0.22)',  fg: 'var(--pos)' },
+    warn: { bg: 'rgba(255,176,32,0.08)', bd: 'rgba(255,176,32,0.22)', fg: '#FFB020' },
+    neg:  { bg: 'rgba(255,71,87,0.08)',  bd: 'rgba(255,71,87,0.22)',  fg: 'var(--neg)' },
+  }[fb.tone];
+  card.style.background = colors.bg;
+  card.style.borderColor = colors.bd;
+  lbl.style.color = colors.fg;
 }
 
 function renderStepFunded() {
@@ -1626,10 +1654,10 @@ function bindWizard() {
       updateSliderFill(el);
       const lbl = document.getElementById('lbl-' + k);
       if (lbl) lbl.textContent = sliderLabels[k](v);
-      const rr = document.getElementById('lbl-rr');
-      if (rr) rr.textContent = `Ratio R:R = 1:${(w.data.risk.takeProfit / w.data.risk.stopLoss).toFixed(1)}`;
+      applyRRFeedback();
     });
   });
+  applyRRFeedback();
 
   // Step 4: Funded
   document.getElementById('toggle-funded')?.addEventListener('click', () => {
