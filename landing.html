@@ -141,9 +141,19 @@ button { font-family: inherit; cursor: pointer; }
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,255,255,0.18); }
+.nav-actions { display: flex; align-items: center; gap: 18px; }
+.nav-login {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-decoration: none;
+  position: relative;
+  transition: color 0.2s var(--ease);
+}
+.nav-login:hover { color: var(--text); }
 @media (max-width: 768px) {
   .nav { padding: 14px 20px; }
   .nav-links { display: none; }
+  .nav-actions { gap: 12px; }
 }
 
 /* ============ HERO ============ */
@@ -690,7 +700,10 @@ footer {
     <a href="#pricing" class="nav-link">Precio</a>
     <a href="#faq" class="nav-link">FAQ</a>
   </div>
-  <a href="/app" class="nav-cta">Empezar →</a>
+  <div class="nav-actions">
+    <a href="/app" class="nav-link nav-login">Iniciar sesión</a>
+    <a href="/app" class="nav-cta">Empezar →</a>
+  </div>
 </nav>
 
 <!-- ============ HERO ============ -->
