@@ -39,6 +39,21 @@
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+[data-theme="light"] {
+  --bg: #FFFFFF;
+  --bg-card: #F7F7F7;
+  --bg-elev: #EFEFEF;
+  --bg-soft: #FAFAFA;
+  --border: rgba(0,0,0,0.10);
+  --border-strong: rgba(0,0,0,0.18);
+  --text: #000000;
+  --text-dim: rgba(0,0,0,0.65);
+  --text-mute: rgba(0,0,0,0.4);
+  --accent: #000000;
+}
+
+html, body { transition: background-color 0.3s var(--ease), color 0.3s var(--ease); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
@@ -141,19 +156,25 @@ button { font-family: inherit; cursor: pointer; }
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,255,255,0.18); }
-.nav-actions { display: flex; align-items: center; gap: 18px; }
-.nav-login {
-  font-size: 14px;
+.nav-actions { display: flex; align-items: center; gap: 14px; }
+.theme-toggle {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   color: var(--text-dim);
-  text-decoration: none;
-  position: relative;
-  transition: color 0.2s var(--ease);
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
 }
-.nav-login:hover { color: var(--text); }
+.theme-toggle:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg-card); }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .theme-icon-sun { display: none; }
+[data-theme="light"] .theme-toggle .theme-icon-sun { display: block; }
+[data-theme="light"] .theme-toggle .theme-icon-moon { display: none; }
 @media (max-width: 768px) {
   .nav { padding: 14px 20px; }
   .nav-links { display: none; }
-  .nav-actions { gap: 12px; }
+  .nav-actions { gap: 10px; }
 }
 
 /* ============ HERO ============ */
@@ -701,7 +722,10 @@ footer {
     <a href="#faq" class="nav-link">FAQ</a>
   </div>
   <div class="nav-actions">
-    <a href="/app" class="nav-link nav-login">Iniciar sesión</a>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema">
+      <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
     <a href="/app" class="nav-cta">Empezar →</a>
   </div>
 </nav>
@@ -1215,6 +1239,23 @@ loadThreeJS().then(() => {
     });
   }, { threshold: 0.4 });
   els.forEach(el => obs.observe(el));
+})();
+
+// ============ THEME TOGGLE ============
+(() => {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  const btn = document.getElementById('theme-toggle');
+  btn?.addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+    }
+  });
 })();
 
 </script>
