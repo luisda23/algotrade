@@ -1125,57 +1125,626 @@ function renderBotsGrid() {
 }
 
 // =====================================================
-//  WIZARD (placeholder por ahora)
+//  WIZARD DATA
+// =====================================================
+const WIZARD_STEPS = [
+  { id: 'name', title: 'Nombre y mercado', subtitle: '¿Cómo se llama tu bot y dónde opera?' },
+  { id: 'strategy', title: 'Estrategia', subtitle: 'Elige cómo opera tu bot' },
+  { id: 'indicators', title: 'Indicadores técnicos', subtitle: 'Las señales para entrar y salir' },
+  { id: 'risk', title: 'Gestión de riesgo', subtitle: 'Apalancamiento y límites de pérdida' },
+  { id: 'funded', title: 'Cuenta de fondeo', subtitle: 'Reglas de prop firm (opcional)' },
+  { id: 'generate', title: 'Generando tu bot', subtitle: 'Construyendo el archivo MQL...' },
+  { id: 'review', title: 'Revisar', subtitle: 'Repasa la configuración antes del pago' },
+  { id: 'pay', title: 'Pago', subtitle: 'Pago único de €9.99 vía Stripe' },
+];
+
+const MARKETS = [
+  { id: 'forex', name: 'Forex', icon: I.forex, pairs: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CAD','EUR/GBP','EUR/JPY','GBP/JPY','USD/CHF','NZD/USD','AUD/JPY','EUR/AUD'] },
+  { id: 'indices', name: 'Índices', icon: I.trend, pairs: ['NAS100','US30','SPX500','GER40','UK100','JP225','FRA40','AUS200','HK50'] },
+  { id: 'commodities', name: 'Materias primas', icon: I.diamond, pairs: ['XAU/USD','XAG/USD','WTI','BRENT','NATGAS','COPPER'] },
+  { id: 'crypto', name: 'Crypto CFDs', icon: I.flame, pairs: ['BTC/USD','ETH/USD','LTC/USD','XRP/USD'] },
+];
+
+const STRATEGIES = [
+  { id: 'scalping', name: 'Scalping', desc: 'Operaciones rápidas (segundos a minutos)', tf: '1m – 5m' },
+  { id: 'swing', name: 'Swing trading', desc: 'Posiciones de días a semanas', tf: '4h – 1d' },
+  { id: 'momentum', name: 'Momentum', desc: 'Sigue la fuerza del movimiento', tf: '5m – 1h' },
+  { id: 'mean', name: 'Mean reversion', desc: 'Apuesta a la reversión a la media', tf: '15m – 4h' },
+  { id: 'breakout', name: 'Breakout', desc: 'Entra en rupturas de rango', tf: '15m – 4h' },
+  { id: 'grid', name: 'Grid trading', desc: 'Compra y vende en niveles definidos', tf: 'Continuo' },
+];
+
+const INDICATORS = [
+  { id: 'rsi', name: 'RSI', cat: 'Momentum' },
+  { id: 'ema', name: 'EMA', cat: 'Tendencia' },
+  { id: 'sma', name: 'SMA', cat: 'Tendencia' },
+  { id: 'macd', name: 'MACD', cat: 'Tendencia' },
+  { id: 'bb', name: 'Bollinger', cat: 'Volatilidad' },
+  { id: 'atr', name: 'ATR', cat: 'Volatilidad' },
+  { id: 'stoch', name: 'Estocástico', cat: 'Momentum' },
+  { id: 'adx', name: 'ADX', cat: 'Tendencia' },
+  { id: 'ichi', name: 'Ichimoku', cat: 'Tendencia' },
+  { id: 'vol', name: 'Volume', cat: 'Volumen' },
+  { id: 'fib', name: 'Fibonacci', cat: 'S/R' },
+  { id: 'pivots', name: 'Pivot Points', cat: 'S/R' },
+];
+
+const FUNDED_FIRMS = [
+  { id: 'ftmo', name: 'FTMO' },
+  { id: 'mff', name: 'MyForexFunds' },
+  { id: 'the5', name: 'The5ers' },
+  { id: 'funded', name: 'FundedNext' },
+  { id: 'e8', name: 'E8 Funding' },
+];
+
+// =====================================================
+//  WIZARD
 // =====================================================
 function renderWizard() {
+  const w = state.wizard;
+  const cur = WIZARD_STEPS[w.step];
+  const isLast = w.step === WIZARD_STEPS.length - 1;
+  const isGenerate = w.step === 5;
+
   return `
-    <div class="wizard">
+    <div class="wizard fade-in">
       <div class="wizard-header">
         <div class="wizard-header-inner">
           <div class="wizard-top-row">
-            <button class="wizard-back" id="wizard-back">${I.close}<span>Cerrar</span></button>
-            <div class="wizard-counter">01 / 08</div>
+            <button class="wizard-back" id="wizard-prev" ${w.generating ? 'disabled' : ''}>
+              ${w.step === 0 ? I.close : I.arrowLeft}
+              <span>${w.step === 0 ? 'Cerrar' : 'Atrás'}</span>
+            </button>
+            <div class="wizard-counter">${String(w.step + 1).padStart(2, '0')} / ${String(WIZARD_STEPS.length).padStart(2, '0')}</div>
           </div>
           <div class="wizard-progress">
-            ${[0,1,2,3,4,5,6,7].map(i => `<div class="wizard-progress-bar ${i <= state.wizard.step ? 'done' : ''}"></div>`).join('')}
+            ${WIZARD_STEPS.map((_, i) => `<div class="wizard-progress-bar ${i <= w.step ? 'done' : ''}"></div>`).join('')}
           </div>
         </div>
       </div>
       <div class="wizard-body">
         <div class="wizard-body-inner">
-          <h1 class="wizard-title">Wizard en construcción</h1>
-          <p class="wizard-subtitle">El wizard de creación de bots se está migrando a la nueva web.</p>
-          <p class="text-dim">Volverá pronto con todas sus 8 fases: Nombre, Mercado, Estrategia, Indicadores, Noticias, Riesgo, Cuenta de Fondeo y Generación.</p>
+          <h1 class="wizard-title fade-up">${cur.title}</h1>
+          <p class="wizard-subtitle fade-up">${cur.subtitle}</p>
+          <div class="fade-up" style="animation-delay: 0.1s">${renderWizardStep(w.step)}</div>
         </div>
       </div>
       <div class="wizard-footer">
         <div class="wizard-footer-inner">
-          <button class="btn btn-soft wizard-cta" id="wizard-back-cta">Volver al dashboard</button>
+          ${isGenerate ? renderGenerateCTA() : renderWizardCTA(isLast)}
         </div>
       </div>
     </div>
   `;
 }
+
+function renderWizardCTA(isLast) {
+  return `
+    <button class="btn btn-primary wizard-cta" id="wizard-next">
+      <span>${isLast ? `Pagar €9.99 con Stripe` : 'Continuar'}</span>
+      <span class="btn-arrow">→</span>
+    </button>
+    ${isLast ? '<div class="text-center text-mute mt-2" style="font-size:11px;margin-top:10px">✓ Pago único · Sin suscripciones · El bot es tuyo para siempre</div>' : ''}
+  `;
+}
+
+function renderGenerateCTA() {
+  const w = state.wizard;
+  if (w.generationDone) {
+    return `
+      <button class="btn btn-primary wizard-cta" id="wizard-next">
+        <span>Ver resumen</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    `;
+  }
+  return `
+    <button class="btn wizard-cta" disabled>
+      <span class="spinner"></span>
+      <span>Generando bot...</span>
+    </button>
+  `;
+}
+
+function renderWizardStep(step) {
+  if (step === 0) return renderStepName();
+  if (step === 1) return renderStepStrategy();
+  if (step === 2) return renderStepIndicators();
+  if (step === 3) return renderStepRisk();
+  if (step === 4) return renderStepFunded();
+  if (step === 5) return renderStepGenerate();
+  if (step === 6) return renderStepReview();
+  if (step === 7) return renderStepPay();
+  return '';
+}
+
+function renderStepName() {
+  const d = state.wizard.data;
+  const market = MARKETS.find(m => m.id === d.market);
+  return `
+    <div style="margin-bottom:24px">
+      <div class="field-label">Nombre del bot</div>
+      <input class="input" id="bot-name" value="${d.name}" placeholder="Mi Bot Pro"/>
+    </div>
+    <div style="margin-bottom:24px">
+      <div class="field-label">Mercado</div>
+      <div class="option-grid">
+        ${MARKETS.map(m => `
+          <button class="option-card ${d.market === m.id ? 'selected' : ''}" data-market="${m.id}">
+            ${m.icon}
+            <span>${m.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Par / símbolo</div>
+      <div class="chip-row">
+        ${(market?.pairs || []).map(p => `
+          <button class="chip ${d.pair === p ? 'selected' : ''}" data-pair="${p}">${p}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderStepStrategy() {
+  const d = state.wizard.data;
+  return `
+    <div class="flex flex-col gap-3">
+      ${STRATEGIES.map(s => `
+        <button class="card card-hover ${d.strategy === s.id ? 'selected-strat' : ''}" data-strategy="${s.id}" style="text-align:left;cursor:pointer;${d.strategy === s.id ? 'border-color:#fff;background:rgba(255,255,255,0.05)' : ''}">
+          <div class="flex justify-between items-center">
+            <div>
+              <div class="h3">${s.name}</div>
+              <div class="text-dim mt-2" style="font-size:13px">${s.desc}</div>
+            </div>
+            <div class="mono text-mute" style="font-size:11px;letter-spacing:0.5px">${s.tf}</div>
+          </div>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderStepIndicators() {
+  const d = state.wizard.data;
+  const cats = [...new Set(INDICATORS.map(i => i.cat))];
+  return `
+    <p class="text-dim mb-4" style="margin-bottom:20px">Selecciona los indicadores que tu bot usará para tomar decisiones. Recomendamos 2-4.</p>
+    ${cats.map(cat => `
+      <div style="margin-bottom:20px">
+        <div class="field-label">${cat}</div>
+        <div class="chip-row">
+          ${INDICATORS.filter(i => i.cat === cat).map(i => `
+            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''}" data-indicator="${i.id}">${i.name}</button>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
+    <div class="card" style="background:rgba(255,255,255,0.03);border-style:dashed;margin-top:14px">
+      <div class="text-dim" style="font-size:13px">
+        <strong style="color:var(--text)">Seleccionados:</strong> ${d.indicators.length} indicador${d.indicators.length === 1 ? '' : 'es'}
+      </div>
+    </div>
+  `;
+}
+
+function renderStepRisk() {
+  const d = state.wizard.data;
+  const presets = [1, 10, 30, 100, 200, 500];
+  return `
+    <div style="margin-bottom:24px">
+      <div class="field-label">Apalancamiento</div>
+      <div class="option-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+        ${presets.map(p => `
+          <button class="option-card mono ${d.leverage === p ? 'selected' : ''}" data-leverage="${p}" style="font-size:15px">
+            1:${p}
+          </button>
+        `).join('')}
+      </div>
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px">
+        <span class="mono" style="font-size:15px;font-weight:700">1:</span>
+        <input type="number" class="input" id="leverage-custom" value="${d.leverage}" min="1" max="2000" style="text-align:center;font-family:'JetBrains Mono';font-weight:700"/>
+      </div>
+      <div class="text-dim mt-2" style="font-size:12px;margin-top:10px">
+        Con $1,000 puedes operar hasta <strong style="color:var(--text)">$${(1000 * d.leverage).toLocaleString()}</strong>
+      </div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="field-label">Stop loss · ${d.risk.stopLoss}%</div>
+      <input type="range" id="r-sl" min="0.5" max="10" step="0.1" value="${d.risk.stopLoss}" style="width:100%"/>
+    </div>
+    <div style="margin-bottom:18px">
+      <div class="field-label">Take profit · ${d.risk.takeProfit}%</div>
+      <input type="range" id="r-tp" min="0.5" max="20" step="0.1" value="${d.risk.takeProfit}" style="width:100%"/>
+    </div>
+    <div style="margin-bottom:18px">
+      <div class="field-label">Tamaño posición · ${d.risk.posSize}% del capital</div>
+      <input type="range" id="r-ps" min="0.5" max="10" step="0.1" value="${d.risk.posSize}" style="width:100%"/>
+    </div>
+    <div>
+      <div class="field-label">Pérdida diaria máxima · ${d.risk.dailyLoss}%</div>
+      <input type="range" id="r-dl" min="1" max="15" step="0.5" value="${d.risk.dailyLoss}" style="width:100%"/>
+    </div>
+    <div class="card" style="background:rgba(0,209,122,0.08);border-color:rgba(0,209,122,0.2);margin-top:18px">
+      <div style="font-size:13px;color:var(--pos);font-weight:600">
+        Ratio R:R = 1:${(d.risk.takeProfit / d.risk.stopLoss).toFixed(1)}
+      </div>
+      <div class="text-dim mt-2" style="font-size:12px">Buen balance riesgo/recompensa</div>
+    </div>
+  `;
+}
+
+function renderStepFunded() {
+  const d = state.wizard.data;
+  return `
+    <div class="card" style="margin-bottom:24px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-funded">
+      <div style="width:48px;height:28px;border-radius:14px;background:${d.funded.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
+        <div style="width:24px;height:24px;border-radius:12px;background:#fff;position:absolute;top:2px;left:${d.funded.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
+      </div>
+      <div style="flex:1">
+        <div class="h3">¿Usas cuenta de fondeo?</div>
+        <div class="text-dim mt-2" style="font-size:13px">El bot respetará reglas de drawdown</div>
+      </div>
+    </div>
+    ${d.funded.enabled ? `
+      <div class="field-label">Selecciona tu prop firm</div>
+      <div class="option-grid" style="grid-template-columns:repeat(3,1fr)">
+        ${FUNDED_FIRMS.map(f => `
+          <button class="option-card ${d.funded.firm === f.id ? 'selected' : ''}" data-firm="${f.id}">
+            <span>${f.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderStepGenerate() {
+  const phases = [
+    'Conectando con motor de generación',
+    'Analizando histórico del par',
+    'Calibrando indicadores',
+    'Backtesting estrategia',
+    'Optimizando parámetros',
+    `Aplicando apalancamiento 1:${state.wizard.data.leverage}`,
+    'Compilando archivo MQL',
+    'Bot generado correctamente',
+  ];
+  return `
+    <div class="card card-pad-lg" id="generate-list">
+      <div class="flex items-center gap-3" style="margin-bottom:18px">
+        <div style="width:42px;height:42px;border-radius:12px;background:#fff;color:#000;display:flex;align-items:center;justify-content:center">
+          ${I.bot}
+        </div>
+        <div>
+          <div class="h3">Construyendo tu bot</div>
+        </div>
+      </div>
+      <div class="flex flex-col gap-3">
+        ${phases.map((p, i) => `
+          <div class="phase-row" data-phase="${i}" style="display:flex;align-items:center;gap:12px;opacity:0.3;transition:opacity 0.3s">
+            <div class="phase-dot" style="width:22px;height:22px;border-radius:11px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.3s"></div>
+            <div style="font-size:14px">${p}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderStepReview() {
+  const d = state.wizard.data;
+  return `
+    <div class="card card-pad-lg">
+      <div class="h3 mb-4">Resumen del bot</div>
+      ${[
+        ['Nombre', d.name],
+        ['Mercado', MARKETS.find(m => m.id === d.market)?.name],
+        ['Par', d.pair],
+        ['Estrategia', STRATEGIES.find(s => s.id === d.strategy)?.name],
+        ['Indicadores', d.indicators.join(', ')],
+        ['Apalancamiento', `1:${d.leverage}`],
+        ['Stop loss', `${d.risk.stopLoss}%`],
+        ['Take profit', `${d.risk.takeProfit}%`],
+        ['Cuenta de fondeo', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Sí' : 'No'],
+      ].map(([k, v]) => `
+        <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);font-size:14px">
+          <span class="text-dim">${k}</span>
+          <span style="font-weight:600">${v}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card mt-4" style="background:rgba(255,255,255,0.03);margin-top:14px">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-dim" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Total a pagar</div>
+          <div class="h2 mt-2" style="font-family:'Inter Tight';font-size:36px;font-weight:800;letter-spacing:-0.03em">€9.99</div>
+        </div>
+        <div class="text-dim text-center" style="font-size:12px">
+          Pago único<br/>El bot es tuyo
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStepPay() {
+  return `
+    <div class="card card-pad-lg text-center">
+      <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 18px"></div>
+      <h3 class="h3">Redirigiendo a Stripe...</h3>
+      <p class="text-dim mt-2">Si no se abre automáticamente, haz click en el botón de abajo.</p>
+    </div>
+  `;
+}
+
 function bindWizard() {
-  document.getElementById('wizard-back')?.addEventListener('click', () => {
-    state.currentScreen = 'dashboard'; render();
+  const w = state.wizard;
+  document.getElementById('wizard-prev')?.addEventListener('click', () => {
+    if (w.generating) return;
+    if (w.step === 0) {
+      state.currentScreen = 'dashboard';
+      render();
+    } else {
+      w.step--;
+      render();
+    }
   });
-  document.getElementById('wizard-back-cta')?.addEventListener('click', () => {
-    state.currentScreen = 'dashboard'; render();
+  document.getElementById('wizard-next')?.addEventListener('click', () => {
+    handleWizardNext();
   });
+
+  // Step 0: Name
+  document.getElementById('bot-name')?.addEventListener('input', (e) => { w.data.name = e.target.value; });
+  document.querySelectorAll('[data-market]').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = MARKETS.find(x => x.id === el.dataset.market);
+      w.data.market = m.id;
+      w.data.pair = m.pairs[0];
+      render();
+    });
+  });
+  document.querySelectorAll('[data-pair]').forEach(el => {
+    el.addEventListener('click', () => { w.data.pair = el.dataset.pair; render(); });
+  });
+
+  // Step 1: Strategy
+  document.querySelectorAll('[data-strategy]').forEach(el => {
+    el.addEventListener('click', () => { w.data.strategy = el.dataset.strategy; render(); });
+  });
+
+  // Step 2: Indicators
+  document.querySelectorAll('[data-indicator]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.indicator;
+      const idx = w.data.indicators.indexOf(id);
+      if (idx >= 0) w.data.indicators.splice(idx, 1);
+      else w.data.indicators.push(id);
+      render();
+    });
+  });
+
+  // Step 3: Risk
+  document.querySelectorAll('[data-leverage]').forEach(el => {
+    el.addEventListener('click', () => { w.data.leverage = parseInt(el.dataset.leverage); render(); });
+  });
+  document.getElementById('leverage-custom')?.addEventListener('input', (e) => {
+    const val = Math.max(1, Math.min(2000, parseInt(e.target.value) || 1));
+    w.data.leverage = val;
+  });
+  document.getElementById('leverage-custom')?.addEventListener('change', () => render());
+  ['sl','tp','ps','dl'].forEach(k => {
+    const map = { sl: 'stopLoss', tp: 'takeProfit', ps: 'posSize', dl: 'dailyLoss' };
+    const el = document.getElementById('r-' + k);
+    el?.addEventListener('input', (e) => {
+      w.data.risk[map[k]] = parseFloat(e.target.value);
+      // Live update labels without full re-render
+      render();
+    });
+  });
+
+  // Step 4: Funded
+  document.getElementById('toggle-funded')?.addEventListener('click', () => {
+    w.data.funded.enabled = !w.data.funded.enabled;
+    if (!w.data.funded.enabled) w.data.funded.firm = null;
+    render();
+  });
+  document.querySelectorAll('[data-firm]').forEach(el => {
+    el.addEventListener('click', () => { w.data.funded.firm = el.dataset.firm; render(); });
+  });
+
+  // Step 5: Generate (autorun on enter)
+  if (w.step === 5 && !w.generating && !w.generationDone) {
+    runGeneration();
+  }
+}
+
+function handleWizardNext() {
+  const w = state.wizard;
+  if (w.step === WIZARD_STEPS.length - 1) {
+    // Final step: pay
+    return startCheckout();
+  }
+  if (w.step === 6) {
+    // Review → Pay
+    return startCheckout();
+  }
+  w.step++;
+  render();
+}
+
+async function runGeneration() {
+  const w = state.wizard;
+  w.generating = true;
+  const durations = [800, 1200, 1500, 2000, 1500, 1000, 1500, 800];
+  const phaseRows = document.querySelectorAll('.phase-row');
+
+  for (let i = 0; i < phaseRows.length; i++) {
+    const row = phaseRows[i];
+    if (!row) continue;
+    row.style.opacity = '1';
+    const dot = row.querySelector('.phase-dot');
+    if (dot) {
+      dot.style.background = 'var(--text)';
+      dot.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;border-color:transparent;border-top-color:#000"></span>';
+    }
+    await new Promise(r => setTimeout(r, durations[i]));
+    if (dot) {
+      dot.style.background = 'var(--pos)';
+      dot.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    }
+  }
+
+  w.generating = false;
+  w.generationDone = true;
+  render();
+}
+
+async function startCheckout() {
+  const w = state.wizard;
+  // Guardar config para crear bot tras pago
+  const botConfig = {
+    name: w.data.name,
+    description: `Bot ${w.data.strategy} en ${w.data.pair}`,
+    strategy: w.data.strategy,
+    parameters: {
+      market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
+      indicators: w.data.indicators, risk: w.data.risk, funded: w.data.funded,
+    },
+  };
+  localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
+
+  try {
+    const res = await api('/payments/checkout-custom', {
+      method: 'POST',
+      body: JSON.stringify({ botName: w.data.name }),
+    });
+    if (res.url) {
+      window.location.href = res.url;
+    }
+  } catch (e) {
+    toast('Error al crear sesión de pago', 'error');
+  }
 }
 
 // =====================================================
 //  GUIDE / ACCOUNT / SUPPORT / BOT DETAIL (placeholders)
 // =====================================================
 function loadGuide(root) {
+  if (!state.guideBroker) state.guideBroker = null;
+  if (!state.guideStep) state.guideStep = 0;
+
+  if (!state.guideBroker) {
+    root.innerHTML = `
+      <div class="container container-narrow">
+        <div class="eyebrow fade-up">Guía de implementación</div>
+        <h1 class="h1 fade-up">Conecta tu bot a MetaTrader.</h1>
+        <p class="text-dim mt-4 fade-up" style="margin-top:16px">Selecciona tu plataforma. Te llevará menos de 5 minutos tener tu bot operando.</p>
+
+        <div class="flex flex-col gap-3" style="margin-top:32px">
+          <button class="card card-hover fade-up" id="select-mt5" style="display:flex;align-items:center;gap:18px;text-align:left;cursor:pointer">
+            <div style="width:56px;height:56px;border-radius:14px;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-family:'Inter Tight';font-size:14px;font-weight:800;letter-spacing:0.5px">MT5</div>
+            <div style="flex:1">
+              <div class="flex items-center gap-2">
+                <div class="h3">MetaTrader 5</div>
+                <span class="status-badge status-running">Recomendado</span>
+              </div>
+              <div class="text-dim mt-2" style="font-size:13px">Forex · Índices · Materias primas · Crypto CFDs</div>
+            </div>
+            ${I.arrow}
+          </button>
+          <button class="card card-hover fade-up" id="select-mt4" style="display:flex;align-items:center;gap:18px;text-align:left;cursor:pointer">
+            <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.06);color:#fff;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-family:'Inter Tight';font-size:14px;font-weight:800;letter-spacing:0.5px">MT4</div>
+            <div style="flex:1">
+              <div class="h3">MetaTrader 4</div>
+              <div class="text-dim mt-2" style="font-size:13px">Forex · CFDs (compatibilidad legado)</div>
+            </div>
+            ${I.arrow}
+          </button>
+        </div>
+      </div>
+    `;
+    document.getElementById('select-mt5')?.addEventListener('click', () => { state.guideBroker = 'mt5'; state.guideStep = 0; render(); });
+    document.getElementById('select-mt4')?.addEventListener('click', () => { state.guideBroker = 'mt4'; state.guideStep = 0; render(); });
+    return;
+  }
+
+  // Pasos
+  const isMT5 = state.guideBroker === 'mt5';
+  const ext = isMT5 ? '.mq5' : '.mq4';
+  const folder = isMT5 ? 'MQL5' : 'MQL4';
+  const platName = isMT5 ? 'MetaTrader 5' : 'MetaTrader 4';
+
+  const steps = [
+    { title: 'Ten el archivo descargado', body: `Antes de empezar, descarga el archivo ${ext} desde el detalle de tu bot.`, details: ['El archivo es código fuente Expert Advisor', `${platName} lo compila automáticamente al detectarlo`] },
+    { title: `Abre ${platName}`, body: `Inicia ${platName} en tu ordenador. Si no lo tienes, descárgalo desde tu broker.`, details: ['Asegúrate de estar logueado en tu cuenta (real o demo)', 'Recomendamos cuenta demo para los primeros días'] },
+    { title: 'Abre la carpeta de datos', body: `En ${platName}: Archivo → Abrir carpeta de datos.`, details: ['En inglés: File → Open Data Folder', `Verás carpetas como config, history, ${folder}`] },
+    { title: 'Copia el archivo', body: `Entra en ${folder} → Experts. Pega aquí tu archivo ${ext}.`, details: [`Ruta exacta: ${folder}/Experts/`, 'Si la carpeta Experts no existe, créala'] },
+    { title: `Reinicia ${platName}`, body: 'Cierra y vuelve a abrir la plataforma. El bot aparecerá en "Asesores Expertos".', details: ['Panel izquierdo → Navegador → Asesores Expertos', 'Tu bot tendrá el nombre que le pusiste'] },
+    { title: 'Activa AutoTrading', body: 'Click en el botón "AutoTrading" hasta que esté VERDE.', details: ['Botón en la barra superior con icono de play', 'Verde = activo · Rojo = desactivado'] },
+    { title: 'Arrastra al gráfico', body: `Abre el gráfico del par configurado y arrastra el bot encima.`, details: ['Marca "Permitir trading automático"', 'En la esquina superior derecha verás 😊 verde'] },
+    { title: '¡Listo! Bot operando', body: 'Tu bot está funcionando 24/7 con tus reglas de riesgo.', details: ['IMPORTANTE: el ordenador debe estar encendido y MetaTrader abierto', 'Alternativa: alquila un VPS (~$10/mes) para que opere sin tu PC'] },
+  ];
+  const cur = steps[state.guideStep];
+
   root.innerHTML = `
     <div class="container container-narrow">
-      <div class="eyebrow fade-up">Guía MT4/MT5</div>
-      <h1 class="h1 fade-up">Cómo conectar tu bot a MetaTrader.</h1>
-      <p class="text-dim mt-4 fade-up">Placeholder — sección en migración.</p>
+      <button class="btn btn-soft fade-up" id="back-to-broker" style="margin-bottom:24px">${I.arrowLeft} Cambiar plataforma</button>
+
+      <div class="eyebrow fade-up">${platName}</div>
+      <h1 class="h1 fade-up">Paso ${state.guideStep + 1} de ${steps.length}</h1>
+
+      <div class="wizard-progress" style="margin-top:18px">
+        ${steps.map((_, i) => `<div class="wizard-progress-bar ${i <= state.guideStep ? 'done' : ''}"></div>`).join('')}
+      </div>
+
+      <div class="card card-pad-lg fade-up" style="margin-top:32px">
+        <div class="flex items-center gap-3" style="margin-bottom:16px">
+          <div style="width:40px;height:40px;border-radius:20px;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:14px;font-weight:800">${state.guideStep + 1}</div>
+          <h2 class="h2">${cur.title}</h2>
+        </div>
+        <p style="font-size:15px;line-height:1.6;margin-bottom:18px">${cur.body}</p>
+        <div class="card" style="background:rgba(255,255,255,0.03);padding:16px">
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+            ${cur.details.map(d => `
+              <li style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-dim);line-height:1.5">
+                <div style="width:5px;height:5px;border-radius:3px;background:#fff;margin-top:7px;flex-shrink:0"></div>
+                <span>${d}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex gap-3 fade-up" style="margin-top:18px">
+        ${state.guideStep > 0 ? `<button class="btn btn-soft" id="guide-prev">${I.arrowLeft} Anterior</button>` : ''}
+        <button class="btn btn-primary" id="guide-next" style="flex:1;justify-content:center">
+          ${state.guideStep < steps.length - 1 ? 'Siguiente' : 'Finalizar'}
+          ${state.guideStep < steps.length - 1 ? '<span class="btn-arrow">→</span>' : I.check}
+        </button>
+      </div>
+
+      <div class="card card-hover fade-up" style="margin-top:24px;display:flex;align-items:center;gap:14px;cursor:pointer" onclick="window.open('https://youtu.be/b_pSuUhsi40?si=_7D6b3zkOx5ZUr4R', '_blank')">
+        <div style="width:42px;height:42px;border-radius:10px;background:#FF0000;color:#fff;display:flex;align-items:center;justify-content:center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="h3">Ver video tutorial</div>
+          <div class="text-dim mt-2" style="font-size:13px">Tutorial paso a paso en YouTube</div>
+        </div>
+        ${I.arrow}
+      </div>
     </div>
   `;
+  document.getElementById('back-to-broker')?.addEventListener('click', () => { state.guideBroker = null; render(); });
+  document.getElementById('guide-prev')?.addEventListener('click', () => { state.guideStep--; render(); });
+  document.getElementById('guide-next')?.addEventListener('click', () => {
+    if (state.guideStep < steps.length - 1) { state.guideStep++; render(); }
+    else { state.guideBroker = null; state.guideStep = 0; toast('¡Guía completada!', 'success'); render(); }
+  });
 }
 
 function loadAccount(root) {
@@ -1216,14 +1785,177 @@ function loadAccount(root) {
   });
 }
 
+// =====================================================
+//  SOPORTE CHATBOT
+// =====================================================
+const FAQ_DB = [
+  { id: 'comprar', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99 con Stripe"\n4. Pagas con tarjeta vía Stripe (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
+  { id: 'descargar', kw: ['descarg','archivo','baj','obtener'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
+  { id: 'instalar', kw: ['instal','meter','poner','colocar','experts','metatrader'], q: '¿Cómo instalo el bot en MetaTrader?', a: '1. Abre MetaTrader 4 o 5\n2. Archivo → Abrir carpeta de datos\n3. Entra en MQL5/Experts (o MQL4/Experts)\n4. Pega el archivo .mq5 o .mq4\n5. Cierra y vuelve a abrir MetaTrader\n6. Activa "AutoTrading" (botón verde)\n7. Arrastra el bot a un gráfico\n\nVer pestaña Guía para detalles.' },
+  { id: 'apalancamiento', kw: ['apalanc','leverage','1:30','1:100','1:500','1:90'], q: '¿Qué apalancamiento elijo?', a: 'Depende del mercado y tu tolerancia al riesgo:\n\n• 1:1 - Sin apalancamiento\n• 1:10 - Conservador (recomendado para crypto)\n• 1:30 - Estándar EU para Forex\n• 1:100 - Estándar global\n• 1:500 - Profesional (alto riesgo)\n\nPuedes configurar el valor exacto que quieras (ej: 1:90).' },
+  { id: 'ftmo', kw: ['ftmo','mff','myforex','fondeo','fondeada','prop','the5ers','fundednext','e8'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con:\n\n• FTMO ✅\n• MyForexFunds ✅\n• The5ers ✅\n• FundedNext ✅\n• E8 Funding ✅\n\nEn el wizard, en "Cuenta de Fondeo", selecciona tu prop firm para que el bot respete sus reglas.' },
+  { id: 'noFunciona', kw: ['no funciona','error','falla','no opera','problema','no abre','no entra'], q: 'El bot no opera, ¿qué hago?', a: 'Checklist:\n\n✅ AutoTrading activado (botón VERDE)\n✅ Bot tiene 😊 verde en esquina superior derecha del gráfico\n✅ "Permitir trading automático" marcado\n✅ Símbolo del gráfico coincide con InpSymbol\n✅ Mercado abierto (Forex cerrado fines de semana)\n✅ Filtro horario UTC dentro de rango\n✅ Suficiente margen libre\n\nRevisa "Diario" en MetaTrader.' },
+  { id: 'vps', kw: ['vps','servidor','24/7','siempre','pc encendido','computadora'], q: '¿Necesito el PC encendido todo el tiempo?', a: 'Sí, MetaTrader debe estar abierto.\n\nOpciones:\n\n1. PC encendido 24/7\n2. VPS alquilado (~$10/mes) — Mejor opción\n   • Recomendados: Contabo, ForexVPS, AccuWeb\n3. AWS/Azure (más caro)\n\nVPS es lo más práctico: bajo costo, opera 24/7.' },
+  { id: 'reembolso', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero'], q: '¿Puedo pedir un reembolso?', a: 'Política:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si simplemente no estás satisfecho: caso por caso\n\nEscríbenos a soporte@algotrade.app con el ID del bot.' },
+  { id: 'broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, MyForexFunds, The5ers.\n\nEvita brokers no regulados.' },
+  { id: 'modificar', kw: ['modificar','cambiar','editar','ajustar','parametros'], q: '¿Puedo modificar mi bot?', a: 'Sí, hay 2 formas:\n\n1. EN METATRADER:\n   Click derecho en el bot → Cambiar parámetros\n   Modifica: Stop Loss, Take Profit, Lote, etc.\n\n2. CREA OTRO BOT:\n   Si quieres una estrategia totalmente nueva.' },
+  { id: 'mac', kw: ['mac','macos','apple','osx','macbook'], q: '¿Funciona en Mac?', a: 'MetaTrader es nativo de Windows, pero hay opciones para Mac:\n\n1. MetaTrader oficial para Mac (algunos brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. VPS Windows (lo más práctico)\n\nEl bot funciona igual sin importar el SO.' },
+  { id: 'soporte', kw: ['soporte humano','persona','hablar','contacto humano','email'], q: '¿Cómo contacto soporte humano?', a: 'Email: soporte@algotrade.app\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
+];
+
+const CONV = {
+  saludo: { triggers: ['hola','buenas','buenos','hey','que tal','hi'], r: ['¡Hola! ¿En qué puedo ayudarte?', '¡Hola! Soy el asistente de AlgoTrade. ¿Qué necesitas?'] },
+  gracias: { triggers: ['gracias','thanks','genial','perfecto','ok','vale'], r: ['¡De nada! Si tienes otra pregunta, aquí estoy.', '¡Para servirte!'] },
+  adios: { triggers: ['adios','adiós','bye','chao','hasta luego'], r: ['¡Hasta luego! 📈', '¡Adiós!'] },
+  ayuda: { triggers: ['ayuda','help','que puedes','que sabes'], r: ['Puedo ayudarte con:\n\n• Comprar y descargar bots\n• Instalación en MT4/MT5\n• Apalancamiento\n• FTMO y prop firms\n• Errores comunes\n• VPS\n\nEscríbeme tu pregunta.'] },
+};
+
+function normalize(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[¿?¡!,.;:]/g, '').trim();
+}
+function findAnswer(q) {
+  const n = normalize(q);
+  // conversacional
+  for (const k in CONV) {
+    for (const t of CONV[k].triggers) {
+      if (n === t || n.split(' ').includes(t) || n.startsWith(t + ' ')) {
+        return CONV[k].r[Math.floor(Math.random() * CONV[k].r.length)];
+      }
+    }
+  }
+  // FAQ
+  let best = null, score = 0;
+  for (const f of FAQ_DB) {
+    let s = 0;
+    for (const k of f.kw) if (n.includes(normalize(k))) s += k.length * 2;
+    if (s > score) { score = s; best = f; }
+  }
+  if (best && score >= 4) return best.a;
+  return 'Hmm, no estoy seguro. Reformula tu pregunta o escribe "ayuda" para ver lo que puedo hacer.';
+}
+
+if (!state.support) state.support = { messages: [{ from: 'bot', text: '¡Hola! Soy el asistente de AlgoTrade 🤖\n\nPuedo ayudarte con tus bots: comprar, descargar, instalar, apalancamiento, FTMO, errores...\n\nElige una pregunta o escribe la tuya.' }], showFaqs: true, showFollowUp: false, typing: false };
+
 function loadSupport(root) {
+  const s = state.support;
+  const popularFaqs = FAQ_DB.filter(f => ['comprar','descargar','instalar','apalancamiento','ftmo','noFunciona'].includes(f.id));
+
   root.innerHTML = `
-    <div class="container container-narrow">
-      <div class="eyebrow fade-up">Soporte</div>
-      <h1 class="h1 fade-up">Asistente automático</h1>
-      <p class="text-dim mt-4 fade-up">Placeholder — chatbot en migración.</p>
+    <div class="container container-narrow" style="display:flex;flex-direction:column;min-height:calc(100vh - 60px);">
+      <div class="flex items-center justify-between" style="margin-bottom:24px">
+        <div>
+          <div class="eyebrow">Soporte</div>
+          <h1 class="h1 mt-2">Asistente automático</h1>
+        </div>
+      </div>
+
+      <div id="chat-msgs" style="flex:1;display:flex;flex-direction:column;gap:12px;padding-bottom:20px">
+        ${s.messages.map(m => `
+          <div style="display:flex;justify-content:${m.from === 'user' ? 'flex-end' : 'flex-start'}">
+            <div style="max-width:78%;padding:14px 18px;border-radius:16px;font-size:14px;line-height:1.55;white-space:pre-wrap;${m.from === 'user' ? 'background:#fff;color:#000;font-weight:500' : 'background:var(--bg-card);border:1px solid var(--border)'}">
+              ${m.text}
+            </div>
+          </div>
+        `).join('')}
+        ${s.typing ? `
+          <div style="display:flex;justify-content:flex-start">
+            <div style="padding:14px 18px;border-radius:16px;background:var(--bg-card);border:1px solid var(--border);display:flex;gap:5px">
+              <span style="width:7px;height:7px;border-radius:4px;background:var(--text-mute);animation:bounce 1.4s infinite;animation-delay:0s"></span>
+              <span style="width:7px;height:7px;border-radius:4px;background:var(--text-mute);animation:bounce 1.4s infinite;animation-delay:0.15s"></span>
+              <span style="width:7px;height:7px;border-radius:4px;background:var(--text-mute);animation:bounce 1.4s infinite;animation-delay:0.3s"></span>
+            </div>
+          </div>
+        ` : ''}
+        ${s.showFaqs && !s.typing ? `
+          <div style="margin-top:8px">
+            <div class="label-up" style="margin-bottom:10px">Preguntas frecuentes</div>
+            <div class="flex flex-col gap-2">
+              ${popularFaqs.map(f => `
+                <button class="card card-hover" data-faq="${f.id}" style="text-align:left;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:500">
+                  ${f.q}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${s.showFollowUp && !s.typing ? `
+          <div style="margin-top:8px">
+            <div class="text-dim text-center" style="font-size:13px;margin-bottom:10px">¿He resuelto tu duda?</div>
+            <div class="flex gap-2">
+              <button class="btn" id="resolved-yes" style="flex:1;justify-content:center;background:var(--pos);color:#000;font-weight:700">${I.check} Sí, gracias</button>
+              <button class="btn btn-soft" id="resolved-no" style="flex:1;justify-content:center">No, otra pregunta</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div style="position:sticky;bottom:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(14px);padding:16px 0;border-top:1px solid var(--border);display:flex;gap:10px">
+        <input class="input" id="chat-input" placeholder="Escribe tu pregunta..." style="flex:1"/>
+        <button class="btn btn-primary" id="chat-send" style="width:50px;height:52px;justify-content:center;padding:0">${I.arrow}</button>
+      </div>
     </div>
   `;
+
+  // Auto scroll
+  setTimeout(() => {
+    const msgs = document.getElementById('chat-msgs');
+    if (msgs) msgs.scrollIntoView({ block: 'end' });
+    window.scrollTo(0, document.body.scrollHeight);
+  }, 50);
+
+  // FAQ click
+  document.querySelectorAll('[data-faq]').forEach(el => {
+    el.addEventListener('click', () => {
+      const f = FAQ_DB.find(x => x.id === el.dataset.faq);
+      pushMsg('user', f.q);
+      simulate(() => { pushMsg('bot', f.a); state.support.showFollowUp = true; loadSupport(document.getElementById('screen-root')); });
+    });
+  });
+
+  // Send
+  const send = () => {
+    const input = document.getElementById('chat-input');
+    const v = input.value.trim();
+    if (!v) return;
+    input.value = '';
+    pushMsg('user', v);
+    simulate(() => {
+      const ans = findAnswer(v);
+      pushMsg('bot', ans);
+      state.support.showFollowUp = !ans.startsWith('Hmm');
+      loadSupport(document.getElementById('screen-root'));
+    });
+  };
+  document.getElementById('chat-send')?.addEventListener('click', send);
+  document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') send();
+  });
+
+  // Follow-up buttons
+  document.getElementById('resolved-yes')?.addEventListener('click', () => {
+    pushMsg('user', 'Sí, gracias');
+    state.support.showFollowUp = false;
+    simulate(() => { pushMsg('bot', '¡Genial! Me alegro de haberte ayudado 😊'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
+  });
+  document.getElementById('resolved-no')?.addEventListener('click', () => {
+    pushMsg('user', 'No, sigo con la duda');
+    state.support.showFollowUp = false;
+    simulate(() => { pushMsg('bot', 'Vale, prueba con otra pregunta o escríbela con otras palabras 👇'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
+  });
+}
+
+function pushMsg(from, text) {
+  state.support.messages.push({ from, text });
+  state.support.showFaqs = false;
+  loadSupport(document.getElementById('screen-root'));
+}
+function simulate(cb) {
+  state.support.typing = true;
+  loadSupport(document.getElementById('screen-root'));
+  setTimeout(() => {
+    state.support.typing = false;
+    cb();
+  }, 600 + Math.random() * 600);
 }
 
 function loadBotDetail(root) {
