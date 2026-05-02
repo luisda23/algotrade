@@ -1067,14 +1067,16 @@ function renderDashboard(root) {
       ${state.bots.length === 0 ? renderEmptyBots() : renderBotsGrid()}
     </div>
   `;
-  document.getElementById('goto-wizard')?.addEventListener('click', () => {
+  const goToWizard = () => {
     state.currentScreen = 'wizard';
     state.wizard.step = 0;
     state.wizard.generating = false;
     state.wizard.generationDone = false;
     state.wizard.checkoutTriggered = false;
     render();
-  });
+  };
+  document.getElementById('goto-wizard')?.addEventListener('click', goToWizard);
+  document.getElementById('empty-cta')?.addEventListener('click', goToWizard);
   document.querySelectorAll('[data-bot]').forEach(el => {
     el.addEventListener('click', () => {
       state.selectedBotId = el.dataset.bot;
@@ -2038,9 +2040,44 @@ function loadBotDetail(root) {
 }
 
 // =====================================================
+//  PAYMENT RETURN
+// =====================================================
+async function verifyPendingPayment() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('payment') !== 'success') return;
+  const sessionId = params.get('session');
+  if (!sessionId) return;
+
+  loadAuth();
+  if (!state.token) return;
+
+  let botConfig = null;
+  try { botConfig = JSON.parse(localStorage.getItem('pendingBotConfig') || 'null'); } catch (e) {}
+
+  const cleanUrl = () => window.history.replaceState({}, '', '/app');
+
+  try {
+    const res = await api('/payments/verify', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, botConfig }),
+    });
+    localStorage.removeItem('pendingBotConfig');
+    cleanUrl();
+    state.currentScreen = 'dashboard';
+    toast(`Bot "${res.bot?.name || 'creado'}" añadido a tu cuenta`, 'success');
+  } catch (e) {
+    cleanUrl();
+    toast('No se pudo verificar el pago. Contacta soporte.', 'error');
+  }
+}
+
+// =====================================================
 //  INIT
 // =====================================================
-render();
+(async () => {
+  await verifyPendingPayment();
+  render();
+})();
 
 // Cleanup: unregister any legacy service worker from the old PWA build
 if ('serviceWorker' in navigator) {
