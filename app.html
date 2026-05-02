@@ -382,6 +382,7 @@ svg { display: block; }
 .wizard-back svg { width: 14px; height: 14px; }
 .status-badge svg { width: 12px; height: 12px; }
 .user-avatar svg { width: 18px; height: 18px; }
+.card > svg { width: 22px; height: 22px; flex-shrink: 0; opacity: 0.5; }
 
 /* ===================== DASHBOARD ===================== */
 .dash-hero {
@@ -715,6 +716,7 @@ const state = {
     step: 0,
     generating: false,
     generationDone: false,
+    checkoutTriggered: false,
     data: {
       name: 'Mi Bot Pro',
       market: 'forex',
@@ -901,6 +903,7 @@ function bindNav() {
         state.wizard.step = 0;
         state.wizard.generating = false;
         state.wizard.generationDone = false;
+        state.wizard.checkoutTriggered = false;
       }
       render();
     });
@@ -1069,6 +1072,7 @@ function renderDashboard(root) {
     state.wizard.step = 0;
     state.wizard.generating = false;
     state.wizard.generationDone = false;
+    state.wizard.checkoutTriggered = false;
     render();
   });
   document.querySelectorAll('[data-bot]').forEach(el => {
@@ -1426,12 +1430,17 @@ function renderStepGenerate() {
         </div>
       </div>
       <div class="flex flex-col gap-3">
-        ${phases.map((p, i) => `
-          <div class="phase-row" data-phase="${i}" style="display:flex;align-items:center;gap:12px;opacity:0.3;transition:opacity 0.3s">
-            <div class="phase-dot" style="width:22px;height:22px;border-radius:11px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.3s"></div>
+        ${phases.map((p, i) => {
+          const done = state.wizard.generationDone;
+          const opacity = done ? '1' : '0.3';
+          const bg = done ? 'var(--pos)' : 'rgba(255,255,255,0.08)';
+          const inner = done ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : '';
+          return `
+          <div class="phase-row" data-phase="${i}" style="display:flex;align-items:center;gap:12px;opacity:${opacity};transition:opacity 0.3s">
+            <div class="phase-dot" style="width:22px;height:22px;border-radius:11px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.3s">${inner}</div>
             <div style="font-size:14px">${p}</div>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     </div>
   `;
@@ -1562,16 +1571,17 @@ function bindWizard() {
   if (w.step === 5 && !w.generating && !w.generationDone) {
     runGeneration();
   }
+
+  // Step 7: Pay (autorun checkout on enter)
+  if (w.step === 7 && !w.checkoutTriggered) {
+    w.checkoutTriggered = true;
+    setTimeout(() => startCheckout(), 600);
+  }
 }
 
 function handleWizardNext() {
   const w = state.wizard;
   if (w.step === WIZARD_STEPS.length - 1) {
-    // Final step: pay
-    return startCheckout();
-  }
-  if (w.step === 6) {
-    // Review → Pay
     return startCheckout();
   }
   w.step++;
