@@ -2,29 +2,27 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
-<title>AlgoTrade · Bots de Trading Profesionales</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AlgoTrade · App de creación de bots</title>
+
+<!-- SEO -->
+<meta name="description" content="Crea, gestiona y descarga bots de trading personalizados para MetaTrader 4 y 5."/>
+<meta name="robots" content="noindex,nofollow"/>
 
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json"/>
 <meta name="theme-color" content="#000000"/>
-<meta name="description" content="Crea bots de trading personalizados para MetaTrader 4 y 5. Pago único €9.99."/>
-
-<!-- iOS PWA support -->
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="AlgoTrade"/>
 <link rel="apple-touch-icon" href="/icon-192.png"/>
-
-<!-- Icons -->
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
 
-<!-- Service Worker registration -->
+<!-- GSAP para animaciones -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
   }
 </script>
@@ -42,12 +40,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #FFFFFF;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #000;
+  }
+  body.dark { background: #000; color: #fff; }
   @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(2.4); opacity: 0; } }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
-  /* hide scrollbars in iframes */
-  ::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.4); }
+
+  ::selection { background: #000; color: #fff; }
+  body.dark ::selection { background: #fff; color: #000; }
+
   /* tweaks panel */
   .tweaks {
     position: fixed; right: 16px; bottom: 16px; z-index: 1000;
@@ -61,6 +75,10 @@
   .tweaks-row { display: flex; gap: 4px; margin-bottom: 10px; }
   .tweaks-btn { flex: 1; padding: 6px 8px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; cursor: pointer; font-size: 11px; font-weight: 600; color: #555; }
   .tweaks-btn.on { background: #111; color: #fff; border-color: #111; }
+
+  /* Page transitions */
+  .page-enter { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  .fade-in { animation: fadeIn 0.3s ease; }
 </style>
 </head>
 <body>
@@ -79,19 +97,19 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-<script type="text/babel" src="lib/ios-frame.jsx?v=34"></script>
-<script type="text/babel" src="lib/themes.jsx?v=34"></script>
-<script type="text/babel" src="lib/icons.jsx?v=34"></script>
-<script type="text/babel" src="lib/app-state.jsx?v=34"></script>
-<script type="text/babel" src="lib/ui.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/dashboard.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/wizard.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/bot-detail.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/deploy-guide.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/auth.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/account.jsx?v=34"></script>
-<script type="text/babel" src="lib/screens/account-sections.jsx?v=34"></script>
-<script type="text/babel" src="lib/app.jsx?v=34"></script>
+<script type="text/babel" src="lib/themes.jsx?v=36"></script>
+<script type="text/babel" src="lib/web-layout.jsx?v=36"></script>
+<script type="text/babel" src="lib/icons.jsx?v=36"></script>
+<script type="text/babel" src="lib/app-state.jsx?v=36"></script>
+<script type="text/babel" src="lib/ui.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/dashboard.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/wizard.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/bot-detail.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/deploy-guide.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/auth.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/account.jsx?v=36"></script>
+<script type="text/babel" src="lib/screens/account-sections.jsx?v=36"></script>
+<script type="text/babel" src="lib/app.jsx?v=36"></script>
 
 <script type="text/babel">
 
@@ -121,14 +139,12 @@ function Root() {
     refreshTweaksUI();
   }, [mode]);
 
-  return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: mode === 'dark' ? '#000000' : '#FAFAFA', padding: 32,
-    }}>
-      <BotApp themeKey="mono" mode={mode} setMode={setMode} setThemeKey={() => {}}/>
-    </div>
-  );
+  // Sincronizar dark mode con body class
+  React.useEffect(() => {
+    document.body.classList.toggle('dark', mode === 'dark');
+  }, [mode]);
+
+  return <BotApp themeKey="mono" mode={mode} setMode={setMode} setThemeKey={() => {}}/>;
 }
 
 function refreshTweaksUI() {

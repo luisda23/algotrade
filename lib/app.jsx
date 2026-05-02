@@ -130,18 +130,22 @@ function BotApp({ themeKey, mode, setMode, setThemeKey, startScreen = 'dashboard
     }
   };
 
-  const tabs = [
-    { id: 'home', label: 'Inicio', icon: 'home' },
-    { id: 'guide', label: 'Guía', icon: 'book' },
-    { id: 'account', label: 'Cuenta', icon: 'user' },
-  ];
-
   const onTabChange = (id) => {
     setTab(id);
     if (id === 'home') setScreen('dashboard');
+    if (id === 'create') setScreen('wizard');
     if (id === 'guide') setScreen('deploy');
     if (id === 'account') { setAccountSection('home'); setScreen('account'); }
   };
+
+  // Mapear screen a tab activo (para el sidebar)
+  const activeTab = (() => {
+    if (screen === 'dashboard' || screen === 'bot') return 'home';
+    if (screen === 'wizard') return 'create';
+    if (screen === 'deploy') return 'guide';
+    if (screen === 'account') return 'account';
+    return 'home';
+  })();
 
   const renderScreen = () => {
     if (!authed || screen === 'auth') {
@@ -199,24 +203,55 @@ function BotApp({ themeKey, mode, setMode, setThemeKey, startScreen = 'dashboard
       onTab={setTab}/>;
   };
 
-  // hide tab bar on wizard + auth
-  const hideTabs = screen === 'wizard' || screen === 'auth' || !authed;
-
-  return (
-    <IOSDevice dark={t.isDark} title={undefined} width={402} height={874}>
+  // Si no autenticado, mostrar solo Auth (sin layout)
+  if (!authed || screen === 'auth') {
+    return (
       <div style={{
-        position: 'relative', height: '100%',
+        minHeight: '100vh',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: t.bg, color: t.text,
-        paddingTop: 54, // statusbar
         fontFamily: t.fontBody,
-        overflow: 'hidden',
+        padding: '20px',
       }}>
-        <div style={{ position: 'absolute', inset: '54px 0 0', overflow: 'auto' }}>
+        <div style={{
+          width: '100%', maxWidth: 460,
+          background: t.bgCard,
+          borderRadius: 24,
+          border: `1px solid ${t.border}`,
+          overflow: 'hidden',
+        }}>
+          <Auth t={t} onAuth={handleAuth} onClose={null} authError={authError}/>
+        </div>
+      </div>
+    );
+  }
+
+  // Si está en wizard, mostrar fullscreen sin sidebar
+  if (screen === 'wizard') {
+    return (
+      <div style={{
+        minHeight: '100vh', background: t.bg, color: t.text,
+        fontFamily: t.fontBody,
+      }}>
+        <Wizard t={t} onClose={() => setScreen('dashboard')} onComplete={() => setScreen('dashboard')}/>
+      </div>
+    );
+  }
+
+  // Layout normal con sidebar
+  return (
+    <div style={{ fontFamily: t.fontBody }}>
+      <WebLayout
+        t={t}
+        currentTab={activeTab}
+        onTabChange={onTabChange}
+        currentUser={currentUser}
+        onLogout={handleLogout}>
+        <div className="page-enter" key={screen}>
           {renderScreen()}
         </div>
-        {!hideTabs && <TabBar t={t} tabs={tabs} active={tab} onChange={onTabChange}/>}
-      </div>
-    </IOSDevice>
+      </WebLayout>
+    </div>
   );
 }
 

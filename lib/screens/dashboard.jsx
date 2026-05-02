@@ -1,233 +1,332 @@
-// dashboard.jsx — main bots dashboard
+// dashboard.jsx — Web premium dashboard
 
 function Dashboard({ t, bots, onBot, onCreate, onTab, onProfile, currentUser }) {
   const safeBots = bots && bots.length > 0 ? bots : [];
   const total = safeBots.reduce((a, b) => a + (b.pnl || 0), 0);
   const running = safeBots.filter(b => b.status === 'running').length;
-  const totalPct = safeBots.length > 0
-    ? (safeBots.reduce((a, b) => a + (b.pnlPct || 0), 0) / safeBots.length).toFixed(2)
-    : '0.00';
 
-  // Saludo dinámico según hora
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const userName = currentUser?.name || 'Trader';
 
+  const isPos = total >= 0;
+
   return (
-    <div style={{ paddingBottom: 130 }}>
-      {/* top bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 20px 8px',
+    <WebContainer>
+      {/* HERO sección */}
+      <section style={{ marginBottom: 'clamp(32px, 5vw, 56px)' }}>
+        <div style={{
+          fontSize: 13, color: t.textDim,
+          textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 600,
+          marginBottom: 8,
+        }}>
+          {greeting}
+        </div>
+        <h1 style={{
+          fontFamily: '"Inter Tight", "Inter", sans-serif',
+          fontSize: 'clamp(32px, 5vw, 48px)',
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.05,
+          margin: '0 0 12px',
+          color: t.text,
+        }}>
+          {userName}
+        </h1>
+        <p style={{
+          fontSize: 'clamp(15px, 1.4vw, 18px)',
+          color: t.textDim,
+          maxWidth: 540,
+          lineHeight: 1.5,
+          margin: 0,
+        }}>
+          Resumen de tu actividad de trading. Crea, monitorea y descarga bots desde aquí.
+        </p>
+      </section>
+
+      {/* STATS GRID */}
+      <section style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 16,
+        marginBottom: 'clamp(32px, 5vw, 56px)',
       }}>
-        <div>
-          <div style={{ fontFamily: t.fontBody, fontSize: 12, color: t.textDim, letterSpacing: 0.4, textTransform: 'uppercase' }}>
-            {greeting}
-          </div>
-          <div style={{ fontFamily: t.fontDisplay, fontSize: 22, fontWeight: t.weight.bold, color: t.text, letterSpacing: t.letterSpace }}>
-            {userName}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onProfile} style={{
-            width: 40, height: 40, borderRadius: t.radius.lg, background: t.chip, border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.text, cursor: 'pointer',
-          }}>
-            <Icon name="user" size={20}/>
-          </button>
-        </div>
-      </div>
+        <StatCard t={t} label="Total P&L (30d)" value={`${isPos ? '+' : ''}$${Math.abs(total).toFixed(2)}`} sub="Live" subColor={t.pos} highlight={isPos ? t.pos : t.neg} large/>
+        <StatCard t={t} label="Bots activos" value={`${running}/${safeBots.length}`} sub="Operando ahora"/>
+        <StatCard t={t} label="Trades hoy" value="0" sub="Sin operaciones"/>
+        <StatCard t={t} label="Winrate" value="—" sub="Sin trades"/>
+      </section>
 
-      {/* portfolio hero card */}
-      <div style={{ padding: '8px 16px 0' }}>
-        <Card t={t} padding={20} style={{
-          background: t.key === 'institutional'
-            ? `linear-gradient(135deg, ${t.bgCard} 0%, ${t.bgElev} 100%)`
-            : t.bgCard,
-          position: 'relative', overflow: 'hidden',
-        }}>
-          {t.key === 'fintech' && (
-            <div style={{
-              position: 'absolute', right: -40, top: -40, width: 180, height: 180,
-              borderRadius: 90, background: `radial-gradient(circle, ${t.accent}33 0%, transparent 70%)`,
-              pointerEvents: 'none',
-            }}/>
-          )}
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <div style={{ fontFamily: t.fontBody, fontSize: 12, color: t.textDim, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              Total P&L · 30 días
-            </div>
-            <Chip t={t} icon="dot" color={t.pos}>Live</Chip>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-            <div style={{
-              fontFamily: t.key === 'editorial' ? t.fontDisplay : t.fontMono,
-              fontSize: 38, fontWeight: t.weight.bold, color: t.text,
-              letterSpacing: -1, lineHeight: 1,
-            }}>
-              {total >= 0 ? '+' : ''}${total.toFixed(2)}
-            </div>
-            <div style={{
-              fontFamily: t.fontMono, fontSize: 14, fontWeight: t.weight.bold,
-              color: total >= 0 ? t.pos : t.neg,
-              padding: '3px 8px', borderRadius: t.radius.sm,
-              background: total >= 0 ? t.posSoft : t.negSoft,
-            }}>
-              {totalPct >= 0 ? '+' : ''}{totalPct}%
-            </div>
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 14 }}>
-            <Stat t={t} label="Bots activos" value={`${running}/${bots.length}`}/>
-            <Stat t={t} label="Trades hoy" value="38"/>
-            <Stat t={t} label="Winrate" value="67%"/>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <Sparkline data={[10,14,12,18,22,19,28,32,30,38,42,40,46,50,48,54,58]} color={t.pos} width={356} height={48}/>
-          </div>
-        </Card>
-      </div>
-
-      {/* CTA */}
-      <div style={{ padding: '14px 16px 0' }}>
-        <Card t={t} padding={14} style={{
-          background: t.key === 'institutional' ? t.accent + '12' : t.accentSoft,
-          border: `1px solid ${t.accent}33`,
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
+      {/* CREAR NUEVO BOT */}
+      <section style={{ marginBottom: 'clamp(32px, 5vw, 56px)' }}>
+        <div onClick={onCreate} style={{
+          display: 'flex', alignItems: 'center', gap: 20,
+          padding: '24px 28px',
+          borderRadius: 20,
+          background: t.isDark ? '#0F0F0F' : '#0A0A0A',
+          color: '#fff',
+          cursor: 'pointer',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 14px 40px rgba(0,0,0,0.25)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
           <div style={{
-            width: 42, height: 42, borderRadius: t.radius.lg,
-            background: t.accent, color: t.isDark ? '#000' : '#fff',
+            width: 56, height: 56, borderRadius: 14,
+            background: '#fff', color: '#000',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Icon name="plus" size={22}/>
+            <Icon name="plus" size={28}/>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: t.fontDisplay, fontSize: 15, fontWeight: t.weight.bold, color: t.text }}>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontFamily: '"Inter Tight"', fontSize: 22, fontWeight: 700,
+              letterSpacing: '-0.02em', marginBottom: 4,
+            }}>
               Crear nuevo bot
             </div>
-            <div style={{ fontFamily: t.fontBody, fontSize: 12, color: t.textDim, marginTop: 1 }}>
-              Wizard guiado · 5 min · IA assistant incluida
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>
+              Wizard guiado · 8 pasos · €9.99 pago único
             </div>
           </div>
-          <button onClick={onCreate} style={{
-            background: t.accent, color: t.isDark ? '#000' : '#fff', border: 'none',
-            padding: '8px 14px', borderRadius: t.radius.pill, cursor: 'pointer',
-            fontFamily: t.fontBody, fontSize: 13, fontWeight: t.weight.bold,
-            display: 'flex', alignItems: 'center', gap: 4,
+          <div style={{
+            padding: '12px 20px', borderRadius: 999,
+            background: '#fff', color: '#000',
+            fontSize: 14, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 8,
+            flexShrink: 0,
           }}>
-            Empezar <Icon name="arrowRight" size={14}/>
-          </button>
-        </Card>
-      </div>
+            Empezar
+            <Icon name="arrowRight" size={16}/>
+          </div>
+        </div>
+      </section>
 
-      {/* My bots */}
-      <SectionHeader t={t} title="Mis bots"/>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 16px' }}>
-        {bots.map(b => <BotRow key={b.id} t={t} bot={b} onClick={() => onBot(b.id)}/>)}
-      </div>
+      {/* MIS BOTS */}
+      <section>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          marginBottom: 20,
+        }}>
+          <h2 style={{
+            fontFamily: '"Inter Tight"',
+            fontSize: 'clamp(22px, 2.4vw, 28px)',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            margin: 0,
+            color: t.text,
+          }}>
+            Mis bots
+          </h2>
+          <span style={{ fontSize: 13, color: t.textDim }}>
+            {safeBots.length} {safeBots.length === 1 ? 'bot' : 'bots'}
+          </span>
+        </div>
 
-      {/* Market pulse */}
-      <SectionHeader t={t} title="Pulso del mercado"/>
-      <div style={{ padding: '0 16px' }}>
-        <Card t={t} padding={0}>
-          {[
-            { name: 'BTC/USDT', price: '67,842.10', chg: 2.34, spark: [10,12,11,15,18,16,22,25] },
-            { name: 'EUR/USD', price: '1.0847', chg: -0.42, spark: [25,22,24,20,18,21,17,15] },
-            { name: 'NAS100', price: '18,421.80', chg: 1.18, spark: [15,18,16,20,19,22,24,26] },
-            { name: 'XAU/USD', price: '2,658.40', chg: 0.78, spark: [12,14,13,16,15,18,17,20] },
-          ].map((m, i, arr) => (
-            <div key={m.name} style={{
-              display: 'flex', alignItems: 'center', padding: '12px 14px',
-              borderBottom: i < arr.length - 1 ? `1px solid ${t.border}` : 'none',
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: t.fontMono, fontSize: 14, fontWeight: t.weight.bold, color: t.text }}>
-                  {m.name}
-                </div>
-                <div style={{ fontFamily: t.fontMono, fontSize: 11, color: t.textDim, marginTop: 2 }}>
-                  {m.price}
-                </div>
-              </div>
-              <Sparkline data={m.spark} color={m.chg >= 0 ? t.pos : t.neg} width={64} height={28}/>
-              <div style={{
-                width: 64, textAlign: 'right',
-                fontFamily: t.fontMono, fontSize: 13, fontWeight: t.weight.bold,
-                color: m.chg >= 0 ? t.pos : t.neg,
-              }}>
-                {m.chg >= 0 ? '+' : ''}{m.chg}%
-              </div>
-            </div>
-          ))}
-        </Card>
-      </div>
-    </div>
+        {safeBots.length === 0 ? (
+          <EmptyState t={t} onCreate={onCreate}/>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 16,
+          }}>
+            {safeBots.map(b => <BotCard key={b.id} t={t} bot={b} onClick={() => onBot(b.id)}/>)}
+          </div>
+        )}
+      </section>
+
+      {/* PULSO DEL MERCADO */}
+      <section style={{ marginTop: 'clamp(40px, 6vw, 80px)' }}>
+        <h2 style={{
+          fontFamily: '"Inter Tight"',
+          fontSize: 'clamp(22px, 2.4vw, 28px)',
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          margin: '0 0 20px',
+          color: t.text,
+        }}>
+          Pulso del mercado
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+        }}>
+          <MarketCard t={t} sym="BTC/USDT" price="67,842.10" change="+2.34%" up/>
+          <MarketCard t={t} sym="EUR/USD" price="1.0847" change="-0.42%"/>
+          <MarketCard t={t} sym="NAS100" price="18,421.80" change="+1.18%" up/>
+          <MarketCard t={t} sym="XAU/USD" price="2,658.40" change="+0.78%" up/>
+        </div>
+      </section>
+    </WebContainer>
   );
 }
 
-function Stat({ t, label, value }) {
+// ─── Components ───
+function StatCard({ t, label, value, sub, subColor, highlight, large }) {
   return (
-    <div style={{ flex: 1 }}>
-      <div style={{ fontFamily: t.fontBody, fontSize: 10, color: t.textDim, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+    <div style={{
+      padding: '24px 24px',
+      borderRadius: 16,
+      background: t.bgCard,
+      border: `1px solid ${t.border}`,
+      transition: 'border-color 0.2s ease',
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.borderColor = t.borderStrong}
+    onMouseLeave={(e) => e.currentTarget.style.borderColor = t.border}>
+      <div style={{
+        fontSize: 11, color: t.textDim,
+        textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600,
+        marginBottom: 10,
+      }}>
         {label}
       </div>
-      <div style={{ fontFamily: t.fontMono, fontSize: 16, fontWeight: t.weight.bold, color: t.text, marginTop: 2 }}>
+      <div style={{
+        fontFamily: '"Inter Tight"',
+        fontSize: large ? 'clamp(28px, 3vw, 40px)' : 'clamp(22px, 2.2vw, 28px)',
+        fontWeight: 800, letterSpacing: '-0.03em',
+        color: highlight || t.text,
+        lineHeight: 1,
+        marginBottom: 8,
+      }}>
         {value}
       </div>
+      {sub && (
+        <div style={{ fontSize: 12, color: subColor || t.textDim, fontWeight: 500 }}>
+          {subColor && <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: subColor, marginRight: 6, verticalAlign: 'middle' }}/>}
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
 
-function BotRow({ t, bot, onClick }) {
-  const isPos = bot.pnl >= 0;
+function BotCard({ t, bot, onClick }) {
+  const isPos = (bot.pnl || 0) >= 0;
   return (
-    <Card t={t} padding={0} onClick={onClick} style={{ cursor: 'pointer' }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: 14, gap: 12 }}>
+    <div onClick={onClick} style={{
+      padding: '20px',
+      borderRadius: 16,
+      background: t.bgCard,
+      border: `1px solid ${t.border}`,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'flex', flexDirection: 'column', gap: 14,
+    }}
+    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = t.borderStrong; }}
+    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = t.border; }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{
-          width: 42, height: 42, borderRadius: t.radius.lg,
-          background: bot.isFunded ? t.accentSoft : t.chip,
+          width: 44, height: 44, borderRadius: 12,
+          background: t.chip, color: t.text,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: bot.isFunded ? t.accent : t.text, flexShrink: 0, position: 'relative',
+          flexShrink: 0,
         }}>
           <Icon name="bot" size={22}/>
-          <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
-            <StatusDot status={bot.status} t={t}/>
-          </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontFamily: t.fontDisplay, fontSize: 14, fontWeight: t.weight.bold, color: t.text,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            maxWidth: 200,
-          }}>{bot.name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: t.fontMono, fontSize: 11, color: t.textDim }}>{bot.pair}</span>
-            <span style={{ width: 2, height: 2, borderRadius: 1, background: t.textDim }}/>
-            <span style={{ fontFamily: t.fontBody, fontSize: 11, color: t.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{bot.strategy}</span>
-            {bot.marketKey && (
-              <Chip t={t} color={isMarketOpen(bot.marketKey) ? t.pos : t.neg} style={{ fontSize: 9, padding: '2px 6px' }}>
-                {isMarketOpen(bot.marketKey) ? '● Open' : '● Closed'}
-              </Chip>
-            )}
-            {bot.isFunded && <Chip t={t} color={t.accent} style={{ fontSize: 9, padding: '2px 6px' }}>{bot.fundedFirm}</Chip>}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{
-            fontFamily: t.fontMono, fontSize: 14, fontWeight: t.weight.bold,
-            color: isPos ? t.pos : t.neg,
+            fontFamily: '"Inter Tight"', fontSize: 16, fontWeight: 700,
+            color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {isPos ? '+' : ''}${Math.abs(bot.pnl).toFixed(2)}
+            {bot.name}
           </div>
-          <div style={{ fontFamily: t.fontMono, fontSize: 11, color: isPos ? t.pos : t.neg, opacity: 0.8 }}>
-            {isPos ? '▲' : '▼'} {Math.abs(bot.pnlPct).toFixed(2)}%
+          <div style={{ fontSize: 12, color: t.textDim, marginTop: 2 }}>
+            {bot.pair} · {bot.strategy}
           </div>
         </div>
+        <div style={{
+          padding: '4px 8px', borderRadius: 6,
+          fontSize: 10, fontWeight: 700,
+          background: bot.status === 'running' ? t.posSoft : t.chip,
+          color: bot.status === 'running' ? t.pos : t.textDim,
+          textTransform: 'uppercase', letterSpacing: 0.5,
+        }}>
+          {bot.status === 'running' ? 'Live' : 'Pausado'}
+        </div>
       </div>
-      <div style={{ padding: '0 14px 12px' }}>
-        <Sparkline data={bot.sparkline} color={isPos ? t.pos : t.neg} width={332} height={24}/>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div>
+          <div style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 22, fontWeight: 700,
+            color: isPos ? t.pos : t.neg,
+            lineHeight: 1,
+          }}>
+            {isPos ? '+' : ''}${Math.abs(bot.pnl || 0).toFixed(2)}
+          </div>
+          <div style={{ fontSize: 11, color: t.textDim, marginTop: 4 }}>
+            P&L total
+          </div>
+        </div>
+        <Sparkline data={bot.sparkline} color={isPos ? t.pos : t.neg} width={120} height={40}/>
       </div>
-    </Card>
+    </div>
+  );
+}
+
+function MarketCard({ t, sym, price, change, up }) {
+  return (
+    <div style={{
+      padding: '16px 18px',
+      borderRadius: 12,
+      background: t.bgCard,
+      border: `1px solid ${t.border}`,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    }}>
+      <div>
+        <div style={{ fontFamily: '"Inter Tight"', fontSize: 13, fontWeight: 600, color: t.text }}>{sym}</div>
+        <div style={{ fontFamily: '"JetBrains Mono"', fontSize: 14, color: t.textDim, marginTop: 2 }}>{price}</div>
+      </div>
+      <div style={{
+        fontFamily: '"JetBrains Mono"', fontSize: 13, fontWeight: 700,
+        color: up ? t.pos : t.neg,
+      }}>
+        {up ? '▲' : '▼'} {change}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ t, onCreate }) {
+  return (
+    <div style={{
+      padding: '48px 24px',
+      borderRadius: 16,
+      background: t.bgCard,
+      border: `1.5px dashed ${t.border}`,
+      textAlign: 'center',
+    }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: 32,
+        background: t.chip,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 16,
+      }}>
+        <Icon name="bot" size={32} color={t.textDim}/>
+      </div>
+      <h3 style={{
+        fontFamily: '"Inter Tight"', fontSize: 20, fontWeight: 700,
+        margin: '0 0 8px', color: t.text,
+      }}>
+        Aún no tienes bots
+      </h3>
+      <p style={{ color: t.textDim, fontSize: 14, margin: '0 0 20px', maxWidth: 360, marginInline: 'auto' }}>
+        Crea tu primer bot en 5 minutos con el wizard guiado.
+      </p>
+      <button onClick={onCreate} style={{
+        padding: '12px 24px', borderRadius: 12,
+        background: t.text, color: t.bg,
+        border: 'none', cursor: 'pointer',
+        fontFamily: t.fontBody, fontSize: 14, fontWeight: 600,
+      }}>
+        Crear mi primer bot →
+      </button>
+    </div>
   );
 }
 

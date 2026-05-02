@@ -70,51 +70,85 @@ function Wizard({ t, onClose, onComplete }) {
   const cur = WIZARD_STEPS[step];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.bg }}>
-      <div style={{ padding: '14px 16px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            onClick={generating ? undefined : prev}
-            disabled={generating}
-            style={{
-              width: 38, height: 38, borderRadius: 19, background: t.chip, border: 'none',
-              cursor: generating ? 'not-allowed' : 'pointer',
-              opacity: generating ? 0.4 : 1,
-              color: t.text, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <Icon name={step === 0 ? 'close' : 'arrowLeft'} size={18}/>
-          </button>
-          <div style={{ fontFamily: t.fontBody, fontSize: 12, color: t.textDim, fontWeight: t.weight.med }}>
-            Paso {step + 1} de {WIZARD_STEPS.length}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: t.bg }}>
+      {/* Header sticky con progreso */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: t.bg + 'ee', backdropFilter: 'blur(12px)',
+        borderBottom: `1px solid ${t.border}`,
+      }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 24px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <button
+              onClick={generating ? undefined : prev}
+              disabled={generating}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 14px', borderRadius: 10,
+                background: t.chip, border: 'none',
+                cursor: generating ? 'not-allowed' : 'pointer',
+                opacity: generating ? 0.4 : 1,
+                color: t.text,
+                fontFamily: t.fontBody, fontSize: 13, fontWeight: 600,
+              }}>
+              <Icon name={step === 0 ? 'close' : 'arrowLeft'} size={16}/>
+              {step === 0 ? 'Cerrar' : 'Atrás'}
+            </button>
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: t.textDim, fontWeight: 600 }}>
+              {String(step + 1).padStart(2, '0')} / {String(WIZARD_STEPS.length).padStart(2, '0')}
+            </div>
           </div>
-          <div style={{ width: 38 }}/>
-        </div>
-        <div style={{ display: 'flex', gap: 5, marginTop: 12 }}>
-          {WIZARD_STEPS.map((s, i) => (
-            <div key={s.id} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? t.accent : t.chip, transition: 'background 0.2s' }}/>
-          ))}
-        </div>
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontFamily: t.fontDisplay, fontSize: 26, fontWeight: t.weight.bold, color: t.text, letterSpacing: t.letterSpace, lineHeight: 1.1 }}>{cur.title}</div>
-          <div style={{ fontFamily: t.fontBody, fontSize: 14, color: t.textDim, marginTop: 6 }}>{cur.subtitle}</div>
+          <div style={{ display: 'flex', gap: 4, paddingBottom: 16 }}>
+            {WIZARD_STEPS.map((s, i) => (
+              <div key={s.id} style={{
+                flex: 1, height: 3, borderRadius: 2,
+                background: i <= step ? t.accent : t.chip,
+                transition: 'background 0.4s ease',
+              }}/>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 16px 100px' }}>
-        {step === 0 && <StepName t={t} data={data} update={update}/>}
-        {step === 1 && <StepStrategy t={t} data={data} update={update}/>}
-        {step === 2 && <StepIndicators t={t} data={data} update={update}/>}
-        {step === 3 && <StepNews t={t} data={data} update={update}/>}
-        {step === 4 && <StepRisk t={t} data={data} update={update}/>}
-        {step === 5 && <StepFunded t={t} data={data} update={update}/>}
-        {step === 6 && <StepGenerate t={t} data={data}
-          onStart={() => { setGenerating(true); setGenerationDone(false); }}
-          onDone={() => { setGenerating(false); setGenerationDone(true); }}
-        />}
-        {step === 7 && <StepReview t={t} data={data}/>}
+      {/* Title + subtitle */}
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 24px', width: '100%' }}>
+        <div style={{
+          fontFamily: '"Inter Tight", "Inter"',
+          fontSize: 'clamp(28px, 4vw, 40px)',
+          fontWeight: 800, letterSpacing: '-0.03em',
+          lineHeight: 1.05, color: t.text,
+        }}>{cur.title}</div>
+        <div style={{
+          fontFamily: t.fontBody, fontSize: 'clamp(14px, 1.4vw, 16px)',
+          color: t.textDim, marginTop: 10,
+        }}>{cur.subtitle}</div>
       </div>
 
-      <div style={{ padding: '12px 16px 32px', background: t.bg, borderTop: `1px solid ${t.border}` }}>
+      {/* Content */}
+      <div style={{ flex: 1, padding: '0 24px 120px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          {step === 0 && <StepName t={t} data={data} update={update}/>}
+          {step === 1 && <StepStrategy t={t} data={data} update={update}/>}
+          {step === 2 && <StepIndicators t={t} data={data} update={update}/>}
+          {step === 3 && <StepNews t={t} data={data} update={update}/>}
+          {step === 4 && <StepRisk t={t} data={data} update={update}/>}
+          {step === 5 && <StepFunded t={t} data={data} update={update}/>}
+          {step === 6 && <StepGenerate t={t} data={data}
+            onStart={() => { setGenerating(true); setGenerationDone(false); }}
+            onDone={() => { setGenerating(false); setGenerationDone(true); }}
+          />}
+          {step === 7 && <StepReview t={t} data={data}/>}
+        </div>
+      </div>
+
+      {/* Footer sticky con CTA */}
+      <div style={{
+        position: 'sticky', bottom: 0,
+        padding: '16px 24px 24px',
+        background: t.bg + 'ee', backdropFilter: 'blur(12px)',
+        borderTop: `1px solid ${t.border}`,
+      }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
         {/* Botón Continuar — deshabilitado mientras se genera el bot */}
         {step === 6 ? (
           <button
@@ -156,6 +190,7 @@ function Wizard({ t, onClose, onComplete }) {
             ✓ Pago único · El bot es tuyo para siempre · Sin mensualidades
           </div>
         )}
+        </div>
       </div>
     </div>
   );
