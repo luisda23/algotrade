@@ -891,6 +891,7 @@ const state = {
       leverage: 30,
       indicators: ['rsi', 'ema'],
       risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
+      news: { enabled: true, beforeMin: 30, afterMin: 15, impactMin: 'high' },
       funded: { enabled: false, firm: null },
     },
   },
@@ -1799,6 +1800,39 @@ function renderStepRisk() {
       </div>
       <div id="lbl-rr-hint" class="text-dim mt-2" style="font-size:12px"></div>
     </div>
+
+    <div class="field-label" style="margin-top:32px;margin-bottom:10px">Filtro de noticias</div>
+    <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-news">
+      <div style="width:48px;height:28px;border-radius:14px;background:${d.news.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
+        <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.news.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
+      </div>
+      <div style="flex:1">
+        <div class="h3">Pausar bot durante noticias</div>
+        <div class="text-dim mt-2" style="font-size:13px">Evita operar en NFP, FOMC, CPI y similares. Recomendado para cuentas funded.</div>
+      </div>
+    </div>
+    ${d.news.enabled ? `
+      <div class="card" style="margin-bottom:14px">
+        <div class="field-label" style="margin-bottom:10px">Nivel de impacto a evitar</div>
+        <div class="chip-row" style="margin-bottom:18px">
+          <button class="chip ${d.news.impactMin === 'high' ? 'selected' : ''}" data-news-impact="high">Solo alto impacto</button>
+          <button class="chip ${d.news.impactMin === 'medium' ? 'selected' : ''}" data-news-impact="medium">Medio + alto</button>
+          <button class="chip ${d.news.impactMin === 'all' ? 'selected' : ''}" data-news-impact="all">Todas las noticias</button>
+        </div>
+
+        <div style="margin-bottom:18px">
+          <div class="field-label" id="lbl-newsbef">Pausar antes de la noticia · ${d.news.beforeMin} min</div>
+          <input type="range" id="r-newsbef" class="slider-modern" min="0" max="120" step="5" value="${d.news.beforeMin}"/>
+        </div>
+        <div>
+          <div class="field-label" id="lbl-newsaft">Reanudar después de la noticia · ${d.news.afterMin} min</div>
+          <input type="range" id="r-newsaft" class="slider-modern" min="0" max="120" step="5" value="${d.news.afterMin}"/>
+        </div>
+        <div class="text-dim" style="font-size:12px;margin-top:14px;line-height:1.5">
+          El bot consultará el calendario económico de MetaTrader y no abrirá nuevas operaciones dentro de la ventana indicada. Las posiciones ya abiertas siguen su gestión normal de SL/TP.
+        </div>
+      </div>
+    ` : ''}
   `;
 }
 
@@ -1964,6 +1998,7 @@ function renderStepReview() {
         ['Apalancamiento', `1:${d.leverage}`],
         ['Stop loss', `${d.risk.stopLoss}%`],
         ['Take profit', `${d.risk.takeProfit}%`],
+        ['Filtro noticias', d.news.enabled ? `${({high:'Alto',medium:'Medio+',all:'Todas'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min` : 'Desactivado'],
         ['Cuenta de fondeo', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Sí' : 'No'],
       ].map(([k, v]) => `
         <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);font-size:14px">
@@ -2077,6 +2112,28 @@ function bindWizard() {
   });
   applyRRFeedback();
 
+  // Step 3: News filter
+  document.getElementById('toggle-news')?.addEventListener('click', () => {
+    w.data.news.enabled = !w.data.news.enabled;
+    render();
+  });
+  document.querySelectorAll('[data-news-impact]').forEach(el => {
+    el.addEventListener('click', () => { w.data.news.impactMin = el.dataset.newsImpact; render(); });
+  });
+  ['newsbef', 'newsaft'].forEach(k => {
+    const el = document.getElementById('r-' + k);
+    if (!el) return;
+    updateSliderFill(el);
+    el.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      if (k === 'newsbef') w.data.news.beforeMin = v;
+      else w.data.news.afterMin = v;
+      updateSliderFill(el);
+      const lbl = document.getElementById('lbl-' + k);
+      if (lbl) lbl.textContent = (k === 'newsbef' ? 'Pausar antes de la noticia · ' : 'Reanudar después de la noticia · ') + v + ' min';
+    });
+  });
+
   // Step 4: Funded
   document.getElementById('toggle-funded')?.addEventListener('click', () => {
     w.data.funded.enabled = !w.data.funded.enabled;
@@ -2144,7 +2201,7 @@ async function startCheckout() {
     strategy: w.data.strategy,
     parameters: {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
-      indicators: w.data.indicators, risk: w.data.risk, funded: w.data.funded,
+      indicators: w.data.indicators, risk: w.data.risk, news: w.data.news, funded: w.data.funded,
     },
   };
   localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
