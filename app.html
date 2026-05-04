@@ -970,6 +970,17 @@ async function api(path, opts = {}) {
   if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
   const res = await fetch(`${API}${path}`, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 403) {
+    // Token caducado o inválido (típico tras un cambio de JWT_SECRET): cerramos
+    // sesión y mandamos al login en lugar de mostrar dashboard vacío.
+    if (state.token) {
+      clearAuth();
+      state.currentScreen = 'auth';
+      toast('Tu sesión ha caducado. Inicia sesión de nuevo.', 'error');
+      render();
+    }
+    throw new Error(data.error || 'Sesión expirada');
+  }
   if (!res.ok) throw new Error(data.error || 'Error');
   return data;
 }
