@@ -71,8 +71,8 @@ body {
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 6px; border: 2px solid var(--bg); }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
 ::selection { background: var(--text); color: var(--bg); }
 
 a { color: inherit; text-decoration: none; }
@@ -394,7 +394,7 @@ main {
   transition: border-color 0.2s, background 0.2s;
 }
 .input:focus {
-  border-color: rgba(255,255,255,0.4);
+  border-color: var(--text-mute);
   background: var(--bg-elev);
 }
 .input-with-icon { padding-left: 46px; }
@@ -481,6 +481,7 @@ main {
   display: flex; align-items: center; gap: 8px;
 }
 .auth-error svg { width: 16px; height: 16px; flex-shrink: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
 /* Icon sizing default (todos los SVG inline) */
 svg { display: block; }
@@ -631,8 +632,7 @@ svg { display: block; }
   font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.6px;
 }
-.status-running { background: var(--pos-soft); color: var(--pos); }
-.status-paused { background: var(--bg-elev); color: var(--text-dim); }
+.status-recommended { background: var(--pos-soft); color: var(--pos); }
 
 .bot-card-foot {
   display: flex; justify-content: space-between; align-items: flex-end;
@@ -656,7 +656,7 @@ svg { display: block; }
 }
 .empty-state-icon {
   width: 64px; height: 64px; border-radius: 32px;
-  background: rgba(255,255,255,0.06);
+  background: var(--bg-elev);
   display: inline-flex; align-items: center; justify-content: center;
   margin-bottom: 18px;
 }
@@ -995,8 +995,6 @@ const I = {
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   bot: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><text x="12" y="17" text-anchor="middle" font-family="Inter Tight, system-ui, sans-serif" font-weight="900" font-size="13" letter-spacing="0.4">AI</text></svg>',
-  play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
-  pause: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
   arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
@@ -1163,16 +1161,20 @@ function renderAuth() {
         <h1>${isLogin ? 'Bienvenido de vuelta' : 'Crea tu cuenta'}</h1>
         <p class="sub">${isLogin ? 'Accede a tus bots de trading' : 'Empieza gratis. Solo pagas al crear un bot'}</p>
 
-        ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
+        <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
+          ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
+        </div>
 
         <form class="auth-form" id="auth-form">
           <div class="input-wrap">
-            <span class="input-icon">${I.mail}</span>
-            <input class="input input-with-icon" id="email" type="email" placeholder="tu@email.com" required autocomplete="email"/>
+            <label for="email" class="visually-hidden">Email</label>
+            <span class="input-icon" aria-hidden="true">${I.mail}</span>
+            <input class="input input-with-icon" id="email" name="email" type="email" placeholder="tu@email.com" required autocomplete="email" aria-label="Email"/>
           </div>
           <div class="input-wrap">
-            <span class="input-icon">${I.lock}</span>
-            <input class="input input-with-icon" id="password" type="password" placeholder="Contraseña" required minlength="6" autocomplete="${isLogin ? 'current-password' : 'new-password'}"/>
+            <label for="password" class="visually-hidden">Contraseña</label>
+            <span class="input-icon" aria-hidden="true">${I.lock}</span>
+            <input class="input input-with-icon" id="password" name="password" type="password" placeholder="Contraseña" required minlength="6" autocomplete="${isLogin ? 'current-password' : 'new-password'}" aria-label="Contraseña"/>
           </div>
           <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:6px" id="auth-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
@@ -2286,8 +2288,23 @@ function bindWizard() {
   }
 }
 
+function validateWizardStep(step) {
+  const d = state.wizard.data;
+  if (step === 0) {
+    if (!d.name || !d.name.trim()) return 'Pon un nombre a tu bot';
+    if (d.name.length > 60) return 'El nombre es demasiado largo (máx. 60)';
+    if (!d.market || !d.pair) return 'Elige un mercado y un par';
+  }
+  if (step === 1 && !d.strategy) return 'Elige una estrategia';
+  if (step === 2 && (!d.indicators || d.indicators.length === 0)) return 'Selecciona al menos un indicador';
+  if (step === 4 && d.funded.enabled && !d.funded.firm) return 'Selecciona tu prop firm o desactiva la cuenta de fondeo';
+  return null;
+}
+
 function handleWizardNext() {
   const w = state.wizard;
+  const err = validateWizardStep(w.step);
+  if (err) { toast(err, 'error'); return; }
   if (w.step === WIZARD_STEPS.length - 1) {
     return startCheckout();
   }
@@ -2369,7 +2386,7 @@ function loadGuide(root) {
             <div style="flex:1">
               <div class="flex items-center gap-2">
                 <div class="h3">MetaTrader 5</div>
-                <span class="status-badge status-running">Recomendado</span>
+                <span class="status-badge status-recommended">Recomendado</span>
               </div>
               <div class="text-dim mt-2" style="font-size:13px">Forex · Índices · Materias primas · Crypto CFDs</div>
             </div>
@@ -2426,7 +2443,7 @@ function loadGuide(root) {
           <h2 class="h2">${cur.title}</h2>
         </div>
         <p style="font-size:15px;line-height:1.6;margin-bottom:18px">${cur.body}</p>
-        <div class="card" style="background:rgba(255,255,255,0.03);padding:16px">
+        <div class="card" style="background:var(--bg-soft);padding:16px">
           <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
             ${cur.details.map(d => `
               <li style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-dim);line-height:1.5">
@@ -2512,11 +2529,11 @@ const FAQ_DB = [
   { id: 'descargar', kw: ['descarg','archivo','baj','obtener'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
   { id: 'instalar', kw: ['instal','meter','poner','colocar','experts','metatrader'], q: '¿Cómo instalo el bot en MetaTrader?', a: '1. Abre MetaTrader 4 o 5\n2. Archivo → Abrir carpeta de datos\n3. Entra en MQL5/Experts (o MQL4/Experts)\n4. Pega el archivo .mq5 o .mq4\n5. Cierra y vuelve a abrir MetaTrader\n6. Activa "AutoTrading" (botón verde)\n7. Arrastra el bot a un gráfico\n\nVer pestaña Guía para detalles.' },
   { id: 'apalancamiento', kw: ['apalanc','leverage','1:30','1:100','1:500','1:90'], q: '¿Qué apalancamiento elijo?', a: 'Depende del mercado y tu tolerancia al riesgo:\n\n• 1:1 - Sin apalancamiento\n• 1:10 - Conservador (recomendado para crypto)\n• 1:30 - Estándar EU para Forex\n• 1:100 - Estándar global\n• 1:500 - Profesional (alto riesgo)\n\nPuedes configurar el valor exacto que quieras (ej: 1:90).' },
-  { id: 'ftmo', kw: ['ftmo','mff','myforex','fondeo','fondeada','prop','the5ers','fundednext','e8'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con:\n\n• FTMO ✅\n• MyForexFunds ✅\n• The5ers ✅\n• FundedNext ✅\n• E8 Funding ✅\n\nEn el wizard, en "Cuenta de Fondeo", selecciona tu prop firm para que el bot respete sus reglas.' },
+  { id: 'ftmo', kw: ['ftmo','funded','fondeo','fondeada','prop','the5ers','fundednext','e8','fundingpips','aqua','smart prop','goat'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con 12 prop firms:\n\n• FTMO\n• FundedNext\n• E8 Markets\n• The5ers\n• Funding Pips\n• Funded Trading Plus\n• City Traders Imperium\n• Smart Prop Trader\n• Alpha Capital Group\n• Aqua Funded\n• Funding Traders\n• Goat Funded Trader\n\nCada firm tiene reglas distintas sobre bots — el wizard te muestra cuáles permiten EAs y bajo qué condiciones para que no pierdas tu fondeo.' },
   { id: 'noFunciona', kw: ['no funciona','error','falla','no opera','problema','no abre','no entra'], q: 'El bot no opera, ¿qué hago?', a: 'Checklist:\n\n✅ AutoTrading activado (botón VERDE)\n✅ Bot tiene 😊 verde en esquina superior derecha del gráfico\n✅ "Permitir trading automático" marcado\n✅ Símbolo del gráfico coincide con InpSymbol\n✅ Mercado abierto (Forex cerrado fines de semana)\n✅ Filtro horario UTC dentro de rango\n✅ Suficiente margen libre\n\nRevisa "Diario" en MetaTrader.' },
   { id: 'vps', kw: ['vps','servidor','24/7','siempre','pc encendido','computadora'], q: '¿Necesito el PC encendido todo el tiempo?', a: 'Sí, MetaTrader debe estar abierto.\n\nOpciones:\n\n1. PC encendido 24/7\n2. VPS alquilado (~$10/mes) — Mejor opción\n   • Recomendados: Contabo, ForexVPS, AccuWeb\n3. AWS/Azure (más caro)\n\nVPS es lo más práctico: bajo costo, opera 24/7.' },
   { id: 'reembolso', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero'], q: '¿Puedo pedir un reembolso?', a: 'Política:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si simplemente no estás satisfecho: caso por caso\n\nEscríbenos a soporte@algotrade.app con el ID del bot.' },
-  { id: 'broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, MyForexFunds, The5ers.\n\nEvita brokers no regulados.' },
+  { id: 'broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, FundedNext, The5ers, Funding Pips.\n\nEvita brokers no regulados.' },
   { id: 'modificar', kw: ['modificar','cambiar','editar','ajustar','parametros'], q: '¿Puedo modificar mi bot?', a: 'Sí, hay 2 formas:\n\n1. EN METATRADER:\n   Click derecho en el bot → Cambiar parámetros\n   Modifica: Stop Loss, Take Profit, Lote, etc.\n\n2. CREA OTRO BOT:\n   Si quieres una estrategia totalmente nueva.' },
   { id: 'mac', kw: ['mac','macos','apple','osx','macbook'], q: '¿Funciona en Mac?', a: 'MetaTrader es nativo de Windows, pero hay opciones para Mac:\n\n1. MetaTrader oficial para Mac (algunos brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. VPS Windows (lo más práctico)\n\nEl bot funciona igual sin importar el SO.' },
   { id: 'soporte', kw: ['soporte humano','persona','hablar','contacto humano','email'], q: '¿Cómo contacto soporte humano?', a: 'Email: soporte@algotrade.app\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
@@ -2739,6 +2756,8 @@ function loadBotDetail(root) {
   document.getElementById('back-to-dash')?.addEventListener('click', () => {
     state.currentScreen = 'dashboard'; render();
   });
+  // Botones [data-screen] inyectados por loadBotDetail; bindNav() corrió antes de
+  // que existieran (renderShell → bindNav → loadCurrentScreen), así que los wireamos aquí.
   root.querySelectorAll('[data-screen]').forEach(el => {
     el.addEventListener('click', () => {
       state.currentScreen = el.dataset.screen;
