@@ -1536,14 +1536,13 @@ function bindAuth() {
       state.authLoading = true;
       render();
       try {
-        const data = await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
-        if (data.token) {
-          saveAuth(data.token, data.user);
-          state.currentScreen = 'dashboard';
-          state.authLoading = false;
-          toast(`¡Bienvenido a Yudbot, ${data.user?.name?.split(' ')[0] || 'trader'}! 👋`, 'success');
-          render();
-        }
+        await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+        // Cuenta creada — mandamos al usuario al formulario de login con un mensaje
+        state.authMode = 'login';
+        state.authError = null;
+        state.authLoading = false;
+        toast('Cuenta creada. Te hemos enviado un email de bienvenida. Inicia sesión para verificar tu email.', 'success');
+        render();
       } catch (err) {
         state.authError = err.message || 'Error de autenticación';
         state.authLoading = false;
