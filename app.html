@@ -1212,38 +1212,39 @@ function renderDashboard(root) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const userName = state.user?.name || 'Trader';
-  const totalPnL = state.bots.reduce((s, b) => s + (b.totalProfit || 0), 0);
-  const running = state.bots.filter(b => b.status === 'active').length;
-  const isPos = totalPnL >= 0;
+  const total = state.bots.length;
+  const uniquePairs = new Set(state.bots.map(b => b.parameters?.pair).filter(Boolean)).size;
+  const uniqueStrats = new Set(state.bots.map(b => b.strategy).filter(Boolean)).size;
+  const totalIndicators = state.bots.reduce((s, b) => s + ((b.parameters?.indicators || []).length), 0);
 
   root.innerHTML = `
     <div class="container">
       <div class="dash-hero fade-up">
         <div class="greeting">${greeting}</div>
         <h1 class="h1">${userName}</h1>
-        <p class="text-dim mt-2" style="max-width:540px">Resumen de tu actividad. Crea, monitorea y descarga bots desde aquí.</p>
+        <p class="text-dim mt-2" style="max-width:540px">Tu colección de bots de trading. Crea, configura y descárgalos para MetaTrader.</p>
       </div>
 
       <div class="stats-grid">
         <div class="card stat-card">
-          <div class="label">Total P&L</div>
-          <div class="value ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}$${Math.abs(totalPnL).toFixed(2)}</div>
-          <div class="sub"><span class="stat-dot" style="background:${isPos ? 'var(--pos)' : 'var(--neg)'}"></span>Live</div>
+          <div class="label">Bots creados</div>
+          <div class="value">${total}</div>
+          <div class="sub">${total === 0 ? 'Empieza con el wizard' : total === 1 ? '1 bot generado' : total + ' bots generados'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Bots activos</div>
-          <div class="value">${running}/${state.bots.length}</div>
-          <div class="sub">${running > 0 ? 'Operando ahora' : 'Sin bots activos'}</div>
+          <div class="label">Pares únicos</div>
+          <div class="value">${uniquePairs}</div>
+          <div class="sub">${uniquePairs === 0 ? '—' : uniquePairs === 1 ? '1 par cubierto' : uniquePairs + ' pares cubiertos'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Trades hoy</div>
-          <div class="value">0</div>
-          <div class="sub">Sin operaciones</div>
+          <div class="label">Estrategias</div>
+          <div class="value">${uniqueStrats}</div>
+          <div class="sub">${uniqueStrats === 0 ? '—' : uniqueStrats === 1 ? '1 enfoque' : uniqueStrats + ' enfoques'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Winrate</div>
-          <div class="value">—</div>
-          <div class="sub">Sin trades aún</div>
+          <div class="label">Indicadores</div>
+          <div class="value">${totalIndicators}</div>
+          <div class="sub">${totalIndicators === 0 ? '—' : 'configurados en total'}</div>
         </div>
       </div>
 
@@ -1300,11 +1301,10 @@ function renderBotsGrid() {
   return `
     <div class="bots-grid">
       ${state.bots.map(b => {
-        const pnl = b.totalProfit || 0;
-        const isPos = pnl >= 0;
-        const isRunning = b.status === 'active';
         const pair = b.parameters?.pair || 'EUR/USD';
         const strategy = b.strategy || 'scalping';
+        const indicators = (b.parameters?.indicators || []).length;
+        const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
         return `
           <div class="card card-hover bot-card" data-bot="${b.id}">
             <div class="bot-card-head">
@@ -1313,12 +1313,10 @@ function renderBotsGrid() {
                 <div class="bot-card-name">${b.name}</div>
                 <div class="bot-card-pair">${pair} · ${strategy}</div>
               </div>
-              <span class="status-badge ${isRunning ? 'status-running' : 'status-paused'}">${isRunning ? 'Live' : 'Pausado'}</span>
             </div>
             <div class="bot-card-foot">
               <div>
-                <div class="bot-pnl-num ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}$${Math.abs(pnl).toFixed(2)}</div>
-                <div class="bot-pnl-label">P&L total</div>
+                <div style="font-size:12px;color:var(--text-dim)">${indicators} indicador${indicators === 1 ? '' : 'es'}${created ? ' · ' + created : ''}</div>
               </div>
               <div style="font-size:12px;color:var(--text-dim);">Ver detalle →</div>
             </div>
