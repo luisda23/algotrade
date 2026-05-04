@@ -2513,7 +2513,6 @@ function loadAccount(root) {
         ${I.mail}
         <div style="flex:1">
           <div class="h3">Contactar soporte</div>
-          <div class="text-dim" style="font-size:13px;margin-top:2px">Asistente con preguntas frecuentes</div>
         </div>
         ${I.arrow}
       </div>
@@ -2536,25 +2535,65 @@ function loadAccount(root) {
 //  SOPORTE CHATBOT
 // =====================================================
 const FAQ_DB = [
-  { id: 'comprar', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99 con Stripe"\n4. Pagas con tarjeta vía Stripe (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
-  { id: 'descargar', kw: ['descarg','archivo','baj','obtener'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
-  { id: 'instalar', kw: ['instal','meter','poner','colocar','experts','metatrader'], q: '¿Cómo instalo el bot en MetaTrader?', a: '1. Abre MetaTrader 4 o 5\n2. Archivo → Abrir carpeta de datos\n3. Entra en MQL5/Experts (o MQL4/Experts)\n4. Pega el archivo .mq5 o .mq4\n5. Cierra y vuelve a abrir MetaTrader\n6. Activa "AutoTrading" (botón verde)\n7. Arrastra el bot a un gráfico\n\nVer pestaña Guía para detalles.' },
-  { id: 'apalancamiento', kw: ['apalanc','leverage','1:30','1:100','1:500','1:90'], q: '¿Qué apalancamiento elijo?', a: 'Depende del mercado y tu tolerancia al riesgo:\n\n• 1:1 - Sin apalancamiento\n• 1:10 - Conservador (recomendado para crypto)\n• 1:30 - Estándar EU para Forex\n• 1:100 - Estándar global\n• 1:500 - Profesional (alto riesgo)\n\nPuedes configurar el valor exacto que quieras (ej: 1:90).' },
-  { id: 'ftmo', kw: ['ftmo','funded','fondeo','fondeada','prop','the5ers','fundednext','e8','fundingpips','aqua','smart prop','goat'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con 12 prop firms:\n\n• FTMO\n• FundedNext\n• E8 Markets\n• The5ers\n• Funding Pips\n• Funded Trading Plus\n• City Traders Imperium\n• Smart Prop Trader\n• Alpha Capital Group\n• Aqua Funded\n• Funding Traders\n• Goat Funded Trader\n\nCada firm tiene reglas distintas sobre bots — el wizard te muestra cuáles permiten EAs y bajo qué condiciones para que no pierdas tu fondeo.' },
-  { id: 'noFunciona', kw: ['no funciona','error','falla','no opera','problema','no abre','no entra'], q: 'El bot no opera, ¿qué hago?', a: 'Checklist:\n\n✅ AutoTrading activado (botón VERDE)\n✅ Bot tiene 😊 verde en esquina superior derecha del gráfico\n✅ "Permitir trading automático" marcado\n✅ Símbolo del gráfico coincide con InpSymbol\n✅ Mercado abierto (Forex cerrado fines de semana)\n✅ Filtro horario UTC dentro de rango\n✅ Suficiente margen libre\n\nRevisa "Diario" en MetaTrader.' },
-  { id: 'vps', kw: ['vps','servidor','24/7','siempre','pc encendido','computadora'], q: '¿Necesito el PC encendido todo el tiempo?', a: 'Sí, MetaTrader debe estar abierto.\n\nOpciones:\n\n1. PC encendido 24/7\n2. VPS alquilado (~$10/mes) — Mejor opción\n   • Recomendados: Contabo, ForexVPS, AccuWeb\n3. AWS/Azure (más caro)\n\nVPS es lo más práctico: bajo costo, opera 24/7.' },
-  { id: 'reembolso', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero'], q: '¿Puedo pedir un reembolso?', a: 'Política:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si simplemente no estás satisfecho: caso por caso\n\nEscríbenos a soporte@algotrade.app con el ID del bot.' },
-  { id: 'broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, FundedNext, The5ers, Funding Pips.\n\nEvita brokers no regulados.' },
-  { id: 'modificar', kw: ['modificar','cambiar','editar','ajustar','parametros'], q: '¿Puedo modificar mi bot?', a: 'Sí, hay 2 formas:\n\n1. EN METATRADER:\n   Click derecho en el bot → Cambiar parámetros\n   Modifica: Stop Loss, Take Profit, Lote, etc.\n\n2. CREA OTRO BOT:\n   Si quieres una estrategia totalmente nueva.' },
-  { id: 'mac', kw: ['mac','macos','apple','osx','macbook'], q: '¿Funciona en Mac?', a: 'MetaTrader es nativo de Windows, pero hay opciones para Mac:\n\n1. MetaTrader oficial para Mac (algunos brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. VPS Windows (lo más práctico)\n\nEl bot funciona igual sin importar el SO.' },
-  { id: 'soporte', kw: ['soporte humano','persona','hablar','contacto humano','email'], q: '¿Cómo contacto soporte humano?', a: 'Email: soporte@algotrade.app\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
+  // ───── COMPRA / FACTURACIÓN ─────
+  { id: 'comprar', cat: 'Compra', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr','cuanto vale','factura'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99 con Stripe"\n4. Pagas con tarjeta vía Stripe (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
+  { id: 'reembolso', cat: 'Compra', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero','no me gusta'], q: '¿Puedo pedir un reembolso?', a: 'Política de reembolsos:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si no estás satisfecho: caso por caso\n\nEscríbenos a soporte@algotrade.app con el ID del bot.' },
+  { id: 'metodos-pago', cat: 'Compra', kw: ['metodo de pago','paypal','crypto','bizum','transferencia','google pay','apple pay'], q: '¿Qué métodos de pago aceptáis?', a: 'A través de Stripe aceptamos:\n\n• Tarjeta crédito/débito (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• Link (autocompletado de Stripe)\n\nDe momento no admitimos PayPal, transferencia bancaria ni crypto.' },
+  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Stripe lo calcula automáticamente).\n\nSi necesitas factura con tu CIF/empresa, escríbenos a soporte@algotrade.app con el ID del bot, tu nombre fiscal y NIF/CIF.' },
+
+  // ───── DESCARGA / INSTALACIÓN ─────
+  { id: 'descargar', cat: 'Instalación', kw: ['descarg','archivo','baj','obtener','dónde está','no encuentro'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
+  { id: 'instalar', cat: 'Instalación', kw: ['instal','meter','poner','colocar','experts','metatrader','arrastrar','grafico'], q: '¿Cómo instalo el bot en MetaTrader?', a: '1. Abre MetaTrader 4 o 5\n2. Archivo → Abrir carpeta de datos\n3. Entra en MQL5/Experts (o MQL4/Experts)\n4. Pega el archivo .mq5 o .mq4\n5. Cierra y vuelve a abrir MetaTrader\n6. Activa "AutoTrading" (botón verde)\n7. Arrastra el bot a un gráfico\n\nVer pestaña Guía para detalles.' },
+  { id: 'mq4-vs-mq5', cat: 'Instalación', kw: ['mq4 o mq5','que descargo','version','cual elijo','diferencia mt4 mt5'], q: '¿Descargo .mq4 o .mq5?', a: 'Depende de tu plataforma:\n\n• .mq5 (MetaTrader 5) — Recomendado\n  ✅ Filtro de noticias completo\n  ✅ Soporta más mercados (índices, crypto)\n  ✅ Tester más rápido\n\n• .mq4 (MetaTrader 4) — Solo si tu broker no ofrece MT5\n  ⚠️ Sin filtro de noticias (MT4 no tiene calendario)\n  ⚠️ Solo Forex y CFDs básicos\n\nSi puedes elegir, usa MT5.' },
+  { id: 'mac', cat: 'Instalación', kw: ['mac','macos','apple','osx','macbook'], q: '¿Funciona en Mac?', a: 'MetaTrader es nativo de Windows, pero hay opciones para Mac:\n\n1. MetaTrader oficial para Mac (algunos brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. VPS Windows (lo más práctico)\n\nEl bot funciona igual sin importar el SO.' },
+  { id: 'movil', cat: 'Instalación', kw: ['movil','telefono','android','iphone','app metatrader'], q: '¿Funciona en el móvil?', a: 'No. La app móvil de MetaTrader **no soporta Expert Advisors** (limitación de MetaQuotes, no nuestra).\n\nNecesitas MT4/MT5 desktop o un VPS. Desde el móvil puedes monitorizar las operaciones que abre el bot, pero no ejecutarlo.' },
+  { id: 'vps', cat: 'Instalación', kw: ['vps','servidor','24/7','siempre','pc encendido','computadora'], q: '¿Necesito el PC encendido todo el tiempo?', a: 'Sí, MetaTrader debe estar abierto para que el bot opere.\n\nOpciones:\n\n1. PC encendido 24/7\n2. VPS alquilado (~$10/mes) — Mejor opción\n   • Recomendados: Contabo, ForexVPS, AccuWeb\n3. AWS / Azure / Google Cloud (más caro)\n\nVPS es lo más práctico: opera 24/7 con bajo costo.' },
+
+  // ───── BROKER / CUENTA REAL ─────
+  { id: 'broker', cat: 'Broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm','que broker'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, FundedNext, The5ers, Funding Pips.\n\nEvita brokers no regulados.' },
+  { id: 'demo', cat: 'Broker', kw: ['demo','probar','sin dinero','practicar','simulado'], q: '¿Puedo probar el bot en demo primero?', a: 'Sí, totalmente recomendado.\n\n1. Abre cuenta demo en cualquier broker (gratis, sin verificación)\n2. Instala el bot en MT4/MT5 conectado a la cuenta demo\n3. Déjalo correr al menos 1-2 semanas\n4. Cuando estés satisfecho, repite los pasos en cuenta real\n\nNUNCA pongas un bot en cuenta real sin probarlo antes en demo.' },
+  { id: 'spread', cat: 'Broker', kw: ['spread','comisiones','costos broker','cobra'], q: '¿El bot tiene en cuenta el spread?', a: 'El bot opera con los precios bid/ask reales que MetaTrader ofrece, así que el spread se aplica naturalmente en cada operación.\n\nConsejo: si haces scalping, elige un broker con spreads bajos (IC Markets, Pepperstone). Spreads altos pueden destrozar la rentabilidad de scalping.' },
+  { id: 'simbolos', cat: 'Broker', kw: ['simbolo','par','no encuentra','symbol not found','eurusd','eur/usd'], q: 'El símbolo no se encuentra en MetaTrader', a: 'Cada broker nombra los símbolos de forma distinta:\n\n• EURUSD vs EUR/USD vs EURUSD.r vs EURUSDpro\n• XAUUSD vs GOLD vs XAU/USD\n\nSolución: en MT5, click derecho en el bot → "Parámetros" → cambia "InpSymbol" al nombre exacto que usa tu broker (lo ves en la pestaña "Observación de mercado").' },
+
+  // ───── CUENTAS DE FONDEO ─────
+  { id: 'ftmo', cat: 'Fondeo', kw: ['ftmo','funded','fondeo','fondeada','prop','the5ers','fundednext','e8','fundingpips','aqua','smart prop','goat'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con 12 prop firms:\n\n• FTMO\n• FundedNext\n• E8 Markets\n• The5ers\n• Funding Pips\n• Funded Trading Plus\n• City Traders Imperium\n• Smart Prop Trader\n• Alpha Capital Group\n• Aqua Funded\n• Funding Traders\n• Goat Funded Trader\n\nCada firm tiene reglas distintas sobre bots — el wizard te muestra cuáles permiten EAs y bajo qué condiciones para que no pierdas tu fondeo.' },
+  { id: 'fondeo-prohibido', cat: 'Fondeo', kw: ['prohibe','prohibido','no permite','baneo','suspender cuenta','perder fondeo'], q: '¿Pueden suspenderme la cuenta de fondeo por usar el bot?', a: 'Depende de la prop firm. En el wizard cada firm tiene un badge:\n\n🟢 Permitidos — uso libre de EAs\n🟡 Permitidos con reglas — sin HFT, sin copy entre cuentas\n🔴 Prohibidos — el uso del bot supone pérdida del fondeo\n\nALGUNAS REGLAS UNIVERSALES:\n• No copy-trading entre cuentas\n• No latency arbitrage\n• No tick scalping (HFT)\n• Tu bot tiene lógica propia (no copia de otra cuenta)\n\nLee siempre las reglas de TU firm antes de operar.' },
+
+  // ───── CONFIGURACIÓN DEL BOT ─────
+  { id: 'apalancamiento', cat: 'Configuración', kw: ['apalanc','leverage','1:30','1:100','1:500','1:90'], q: '¿Qué apalancamiento elijo?', a: 'Depende del mercado y tu tolerancia al riesgo:\n\n• 1:1 - Sin apalancamiento\n• 1:10 - Conservador (recomendado para crypto)\n• 1:30 - Estándar EU para Forex\n• 1:100 - Estándar global\n• 1:500 - Profesional (alto riesgo)\n\nPuedes configurar el valor exacto que quieras (ej: 1:90).' },
+  { id: 'stop-loss', cat: 'Configuración', kw: ['stop loss','sl','tp','take profit','que es stop'], q: '¿Qué es Stop Loss y Take Profit?', a: 'Son los porcentajes de pérdida/ganancia a los que el bot cierra una operación:\n\n• Stop Loss — Si el precio se mueve en tu contra X%, el bot cierra automáticamente para limitar pérdidas\n• Take Profit — Si el precio se mueve a tu favor Y%, el bot cierra para asegurar ganancia\n\nEjemplo: SL 1.5% + TP 3% = ratio 1:2 (arriesgas 1 para ganar 2).' },
+  { id: 'rr', cat: 'Configuración', kw: ['ratio','rr','riesgo recompensa','r:r'], q: '¿Qué ratio R:R debería usar?', a: 'El ratio Risk:Reward es Take Profit ÷ Stop Loss. Indica cuánto ganas por cada euro arriesgado:\n\n• 1:1 — Necesitas >50% de aciertos para ganar dinero\n• 1:2 — Con 33% de aciertos eres rentable\n• 1:3 — Con 25% de aciertos eres rentable\n\nSi tu estrategia tiene baja tasa de aciertos (como reversal o breakout), apunta a R:R alto. Para scalping de alta frecuencia, R:R 1:1 o 1:1.5 puede valer.' },
+  { id: 'indicadores', cat: 'Configuración', kw: ['indicador','rsi','ema','macd','bollinger','cuantos','muchos'], q: '¿Cuántos indicadores debería elegir?', a: 'Recomendamos 2-4. Más de 5 genera señales contradictorias y el bot apenas opera.\n\nCombinaciones que funcionan bien:\n• Tendencia + Momentum (EMA + RSI)\n• Tendencia + Volatilidad (EMA + ATR)\n• Mean reversion (Bollinger + RSI)\n• Breakout (Donchian + ATR)\n\nEvita combinar 4 momentum: dirán lo mismo y no aportan.' },
+  { id: 'estrategia', cat: 'Configuración', kw: ['estrategia','que estrategia','scalping','swing','grid','cual elegir'], q: '¿Qué estrategia elijo?', a: 'Depende de tu disponibilidad y tolerancia al riesgo:\n\n• Scalping — Muchas operaciones cortas, requiere spread bajo\n• Swing — Posiciones de días, baja frecuencia\n• Momentum — Sigue la tendencia, riesgo medio\n• Mean reversion — Apuesta al rebote, mercado lateral\n• Breakout — Captura rupturas, riesgo alto\n• Grid — Ideal en rango lateral, alto capital\n• Trend following — Largos periodos, pocas operaciones\n• DCA — Promedia el coste, requiere capital y disciplina\n• Hedging — Cobertura, reduce riesgo y beneficio\n• Reversal — Detecta giros, baja tasa de acierto\n\nEl wizard muestra el riesgo y frecuencia de cada una.' },
+  { id: 'noticias', cat: 'Configuración', kw: ['noticias','news','nfp','fomc','cpi','calendario','filtro'], q: '¿Cómo funciona el filtro de noticias?', a: 'El bot consulta el calendario económico nativo de MetaTrader 5 y NO opera durante eventos relevantes (NFP, FOMC, CPI, BCE, etc.).\n\nConfiguración:\n• Toggle on/off\n• Nivel de impacto (alto / medio+ / todas)\n• Minutos antes/después de la noticia\n• Eventos específicos a vigilar\n\n⚠️ Solo funciona en .mq5 (MT4 no tiene calendario nativo).\n\nNo requiere conexión a servidores externos — todo es local de MT5.' },
+  { id: 'modificar', cat: 'Configuración', kw: ['modificar','cambiar','editar','ajustar','parametros'], q: '¿Puedo modificar mi bot?', a: 'Sí, hay 2 formas:\n\n1. EN METATRADER:\n   Click derecho en el bot del gráfico → Cambiar parámetros\n   Modifica: Stop Loss, Take Profit, Lote, horario, etc.\n   Los cambios solo afectan a esa instancia.\n\n2. CREA OTRO BOT:\n   Si quieres una estrategia totalmente nueva (ej. cambiar de Scalping a Swing). Cuesta otros €9.99.' },
+  { id: 'backtest', cat: 'Configuración', kw: ['backtest','probar pasado','tester','simular','rentable'], q: '¿Cómo hago backtest del bot?', a: 'En MetaTrader 5:\n\n1. Ver → Probador de estrategias (Ctrl+R)\n2. Selecciona tu Expert Advisor (el archivo .mq5)\n3. Símbolo: el mismo de tu bot\n4. Periodo: últimos 6-12 meses\n5. Modo: "Cada tick basado en ticks reales"\n6. Click en Start\n\nMira el reporte: profit factor >1.3, drawdown <20% es buena señal. NUNCA bases una decisión solo en el backtest, prueba luego en demo.' },
+
+  // ───── EJECUCIÓN / PROBLEMAS ─────
+  { id: 'noFunciona', cat: 'Problemas', kw: ['no funciona','error','falla','no opera','problema','no abre','no entra'], q: 'El bot no opera, ¿qué hago?', a: 'Checklist:\n\n✅ AutoTrading activado (botón VERDE arriba)\n✅ Bot tiene 😊 verde en esquina superior derecha del gráfico\n✅ "Permitir trading automático" marcado en parámetros del bot\n✅ Símbolo del gráfico coincide con InpSymbol\n✅ Mercado abierto (Forex cerrado fines de semana)\n✅ Filtro horario UTC dentro de rango\n✅ Suficiente margen libre\n\nRevisa "Diario" abajo en MetaTrader — ahí verás errores específicos.' },
+  { id: 'cara-roja', cat: 'Problemas', kw: ['cara roja','smiley rojo','x roja','no permite trading'], q: '¿Por qué sale una cara roja en el gráfico?', a: 'La cara roja 😞 significa que el bot está cargado pero NO puede operar. Causas:\n\n1. AutoTrading desactivado (botón verde de la barra)\n2. "Permitir trading automático" desmarcado en parámetros del bot\n3. Cuenta sin permisos de trading (cuenta de inversión, no real)\n\nClick derecho en el bot → "Propiedades del experto" → marca "Permitir trading automático".' },
+  { id: 'multiples-bots', cat: 'Problemas', kw: ['varios bots','multiples','dos bots','tres bots','mismo grafico','conflicto'], q: '¿Puedo correr varios bots a la vez?', a: 'Sí, pero con cuidado:\n\n• Distinto símbolo cada bot (uno en EURUSD, otro en GBPUSD)\n• Mismo símbolo distinta estrategia: usa Magic Numbers diferentes (cada bot tiene uno único)\n• El margen libre se comparte entre todos\n\nNO pongas dos bots con el mismo Magic Number en el mismo símbolo: se pisarán las operaciones.' },
+  { id: 'spread-alto', cat: 'Problemas', kw: ['spread alto','no abre operaciones','spread amplio','requote'], q: 'El bot no abre operaciones aunque hay señal', a: 'Posibles causas:\n\n• Spread demasiado amplio (típico fuera de horario de Londres/NY)\n• Margen libre insuficiente\n• Filtro horario activo y fuera de rango\n• Filtro de noticias activo (consulta el calendario)\n• Ya hay una posición abierta (el bot solo opera una a la vez por defecto)\n\nMira "Diario" en MetaTrader para ver el motivo exacto.' },
+  { id: 'demo-vs-real', cat: 'Problemas', kw: ['en demo si en real no','demo funciona real no','diferencia demo real'], q: 'Funciona en demo pero no en cuenta real', a: 'Es muy común. Causas habituales:\n\n• Spreads más altos en real (en demo suelen ser ideales)\n• Slippage en real durante alta volatilidad\n• Comisiones que el broker carga solo en cuentas reales\n• Stops out por margen apretado\n\nSolución: ajusta el bot en real con SL/TP un poco más amplios y reduce el tamaño de la posición.' },
+
+  // ───── CUENTA / DATOS ─────
+  { id: 'cambiar-email', cat: 'Cuenta', kw: ['cambiar email','correo','actualizar email','nuevo correo'], q: '¿Cómo cambio mi email?', a: 'De momento no se puede cambiar el email desde la app. Escríbenos a soporte@algotrade.app desde el email registrado pidiendo el cambio y indicando el nuevo email.' },
+  { id: 'contraseña', cat: 'Cuenta', kw: ['contraseña','password','olvide','restablecer','recuperar contraseña','reset'], q: 'He olvidado mi contraseña', a: 'Por ahora la recuperación es manual: escríbenos a soporte@algotrade.app desde el email de tu cuenta y te enviamos un enlace para restablecer.\n\nEstamos trabajando en una recuperación automática para próximas versiones.' },
+  { id: 'borrar-cuenta', cat: 'Cuenta', kw: ['borrar cuenta','eliminar cuenta','dar de baja','rgpd','gdpr'], q: '¿Cómo elimino mi cuenta?', a: 'Escríbenos a soporte@algotrade.app desde el email registrado pidiendo la eliminación. Borraremos tu cuenta y todos tus datos en un máximo de 30 días, conforme al RGPD.\n\nLos archivos .mq4/.mq5 que ya descargaste son tuyos y los conservas.' },
+  { id: 'datos', cat: 'Cuenta', kw: ['privacidad','que datos','rgpd','gdpr','protección de datos'], q: '¿Qué datos guardáis sobre mí?', a: 'Solo lo necesario:\n\n• Email + contraseña hasheada\n• Nombre\n• Lista de bots creados (config)\n• Pagos via Stripe (Stripe gestiona los datos de tarjeta, no nosotros)\n\nNO guardamos:\n• Datos de tu broker\n• Operaciones que hace tu bot\n• Saldo de tu cuenta\n\nCumplimos con el RGPD. Puedes pedir borrar tu cuenta cuando quieras.' },
+
+  // ───── SOPORTE HUMANO ─────
+  { id: 'soporte', cat: 'Contacto', kw: ['soporte humano','persona','hablar','contacto humano','email soporte'], q: '¿Cómo contacto soporte humano?', a: 'Email: soporte@algotrade.app\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
 ];
 
 const CONV = {
-  saludo: { triggers: ['hola','buenas','buenos','hey','que tal','hi'], r: ['¡Hola! ¿En qué puedo ayudarte?', '¡Hola! Soy el asistente de AlgoTrade. ¿Qué necesitas?'] },
-  gracias: { triggers: ['gracias','thanks','genial','perfecto','ok','vale'], r: ['¡De nada! Si tienes otra pregunta, aquí estoy.', '¡Para servirte!'] },
-  adios: { triggers: ['adios','adiós','bye','chao','hasta luego'], r: ['¡Hasta luego! 📈', '¡Adiós!'] },
-  ayuda: { triggers: ['ayuda','help','que puedes','que sabes'], r: ['Puedo ayudarte con:\n\n• Comprar y descargar bots\n• Instalación en MT4/MT5\n• Apalancamiento\n• FTMO y prop firms\n• Errores comunes\n• VPS\n\nEscríbeme tu pregunta.'] },
+  saludo: { triggers: ['hola','buenas','buenos','hey','que tal','hi','holi'], r: ['¡Hola! ¿En qué puedo ayudarte?', '¡Hola! Soy el asistente de AlgoTrade. ¿Qué necesitas?'] },
+  gracias: { triggers: ['gracias','thanks','genial','perfecto'], r: ['¡De nada! Si tienes otra pregunta, aquí estoy.', '¡Para servirte!'] },
+  adios: { triggers: ['adios','adiós','bye','chao','hasta luego','nos vemos'], r: ['¡Hasta luego! 📈', '¡Adiós!', '¡Buena suerte con tus trades!'] },
+  ayuda: { triggers: ['ayuda','help','que puedes','que sabes','menu','como funciona esto'], r: ['Puedo ayudarte con:\n\n• 💳 Compra y reembolsos\n• 📥 Descarga e instalación en MT4/MT5\n• 🏢 Brokers y cuentas demo\n• 💼 FTMO y prop firms\n• ⚙️ Configuración (apalancamiento, SL/TP, indicadores)\n• 🔧 Errores comunes\n• 🖥️ VPS y Mac\n• 📰 Filtro de noticias\n• 👤 Tu cuenta\n\nEscríbeme tu pregunta o elige una de la lista.'] },
+  bot: { triggers: ['que es un bot','que hace el bot','expert advisor','ea'], r: ['Un bot de trading (también llamado Expert Advisor o EA) es un programa que opera por ti automáticamente en MetaTrader. Lee el mercado con indicadores técnicos y abre/cierra operaciones según las reglas de la estrategia que elegiste en el wizard. No necesita supervisión constante.'] },
+  rentable: { triggers: ['es rentable','gano dinero','garantizan','garantía','funciona seguro'], r: ['No prometemos rentabilidad — eso depende del mercado, tu configuración, broker y disciplina. Ningún bot tiene un historial garantizado.\n\nLo que SÍ te damos:\n• Código probado y compilable\n• Reglas claras (SL, TP, riesgo por operación, daily loss)\n• Filtro de noticias (en MT5)\n• Compatibilidad con prop firms\n\nUsa siempre cuenta demo primero.'] },
+  pip: { triggers: ['que es pip','pips','que es spread','que es lote'], r: ['Términos básicos:\n\n• Pip — Mínima variación de precio en Forex (0.0001 en EUR/USD).\n• Spread — Diferencia entre compra (ask) y venta (bid). Cuanto menor, mejor.\n• Lote — Tamaño de la posición. 1.0 lote estándar = 100,000 unidades. 0.10 = "mini lote".\n\nEl bot calcula el lote automáticamente según el riesgo % que le pongas.'] },
 };
 
 function normalize(s) {
@@ -2562,30 +2601,53 @@ function normalize(s) {
 }
 function findAnswer(q) {
   const n = normalize(q);
+  if (!n) return null;
   // conversacional
   for (const k in CONV) {
     for (const t of CONV[k].triggers) {
-      if (n === t || n.split(' ').includes(t) || n.startsWith(t + ' ')) {
-        return CONV[k].r[Math.floor(Math.random() * CONV[k].r.length)];
+      const tn = normalize(t);
+      if (n === tn || n.split(' ').includes(tn) || n.startsWith(tn + ' ') || n.endsWith(' ' + tn)) {
+        return { type: 'conv', text: CONV[k].r[Math.floor(Math.random() * CONV[k].r.length)] };
       }
     }
   }
-  // FAQ
-  let best = null, score = 0;
+  // FAQ — scoring por longitud de palabra clave + bonus por match en pregunta
+  const ranked = [];
   for (const f of FAQ_DB) {
     let s = 0;
-    for (const k of f.kw) if (n.includes(normalize(k))) s += k.length * 2;
-    if (s > score) { score = s; best = f; }
+    for (const k of f.kw) {
+      const kn = normalize(k);
+      if (n.includes(kn)) s += kn.length * 2;
+    }
+    // Bonus si alguna palabra clave aparece en la pregunta directamente
+    for (const w of n.split(' ').filter(w => w.length > 3)) {
+      if (normalize(f.q).includes(w)) s += 1;
+    }
+    if (s > 0) ranked.push({ faq: f, score: s });
   }
-  if (best && score >= 4) return best.a;
-  return 'Hmm, no estoy seguro. Reformula tu pregunta o escribe "ayuda" para ver lo que puedo hacer.';
+  ranked.sort((a, b) => b.score - a.score);
+  if (ranked.length === 0 || ranked[0].score < 4) {
+    // Sugerir las 3 mejor rankeadas si hay alguna con puntuación > 0
+    const suggestions = ranked.slice(0, 3).map(r => r.faq);
+    return { type: 'fallback', suggestions };
+  }
+  return { type: 'faq', text: ranked[0].faq.a, faq: ranked[0].faq };
 }
 
-if (!state.support) state.support = { messages: [{ from: 'bot', text: '¡Hola! Soy el asistente de AlgoTrade 🤖\n\nPuedo ayudarte con tus bots: comprar, descargar, instalar, apalancamiento, FTMO, errores...\n\nElige una pregunta o escribe la tuya.' }], showFaqs: true, showFollowUp: false, typing: false };
+if (!state.support) state.support = {
+  messages: [{ from: 'bot', text: '¡Hola! Soy el asistente de AlgoTrade 🤖\n\nElige una categoría o escribe tu pregunta directamente.' }],
+  showFaqs: true,
+  showFollowUp: false,
+  typing: false,
+  category: null,
+};
 
 function loadSupport(root) {
   const s = state.support;
-  const popularFaqs = FAQ_DB.filter(f => ['comprar','descargar','instalar','apalancamiento','ftmo','noFunciona'].includes(f.id));
+  const categories = [...new Set(FAQ_DB.map(f => f.cat))];
+  const filteredFaqs = s.category
+    ? FAQ_DB.filter(f => f.cat === s.category)
+    : FAQ_DB.filter(f => ['comprar','descargar','instalar','apalancamiento','ftmo','noFunciona','noticias','vps','reembolso'].includes(f.id));
 
   root.innerHTML = `
     <div class="container container-narrow" style="display:flex;flex-direction:column;min-height:calc(100vh - 60px);">
@@ -2615,9 +2677,19 @@ function loadSupport(root) {
         ` : ''}
         ${s.showFaqs && !s.typing ? `
           <div style="margin-top:8px">
-            <div class="label-up" style="margin-bottom:10px">Preguntas frecuentes</div>
+            <div class="label-up" style="margin-bottom:10px">${s.category ? s.category : 'Categorías'}</div>
+            ${!s.category ? `
+              <div class="chip-row" style="margin-bottom:14px">
+                ${categories.map(c => `
+                  <button class="chip" data-cat="${c}">${c}</button>
+                `).join('')}
+              </div>
+              <div class="label-up" style="margin-bottom:10px;margin-top:14px">Preguntas frecuentes</div>
+            ` : `
+              <button class="btn btn-soft" id="back-cats" style="margin-bottom:14px;font-size:12px;padding:6px 12px;">${I.arrowLeft} Todas las categorías</button>
+            `}
             <div class="flex flex-col gap-2">
-              ${popularFaqs.map(f => `
+              ${filteredFaqs.map(f => `
                 <button class="card card-hover" data-faq="${f.id}" style="text-align:left;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:500">
                   ${f.q}
                 </button>
@@ -2650,6 +2722,18 @@ function loadSupport(root) {
     window.scrollTo(0, document.body.scrollHeight);
   }, 50);
 
+  // Category click
+  document.querySelectorAll('[data-cat]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.support.category = el.dataset.cat;
+      loadSupport(document.getElementById('screen-root'));
+    });
+  });
+  document.getElementById('back-cats')?.addEventListener('click', () => {
+    state.support.category = null;
+    loadSupport(document.getElementById('screen-root'));
+  });
+
   // FAQ click
   document.querySelectorAll('[data-faq]').forEach(el => {
     el.addEventListener('click', () => {
@@ -2666,10 +2750,41 @@ function loadSupport(root) {
     if (!v) return;
     input.value = '';
     pushMsg('user', v);
+    // Si el usuario respondió con un número y tenemos sugerencias previas, lo tratamos como elegir esa
+    const numMatch = /^[1-3]$/.exec(v);
+    if (numMatch && state.support._lastSuggestions && state.support._lastSuggestions.length) {
+      const idx = parseInt(numMatch[0], 10) - 1;
+      const f = state.support._lastSuggestions[idx];
+      delete state.support._lastSuggestions;
+      if (f) {
+        simulate(() => { pushMsg('bot', f.a); state.support.showFollowUp = true; loadSupport(document.getElementById('screen-root')); });
+        return;
+      }
+    }
+    delete state.support._lastSuggestions;
     simulate(() => {
-      const ans = findAnswer(v);
-      pushMsg('bot', ans);
-      state.support.showFollowUp = !ans.startsWith('Hmm');
+      const result = findAnswer(v);
+      if (!result) {
+        pushMsg('bot', 'Escribe alguna pregunta para que pueda ayudarte 👇');
+        loadSupport(document.getElementById('screen-root'));
+        return;
+      }
+      if (result.type === 'fallback') {
+        let txt = 'No estoy 100% seguro de qué necesitas.';
+        if (result.suggestions && result.suggestions.length) {
+          txt += ' ¿Te refieres a alguna de estas?\n\n' + result.suggestions.map((f, i) => `${i + 1}. ${f.q}`).join('\n');
+          txt += '\n\nEscribe el número o reformula tu pregunta.';
+          state.support._lastSuggestions = result.suggestions;
+        } else {
+          txt = 'No he encontrado nada relacionado. Escribe "ayuda" para ver lo que puedo hacer, o contacta a soporte@algotrade.app.';
+        }
+        pushMsg('bot', txt);
+        loadSupport(document.getElementById('screen-root'));
+        return;
+      }
+      // type === 'conv' or 'faq'
+      pushMsg('bot', result.text);
+      state.support.showFollowUp = (result.type === 'faq');
       loadSupport(document.getElementById('screen-root'));
     });
   };
