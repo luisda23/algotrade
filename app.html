@@ -487,7 +487,7 @@ svg { display: block; }
 .input-icon svg { width: 18px; height: 18px; }
 .create-cta-icon svg { width: 28px; height: 28px; }
 .create-cta-btn svg { width: 16px; height: 16px; }
-.bot-card-avatar svg { width: 22px; height: 22px; }
+.bot-card-avatar svg { width: 32px; height: 32px; }
 .empty-state-icon svg { width: 32px; height: 32px; }
 .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .wizard-back svg { width: 14px; height: 14px; }
@@ -586,9 +586,36 @@ svg { display: block; }
 .bot-card-head { display: flex; align-items: center; gap: 12px; }
 .bot-card-avatar {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(255,255,255,0.06);
+  background: var(--bg-elev);
+  color: var(--text);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+}
+.avatar-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  padding: 14px;
+}
+.avatar-tile:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.avatar-tile.selected {
+  border-color: var(--text);
+  background: var(--bg-elev);
+}
+.avatar-tile svg { width: 100%; height: 100%; }
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .avatar-grid { grid-template-columns: repeat(3, 1fr); }
 }
 .bot-card-info { flex: 1; min-width: 0; }
 .bot-card-name {
@@ -885,6 +912,7 @@ const state = {
     checkoutTriggered: false,
     data: {
       name: 'Mi Bot Pro',
+      avatar: 'classic',
       market: 'forex',
       pair: 'EUR/USD',
       strategy: 'scalping',
@@ -1308,7 +1336,7 @@ function renderBotsGrid() {
         return `
           <div class="card card-hover bot-card" data-bot="${b.id}">
             <div class="bot-card-head">
-              <div class="bot-card-avatar">${I.bot}</div>
+              <div class="bot-card-avatar">${getAvatarSVG(b.parameters?.avatar)}</div>
               <div class="bot-card-info">
                 <div class="bot-card-name">${b.name}</div>
                 <div class="bot-card-pair">${pair} · ${strategy}</div>
@@ -1402,6 +1430,18 @@ const INDICATORS = [
 //   conditional = permitido pero con condiciones (estrategia revisable, no copy-trading, no high-freq)
 //   restricted  = solo discrecional, scalping/HFT prohibidos
 //   banned      = uso de EAs prohibido o con sanción casi segura
+const AVATARS = [
+  { id: 'classic', name: 'Classic', svg: `<svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="20" r="6"/><rect x="98" y="22" width="4" height="20" rx="2"/><rect x="38" y="78" width="10" height="30" rx="3"/><rect x="152" y="78" width="10" height="30" rx="3"/><path fill-rule="evenodd" d="M60 44 H140 a14 14 0 0 1 14 14 v70 a14 14 0 0 1 -14 14 H60 a14 14 0 0 1 -14 -14 V58 a14 14 0 0 1 14 -14 z M58 60 h84 v58 h-84 z M76 128 h48 v6 h-48 z"/><circle cx="82" cy="89" r="9"/><circle cx="118" cy="89" r="9"/><rect x="74" y="106" width="6" height="6"/><rect x="84" y="106" width="6" height="6"/><rect x="94" y="106" width="6" height="6"/><rect x="104" y="106" width="6" height="6"/><rect x="114" y="106" width="6" height="6"/><path fill-rule="evenodd" d="M58 148 h84 a6 6 0 0 1 6 6 v10 a6 6 0 0 1 -6 6 H58 a6 6 0 0 1 -6 -6 v-10 a6 6 0 0 1 6 -6 z M92 156 h16 v6 h-16 z"/></svg>` },
+  { id: 'round',   name: 'Round',   svg: `<svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="22" r="7" fill="none" stroke="currentColor" stroke-width="4"/><line x1="100" y1="29" x2="100" y2="46" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="36" cy="116" r="9"/><circle cx="164" cy="116" r="9"/><path fill-rule="evenodd" d="M40 110 a60 60 0 0 1 120 0 v40 a14 14 0 0 1 -14 14 H54 a14 14 0 0 1 -14 -14 z M58 88 a42 42 0 0 1 84 0 v18 a8 8 0 0 1 -8 8 H66 a8 8 0 0 1 -8 -8 z M56 124 h14 v4 h-14 z M56 132 h14 v4 h-14 z M130 124 h14 v4 h-14 z M130 132 h14 v4 h-14 z M86 138 h28 v6 h-28 z"/><circle cx="84" cy="96" r="6"/><circle cx="116" cy="96" r="6"/></svg>` },
+  { id: 'tv',      name: 'TV',      svg: `<svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><line x1="100" y1="36" x2="74" y2="14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><line x1="100" y1="36" x2="126" y2="14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="74" cy="14" r="5"/><circle cx="126" cy="14" r="5"/><path fill-rule="evenodd" d="M46 40 H154 a18 18 0 0 1 18 18 v84 a18 18 0 0 1 -18 18 H46 a18 18 0 0 1 -18 -18 v-84 a18 18 0 0 1 18 -18 z M42 56 h116 v78 h-116 z M54 142 a4 4 0 1 1 8 0 a4 4 0 1 1 -8 0 z M70 142 a4 4 0 1 1 8 0 a4 4 0 1 1 -8 0 z M100 142 h56 v8 h-56 z"/><rect x="68" y="84" width="20" height="4" rx="1"/><rect x="76" y="76" width="4" height="20" rx="1"/><rect x="112" y="84" width="20" height="4" rx="1"/><rect x="120" y="76" width="4" height="20" rx="1"/><path d="M82 116 q18 12 36 0" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="84" y="160" width="32" height="14" rx="3"/><rect x="60" y="174" width="80" height="8" rx="2"/></svg>` },
+  { id: 'line',    name: 'Line',    svg: `<svg viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="100" y1="22" x2="100" y2="42"/><circle cx="100" cy="20" r="5" fill="currentColor"/><rect x="46" y="46" width="108" height="100" rx="20"/><line x1="46" y1="86" x2="36" y2="86"/><line x1="46" y1="106" x2="36" y2="106"/><line x1="154" y1="86" x2="164" y2="86"/><line x1="154" y1="106" x2="164" y2="106"/><circle cx="80" cy="92" r="7" fill="currentColor"/><circle cx="120" cy="92" r="7" fill="currentColor"/><rect x="78" y="116" width="44" height="12" rx="6"/><line x1="92" y1="118" x2="92" y2="126" stroke-width="2.5"/><line x1="100" y1="118" x2="100" y2="126" stroke-width="2.5"/><line x1="108" y1="118" x2="108" y2="126" stroke-width="2.5"/><line x1="88" y1="146" x2="88" y2="160"/><line x1="112" y1="146" x2="112" y2="160"/><path d="M58 178 q42 -18 84 0"/></svg>` },
+  { id: 'pixel',   name: 'Pixel',   svg: `<svg viewBox="0 0 200 200" fill="currentColor" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20 20)"><rect x="70" y="0" width="20" height="10"/><rect x="80" y="10" width="10" height="20"/><rect x="40" y="30" width="80" height="10"/><rect x="20" y="60" width="10" height="30"/><rect x="130" y="60" width="10" height="30"/><path fill-rule="evenodd" d="M30 40 h100 v80 h-100 z M40 50 h80 v50 h-80 z M60 70 h10 v10 h-10 z M100 70 h10 v10 h-10 z"/><rect x="50" y="60" width="20" height="20"/><rect x="90" y="60" width="20" height="20"/><rect x="60" y="90" width="10" height="10"/><rect x="80" y="90" width="10" height="10"/><rect x="100" y="90" width="10" height="10"/><path fill-rule="evenodd" d="M40 120 h80 v10 h-80 z M60 130 h40 v10 h-40 z M30 140 h100 v20 h-100 z M70 148 h20 v6 h-20 z"/></g><g transform="translate(20 20)"><path fill-rule="evenodd" d="M50 60 h20 v20 h-20 z M60 70 h10 v10 h-10 z M90 60 h20 v20 h-20 z M100 70 h10 v10 h-10 z"/></g></svg>` },
+];
+function getAvatarSVG(id) {
+  const a = AVATARS.find(x => x.id === id);
+  return a ? a.svg : (AVATARS[0]?.svg || '');
+}
+
 const NEWS_EVENTS = [
   // USD
   { id: 'nfp',        name: 'NFP (Empleo USA)',        cur: 'USD' },
@@ -1702,6 +1742,14 @@ function renderStepName() {
     <div style="margin-bottom:24px">
       <div class="field-label">Nombre del bot</div>
       <input class="input" id="bot-name" value="${d.name}" placeholder="Mi Bot Pro"/>
+    </div>
+    <div style="margin-bottom:24px">
+      <div class="field-label">Avatar</div>
+      <div class="avatar-grid">
+        ${AVATARS.map(a => `
+          <button class="avatar-tile ${d.avatar === a.id ? 'selected' : ''}" data-avatar="${a.id}" aria-label="${a.name}">${a.svg}</button>
+        `).join('')}
+      </div>
     </div>
     <div style="margin-bottom:24px">
       <div class="field-label">Mercado</div>
@@ -2018,11 +2066,12 @@ function renderStepGenerate() {
   return `
     <div class="card card-pad-lg" id="generate-list">
       <div class="flex items-center gap-3" style="margin-bottom:18px">
-        <div style="width:42px;height:42px;border-radius:12px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center">
-          ${I.bot}
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:6px">
+          ${getAvatarSVG(state.wizard.data.avatar)}
         </div>
         <div>
           <div class="h3">Construyendo tu bot</div>
+          <div class="text-dim" style="font-size:12px;margin-top:2px">${state.wizard.data.name}</div>
         </div>
       </div>
       <div class="flex flex-col gap-3">
@@ -2117,6 +2166,9 @@ function bindWizard() {
   });
   document.querySelectorAll('[data-pair]').forEach(el => {
     el.addEventListener('click', () => { w.data.pair = el.dataset.pair; render(); });
+  });
+  document.querySelectorAll('[data-avatar]').forEach(el => {
+    el.addEventListener('click', () => { w.data.avatar = el.dataset.avatar; render(); });
   });
 
   // Step 1: Strategy
@@ -2279,7 +2331,7 @@ async function startCheckout() {
     strategy: w.data.strategy,
     parameters: {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
-      indicators: w.data.indicators, risk: w.data.risk, news: w.data.news, funded: w.data.funded,
+      avatar: w.data.avatar, indicators: w.data.indicators, risk: w.data.risk, news: w.data.news, funded: w.data.funded,
     },
   };
   localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
@@ -2639,8 +2691,15 @@ function loadBotDetail(root) {
   root.innerHTML = `
     <div class="container container-narrow">
       <button class="btn btn-soft fade-up" id="back-to-dash" style="margin-bottom:24px">${I.arrowLeft} Volver</button>
-      <h1 class="h1 fade-up">${bot.name}</h1>
-      <p class="text-dim mt-2 fade-up">${pair} · ${bot.strategy || 'scalping'}</p>
+      <div class="fade-up" style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
+        <div style="width:64px;height:64px;border-radius:16px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:9px;flex-shrink:0">
+          ${getAvatarSVG(bot.parameters?.avatar)}
+        </div>
+        <div style="min-width:0;flex:1">
+          <h1 class="h1" style="margin:0">${bot.name}</h1>
+          <p class="text-dim mt-2" style="margin-top:4px">${pair} · ${bot.strategy || 'scalping'}</p>
+        </div>
+      </div>
 
       <div class="card card-pad-lg fade-up" style="margin-top:28px">
         <h3 class="h3" style="margin-bottom:6px">Cómo usar este bot</h3>
