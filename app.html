@@ -891,7 +891,14 @@ const state = {
       leverage: 30,
       indicators: ['rsi', 'ema'],
       risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
-      news: { enabled: true, beforeMin: 30, afterMin: 15, impactMin: 'high' },
+      news: {
+        enabled: true,
+        beforeMin: 30,
+        afterMin: 15,
+        impactMin: 'high',
+        // Por defecto todos los eventos comunes seleccionados (= comportamiento anterior)
+        events: ['nfp','fomc','cpi-us','powell','gdp-us','retail-us','unemp-us','ism-us','ecb-rate','ecb-press','cpi-eu','gdp-eu','pmi-eu','boe-rate','cpi-uk','gdp-uk','boj-rate'],
+      },
       funded: { enabled: false, firm: null },
     },
   },
@@ -1397,6 +1404,30 @@ const INDICATORS = [
 //   conditional = permitido pero con condiciones (estrategia revisable, no copy-trading, no high-freq)
 //   restricted  = solo discrecional, scalping/HFT prohibidos
 //   banned      = uso de EAs prohibido o con sanción casi segura
+const NEWS_EVENTS = [
+  // USD
+  { id: 'nfp',        name: 'NFP (Empleo USA)',        cur: 'USD' },
+  { id: 'fomc',       name: 'FOMC / Fed Rate',          cur: 'USD' },
+  { id: 'cpi-us',     name: 'CPI USA (Inflación)',      cur: 'USD' },
+  { id: 'powell',     name: 'Discurso Powell',          cur: 'USD' },
+  { id: 'gdp-us',     name: 'GDP USA',                  cur: 'USD' },
+  { id: 'retail-us',  name: 'Retail Sales USA',         cur: 'USD' },
+  { id: 'unemp-us',   name: 'Unemployment USA',         cur: 'USD' },
+  { id: 'ism-us',     name: 'ISM PMI USA',              cur: 'USD' },
+  // EUR
+  { id: 'ecb-rate',   name: 'ECB Rate Decision',        cur: 'EUR' },
+  { id: 'ecb-press',  name: 'ECB Press / Lagarde',      cur: 'EUR' },
+  { id: 'cpi-eu',     name: 'CPI Eurozona',             cur: 'EUR' },
+  { id: 'gdp-eu',     name: 'GDP Eurozona',             cur: 'EUR' },
+  { id: 'pmi-eu',     name: 'PMI Eurozona',             cur: 'EUR' },
+  // GBP
+  { id: 'boe-rate',   name: 'BoE Rate Decision',        cur: 'GBP' },
+  { id: 'cpi-uk',     name: 'CPI UK',                   cur: 'GBP' },
+  { id: 'gdp-uk',     name: 'GDP UK',                   cur: 'GBP' },
+  // JPY
+  { id: 'boj-rate',   name: 'BoJ Rate Decision',        cur: 'JPY' },
+];
+
 const FUNDED_FIRMS = [
   {
     id: 'ftmo', name: 'FTMO',
@@ -1824,12 +1855,33 @@ function renderStepRisk() {
           <div class="field-label" id="lbl-newsbef">Pausar antes de la noticia · ${d.news.beforeMin} min</div>
           <input type="range" id="r-newsbef" class="slider-modern" min="0" max="120" step="5" value="${d.news.beforeMin}"/>
         </div>
-        <div>
+        <div style="margin-bottom:8px">
           <div class="field-label" id="lbl-newsaft">Reanudar después de la noticia · ${d.news.afterMin} min</div>
           <input type="range" id="r-newsaft" class="slider-modern" min="0" max="120" step="5" value="${d.news.afterMin}"/>
         </div>
-        <div class="text-dim" style="font-size:12px;margin-top:14px;line-height:1.5">
-          El bot consultará el calendario económico de MetaTrader y no abrirá nuevas operaciones dentro de la ventana indicada. Las posiciones ya abiertas siguen su gestión normal de SL/TP.
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="field-label" style="margin:0">Eventos específicos a vigilar</div>
+          <div style="display:flex;gap:6px">
+            <button class="chip" id="news-events-all" style="padding:5px 10px;font-size:11px">Todos</button>
+            <button class="chip" id="news-events-none" style="padding:5px 10px;font-size:11px">Ninguno</button>
+          </div>
+        </div>
+        <div class="text-dim" style="font-size:12px;margin-bottom:14px">Marca los que el bot debe evitar. Los no marcados se ignorarán aunque MT5 los califique como alto impacto.</div>
+        ${[...new Set(NEWS_EVENTS.map(e => e.cur))].map(cur => `
+          <div style="margin-bottom:14px">
+            <div class="field-label" style="font-size:10px">${cur}</div>
+            <div class="chip-row">
+              ${NEWS_EVENTS.filter(e => e.cur === cur).map(e => `
+                <button class="chip ${d.news.events.includes(e.id) ? 'selected' : ''}" data-news-event="${e.id}">${e.name}</button>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+        <div class="text-dim" style="font-size:12px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border);line-height:1.5">
+          El bot lee el calendario económico nativo de MetaTrader (sin URLs externas). Solo afecta a aperturas nuevas — las posiciones abiertas siguen su SL/TP. Funciona únicamente en archivos .mq5.
         </div>
       </div>
     ` : ''}
@@ -1998,7 +2050,7 @@ function renderStepReview() {
         ['Apalancamiento', `1:${d.leverage}`],
         ['Stop loss', `${d.risk.stopLoss}%`],
         ['Take profit', `${d.risk.takeProfit}%`],
-        ['Filtro noticias', d.news.enabled ? `${({high:'Alto',medium:'Medio+',all:'Todas'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min` : 'Desactivado'],
+        ['Filtro noticias', d.news.enabled ? `${({high:'Alto',medium:'Medio+',all:'Todas'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min · ${d.news.events.length}/${NEWS_EVENTS.length} eventos` : 'Desactivado'],
         ['Cuenta de fondeo', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Sí' : 'No'],
       ].map(([k, v]) => `
         <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);font-size:14px">
@@ -2132,6 +2184,26 @@ function bindWizard() {
       const lbl = document.getElementById('lbl-' + k);
       if (lbl) lbl.textContent = (k === 'newsbef' ? 'Pausar antes de la noticia · ' : 'Reanudar después de la noticia · ') + v + ' min';
     });
+  });
+  document.querySelectorAll('[data-news-event]').forEach(el => {
+    el.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      const id = el.dataset.newsEvent;
+      const idx = w.data.news.events.indexOf(id);
+      if (idx >= 0) w.data.news.events.splice(idx, 1);
+      else w.data.news.events.push(id);
+      el.classList.toggle('selected');
+    });
+  });
+  document.getElementById('news-events-all')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    w.data.news.events = NEWS_EVENTS.map(e => e.id);
+    render();
+  });
+  document.getElementById('news-events-none')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    w.data.news.events = [];
+    render();
   });
 
   // Step 4: Funded
