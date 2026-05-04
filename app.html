@@ -540,6 +540,27 @@ main {
 }
 .auth-link-sub:hover { color: var(--text); }
 
+.otp-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.otp-input {
+  height: 56px;
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.otp-input:focus { border-color: var(--text); background: var(--bg-elev); }
+.otp-input:not(:placeholder-shown) { border-color: var(--border-strong); }
+
 .account-section { margin-top: 32px; }
 .account-section-title {
   font-family: 'Inter Tight', sans-serif;
@@ -974,6 +995,7 @@ const state = {
   authMode: 'login',          // login | signup
   authError: null,
   authLoading: false,
+  needsVerification: false,   // true tras signup, muestra UI de código
   wizard: {
     step: 0,
     generating: false,
@@ -1102,6 +1124,13 @@ function render() {
   if (!state.token) {
     root.innerHTML = renderAuth();
     bindAuth();
+    return;
+  }
+  // Si el usuario está logueado pero no ha verificado el email, bloqueamos hasta que lo haga
+  if (state.user && state.user.emailVerified === false) {
+    state.needsVerification = true;
+    root.innerHTML = renderVerify();
+    bindVerify();
     return;
   }
   // App shell con sidebar
@@ -1306,6 +1335,113 @@ function renderAuth() {
   `;
 }
 
+function renderVerify() {
+  const u = state.user || {};
+  return `
+    <div class="auth-screen">
+      <div class="auth-bg"></div>
+      <div class="auth-grid"></div>
+      <div class="auth-card fade-up">
+        <div class="auth-logo">${I.mail}</div>
+        <h1>Verifica tu email</h1>
+        <p class="sub">Hemos enviado un código de 6 dígitos a<br/><strong style="color:var(--text)">${u.email || ''}</strong></p>
+
+        <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
+          ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
+        </div>
+
+        <form class="auth-form" id="verify-form">
+          <div class="otp-row" id="otp-row">
+            ${[0,1,2,3,4,5].map(i => `<input class="otp-input" type="tel" inputmode="numeric" maxlength="1" autocomplete="one-time-code" data-otp-i="${i}"/>`).join('')}
+          </div>
+          <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:16px" id="verify-submit">
+            ${state.authLoading ? '<span class="spinner"></span>' : ''}
+            <span>Verificar</span>
+            ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
+          </button>
+        </form>
+
+        <div class="auth-toggle" style="margin-top:18px;text-align:center">
+          <span class="text-dim" style="font-size:13px">¿No te llegó? </span>
+          <button type="button" class="auth-link-sub" id="resend-code">Reenviar código</button>
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" class="auth-link-sub" id="back-to-login" style="font-size:12px">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindVerify() {
+  const inputs = document.querySelectorAll('.otp-input');
+  // Auto-focus primero + auto-avance al siguiente al teclear
+  inputs[0]?.focus();
+  inputs.forEach((el, i) => {
+    el.addEventListener('input', (e) => {
+      const v = (e.target.value || '').replace(/\D/g, '').slice(0, 1);
+      e.target.value = v;
+      if (v && inputs[i + 1]) inputs[i + 1].focus();
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && inputs[i - 1]) {
+        inputs[i - 1].focus();
+      }
+    });
+    el.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      [...text].forEach((ch, idx) => { if (inputs[idx]) inputs[idx].value = ch; });
+      if (text.length === 6) inputs[5]?.focus();
+    });
+  });
+
+  document.getElementById('verify-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = [...inputs].map(x => x.value).join('');
+    if (!/^\d{6}$/.test(code)) {
+      state.authError = 'Introduce los 6 dígitos del código';
+      render();
+      return;
+    }
+    state.authError = null;
+    state.authLoading = true;
+    render();
+    try {
+      await api('/auth/verify', { method: 'POST', body: JSON.stringify({ code }) });
+      // Refrescar info del usuario y entrar al dashboard
+      const me = await api('/auth/me');
+      state.user = me;
+      try { localStorage.setItem('user', JSON.stringify(me)); } catch (_) {}
+      state.needsVerification = false;
+      state.currentScreen = 'dashboard';
+      state.authLoading = false;
+      toast(`¡Email verificado! Bienvenido a Yudbot`, 'success');
+      render();
+    } catch (err) {
+      state.authError = err.message || 'Código incorrecto';
+      state.authLoading = false;
+      render();
+    }
+  });
+
+  document.getElementById('resend-code')?.addEventListener('click', async () => {
+    try {
+      await api('/auth/resend-verification', { method: 'POST' });
+      toast('Código reenviado. Revisa tu email.', 'success');
+    } catch (err) {
+      toast(err.message || 'No se pudo reenviar', 'error');
+    }
+  });
+
+  document.getElementById('back-to-login')?.addEventListener('click', () => {
+    clearAuth();
+    state.needsVerification = false;
+    state.currentScreen = 'auth';
+    render();
+  });
+}
+
 function bindAuth() {
   const isLogin = state.authMode === 'login';
 
@@ -1388,9 +1524,15 @@ function bindAuth() {
         const data = await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
         if (data.token) {
           saveAuth(data.token, data.user);
-          state.currentScreen = 'dashboard';
           state.authLoading = false;
-          toast(`Bienvenido, ${data.user?.name || 'trader'} 👋`, 'success');
+          // Si el email no está verificado, muestra pantalla de verificación
+          if (data.user && data.user.emailVerified === false) {
+            state.needsVerification = true;
+            state.currentScreen = 'auth'; // se queda en auth pero render decide qué mostrar
+          } else {
+            state.currentScreen = 'dashboard';
+            toast(`Bienvenido, ${data.user?.name || 'trader'} 👋`, 'success');
+          }
           render();
         }
       } catch (err) {
