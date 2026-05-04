@@ -1843,6 +1843,14 @@ function renderStepRisk() {
       </div>
     </div>
     ${d.news.enabled ? `
+      <div class="card" style="background:rgba(0,209,122,0.06);border-color:rgba(0,209,122,0.22);margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+        <div style="width:34px;height:34px;border-radius:10px;background:var(--pos);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Inter Tight';font-weight:800;font-size:11px;letter-spacing:0.5px;flex-shrink:0">MT5</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px;color:var(--pos)">Solo disponible en MetaTrader 5</div>
+          <div class="text-dim" style="font-size:12.5px;line-height:1.5">El filtro de noticias usa el calendario económico nativo de MT5 (función <code style="font-family:'JetBrains Mono';font-size:11px">CalendarValueHistory</code>). MetaTrader 4 no incluye este calendario, así que si descargas el archivo <strong style="color:var(--text)">.mq4</strong> el filtro se ignora automáticamente.</div>
+        </div>
+      </div>
+
       <div class="card" style="margin-bottom:14px">
         <div class="field-label" style="margin-bottom:10px">Nivel de impacto a evitar</div>
         <div class="chip-row" style="margin-bottom:18px">
@@ -1881,7 +1889,7 @@ function renderStepRisk() {
           </div>
         `).join('')}
         <div class="text-dim" style="font-size:12px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border);line-height:1.5">
-          El bot lee el calendario económico nativo de MetaTrader (sin URLs externas). Solo afecta a aperturas nuevas — las posiciones abiertas siguen su SL/TP. Funciona únicamente en archivos .mq5.
+          El bot lee el calendario nativo de MetaTrader sin URLs externas. Solo afecta a aperturas nuevas — las posiciones abiertas siguen su SL/TP normal.
         </div>
       </div>
     ` : ''}
@@ -2651,12 +2659,22 @@ function loadBotDetail(root) {
       <div class="card fade-up" style="margin-top:14px">
         <h3 class="h3" style="margin-bottom:14px">Descargar bot</h3>
         <div class="flex flex-col gap-3">
-          <button class="btn btn-primary" id="dl-mq5" style="justify-content:flex-start;width:100%">
-            ${I.download} Descargar para MetaTrader 5 (.mq5)
-          </button>
-          <button class="btn btn-ghost" id="dl-mq4" style="justify-content:flex-start;width:100%">
-            ${I.download} Descargar para MetaTrader 4 (.mq4)
-          </button>
+          <div>
+            <button class="btn btn-primary" id="dl-mq5" style="justify-content:flex-start;width:100%">
+              ${I.download} Descargar para MetaTrader 5 (.mq5)
+            </button>
+            <div class="text-dim" style="font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px">
+              <span style="color:var(--pos)">●</span> Recomendado · Filtro de noticias completo · Calendario económico
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-ghost" id="dl-mq4" style="justify-content:flex-start;width:100%">
+              ${I.download} Descargar para MetaTrader 4 (.mq4)
+            </button>
+            <div class="text-dim" style="font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px">
+              <span style="color:#FFB020">●</span> Solo si usas MT4 · <strong style="color:#FFB020">Sin filtro de noticias</strong> (MT4 no tiene calendario económico)
+            </div>
+          </div>
         </div>
       </div>
     </div>
