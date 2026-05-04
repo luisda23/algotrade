@@ -8,15 +8,17 @@ import os
 
 SIZE = 96
 RADIUS = 22  # Border radius for the rounded square
-BG = (0, 0, 0, 255)
-FG = (255, 255, 255, 255)
+BG = (255, 255, 255, 255)  # blanco como en el sidebar
+FG = (0, 0, 0, 255)         # negro
+BORDER = (0, 0, 0, 30)      # borde sutil para que el cuadrado se vea sobre fondo blanco
+BORDER_WIDTH = 2
 
 # Create RGBA image for transparency support, but bg covers all
 img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
 draw = ImageDraw.Draw(img)
 
-# Rounded square background
-draw.rounded_rectangle((0, 0, SIZE - 1, SIZE - 1), radius=RADIUS, fill=BG)
+# Rounded square background con borde sutil
+draw.rounded_rectangle((0, 0, SIZE - 1, SIZE - 1), radius=RADIUS, fill=BG, outline=BORDER, width=BORDER_WIDTH)
 
 # Scale the SVG path coordinates from 32x32 viewBox to 96x96
 scale = SIZE / 32
