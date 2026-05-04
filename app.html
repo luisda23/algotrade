@@ -1506,7 +1506,7 @@ function bindAuth() {
     document.getElementById('privacy-link')?.addEventListener('click', (e) => { e.preventDefault(); toast('Política de privacidad próximamente', 'info'); });
   } else {
     document.getElementById('forgot-pw')?.addEventListener('click', () => {
-      toast('Escríbenos a hola@yudbot.com desde tu email registrado y te enviamos un enlace para restablecer.', 'info');
+      toast('Escríbenos a support@yudbot.com desde tu email registrado y te enviamos un enlace para restablecer.', 'info');
     });
   }
 
@@ -3078,9 +3078,9 @@ function loadAccount(root) {
 const FAQ_DB = [
   // ───── COMPRA / FACTURACIÓN ─────
   { id: 'comprar', cat: 'Compra', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr','cuanto vale','factura'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99 con Stripe"\n4. Pagas con tarjeta vía Stripe (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
-  { id: 'reembolso', cat: 'Compra', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero','no me gusta'], q: '¿Puedo pedir un reembolso?', a: 'Política de reembolsos:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si no estás satisfecho: caso por caso\n\nEscríbenos a hola@yudbot.com con el ID del bot.' },
+  { id: 'reembolso', cat: 'Compra', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero','no me gusta'], q: '¿Puedo pedir un reembolso?', a: 'Política de reembolsos:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si no estás satisfecho: caso por caso\n\nEscríbenos a support@yudbot.com con el ID del bot.' },
   { id: 'metodos-pago', cat: 'Compra', kw: ['metodo de pago','paypal','crypto','bizum','transferencia','google pay','apple pay'], q: '¿Qué métodos de pago aceptáis?', a: 'A través de Stripe aceptamos:\n\n• Tarjeta crédito/débito (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• Link (autocompletado de Stripe)\n\nDe momento no admitimos PayPal, transferencia bancaria ni crypto.' },
-  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Stripe lo calcula automáticamente).\n\nSi necesitas factura con tu CIF/empresa, escríbenos a hola@yudbot.com con el ID del bot, tu nombre fiscal y NIF/CIF.' },
+  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Stripe lo calcula automáticamente).\n\nSi necesitas factura con tu CIF/empresa, escríbenos a support@yudbot.com con el ID del bot, tu nombre fiscal y NIF/CIF.' },
 
   // ───── DESCARGA / INSTALACIÓN ─────
   { id: 'descargar', cat: 'Instalación', kw: ['descarg','archivo','baj','obtener','dónde está','no encuentro'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
@@ -3118,13 +3118,13 @@ const FAQ_DB = [
   { id: 'demo-vs-real', cat: 'Problemas', kw: ['en demo si en real no','demo funciona real no','diferencia demo real'], q: 'Funciona en demo pero no en cuenta real', a: 'Es muy común. Causas habituales:\n\n• Spreads más altos en real (en demo suelen ser ideales)\n• Slippage en real durante alta volatilidad\n• Comisiones que el broker carga solo en cuentas reales\n• Stops out por margen apretado\n\nSolución: ajusta el bot en real con SL/TP un poco más amplios y reduce el tamaño de la posición.' },
 
   // ───── CUENTA / DATOS ─────
-  { id: 'cambiar-email', cat: 'Cuenta', kw: ['cambiar email','correo','actualizar email','nuevo correo'], q: '¿Cómo cambio mi email?', a: 'De momento no se puede cambiar el email desde la app. Escríbenos a hola@yudbot.com desde el email registrado pidiendo el cambio y indicando el nuevo email.' },
-  { id: 'contraseña', cat: 'Cuenta', kw: ['contraseña','password','olvide','restablecer','recuperar contraseña','reset'], q: 'He olvidado mi contraseña', a: 'Por ahora la recuperación es manual: escríbenos a hola@yudbot.com desde el email de tu cuenta y te enviamos un enlace para restablecer.\n\nEstamos trabajando en una recuperación automática para próximas versiones.' },
-  { id: 'borrar-cuenta', cat: 'Cuenta', kw: ['borrar cuenta','eliminar cuenta','dar de baja','rgpd','gdpr'], q: '¿Cómo elimino mi cuenta?', a: 'Escríbenos a hola@yudbot.com desde el email registrado pidiendo la eliminación. Borraremos tu cuenta y todos tus datos en un máximo de 30 días, conforme al RGPD.\n\nLos archivos .mq4/.mq5 que ya descargaste son tuyos y los conservas.' },
+  { id: 'cambiar-email', cat: 'Cuenta', kw: ['cambiar email','correo','actualizar email','nuevo correo'], q: '¿Cómo cambio mi email?', a: 'De momento no se puede cambiar el email desde la app. Escríbenos a support@yudbot.com desde el email registrado pidiendo el cambio y indicando el nuevo email.' },
+  { id: 'contraseña', cat: 'Cuenta', kw: ['contraseña','password','olvide','restablecer','recuperar contraseña','reset'], q: 'He olvidado mi contraseña', a: 'Por ahora la recuperación es manual: escríbenos a support@yudbot.com desde el email de tu cuenta y te enviamos un enlace para restablecer.\n\nEstamos trabajando en una recuperación automática para próximas versiones.' },
+  { id: 'borrar-cuenta', cat: 'Cuenta', kw: ['borrar cuenta','eliminar cuenta','dar de baja','rgpd','gdpr'], q: '¿Cómo elimino mi cuenta?', a: 'Escríbenos a support@yudbot.com desde el email registrado pidiendo la eliminación. Borraremos tu cuenta y todos tus datos en un máximo de 30 días, conforme al RGPD.\n\nLos archivos .mq4/.mq5 que ya descargaste son tuyos y los conservas.' },
   { id: 'datos', cat: 'Cuenta', kw: ['privacidad','que datos','rgpd','gdpr','protección de datos'], q: '¿Qué datos guardáis sobre mí?', a: 'Solo lo necesario:\n\n• Email + contraseña hasheada\n• Nombre\n• Lista de bots creados (config)\n• Pagos via Stripe (Stripe gestiona los datos de tarjeta, no nosotros)\n\nNO guardamos:\n• Datos de tu broker\n• Operaciones que hace tu bot\n• Saldo de tu cuenta\n\nCumplimos con el RGPD. Puedes pedir borrar tu cuenta cuando quieras.' },
 
   // ───── SOPORTE HUMANO ─────
-  { id: 'soporte', cat: 'Contacto', kw: ['soporte humano','persona','hablar','contacto humano','email soporte'], q: '¿Cómo contacto soporte humano?', a: 'Email: hola@yudbot.com\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
+  { id: 'soporte', cat: 'Contacto', kw: ['soporte humano','persona','hablar','contacto humano','email soporte'], q: '¿Cómo contacto soporte humano?', a: 'Email: support@yudbot.com\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
 ];
 
 const CONV = {
@@ -3317,7 +3317,7 @@ function loadSupport(root) {
           txt += '\n\nEscribe el número o reformula tu pregunta.';
           state.support._lastSuggestions = result.suggestions;
         } else {
-          txt = 'No he encontrado nada relacionado. Escribe "ayuda" para ver lo que puedo hacer, o contacta a hola@yudbot.com.';
+          txt = 'No he encontrado nada relacionado. Escribe "ayuda" para ver lo que puedo hacer, o contacta a support@yudbot.com.';
         }
         pushMsg('bot', txt);
         loadSupport(document.getElementById('screen-root'));
