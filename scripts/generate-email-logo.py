@@ -1,46 +1,54 @@
 """
-Generates a 96x96 PNG of the YudBot logo (black rounded square + white chart line)
-for use in transactional email templates. Gmail does not render inline SVG, so
-we ship this PNG and reference it via URL.
+Genera 2 PNGs (blanco y negro) del logo oficial de YudBot a partir de los SVG.
+- logo-white.png  → fondo blanco con trazo oscuro (para fondos oscuros)
+- logo-black.png  → fondo oscuro con trazo blanco (para fondos claros, ej. emails)
+
+Gmail no renderiza inline SVG, así que los emails usan el PNG.
 """
 from PIL import Image, ImageDraw
 import os
 
 SIZE = 96
-RADIUS = 22  # Border radius for the rounded square
-BG = (255, 255, 255, 255)  # blanco como en el sidebar
-FG = (0, 0, 0, 255)         # negro
-BORDER = (0, 0, 0, 30)      # borde sutil para que el cuadrado se vea sobre fondo blanco
-BORDER_WIDTH = 2
+RADIUS_PX = SIZE * (56 / 256)  # 56/256 viewBox proportion ≈ 21px
+LINE_WIDTH = max(2, round(SIZE * (14 / 256)))
 
-# Create RGBA image for transparency support, but bg covers all
-img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
-draw = ImageDraw.Draw(img)
+# Path en viewBox 256: (56,168) -> (102,118) -> (142,148) -> (192,82)
+# Escalado a SIZE
+def scale_pt(p):
+    s = SIZE / 256
+    return (int(p[0] * s), int(p[1] * s))
 
-# Rounded square background con borde sutil
-draw.rounded_rectangle((0, 0, SIZE - 1, SIZE - 1), radius=RADIUS, fill=BG, outline=BORDER, width=BORDER_WIDTH)
+POINTS = [scale_pt((56,168)), scale_pt((102,118)), scale_pt((142,148)), scale_pt((192,82))]
+DOT_CENTER = scale_pt((192, 82))
+DOT_RADIUS = max(2, round(SIZE * (16 / 256)))
 
-# Scale the SVG path coordinates from 32x32 viewBox to 96x96
-scale = SIZE / 32
+# Padding (la rect del SVG empieza en 16,16 sobre 256, así que el padding es 16/256 ≈ 6.25%)
+PAD = round(SIZE * (16 / 256))
 
-points = [
-    (5, 22),   # Bottom-left start
-    (11, 16),
-    (17, 19),
-    (23, 11),
-    (28, 8),   # Top-right end (where the dot goes)
-]
-scaled = [(int(x * scale), int(y * scale)) for (x, y) in points]
 
-# Polyline for chart
-draw.line(scaled, fill=FG, width=int(2.4 * scale * 0.8), joint="curve")
+def render(bg, fg, out_path):
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    # Cuadrado redondeado
+    draw.rounded_rectangle(
+        (PAD, PAD, SIZE - PAD - 1, SIZE - PAD - 1),
+        radius=int(RADIUS_PX),
+        fill=bg,
+    )
+    # Linea
+    draw.line(POINTS, fill=fg, width=LINE_WIDTH, joint="curve")
+    # Punto
+    cx, cy = DOT_CENTER
+    draw.ellipse((cx - DOT_RADIUS, cy - DOT_RADIUS, cx + DOT_RADIUS, cy + DOT_RADIUS), fill=fg)
 
-# Circle at the last point (radius 3 in viewBox = ~9px)
-cx, cy = scaled[-1]
-r = int(3 * scale)
-draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=FG)
+    img.save(out_path, "PNG", optimize=True)
+    print(f"Saved {out_path}")
 
-# Save
-out_path = os.path.join(os.path.dirname(__file__), "..", "logo-email.png")
-img.save(out_path, "PNG", optimize=True)
-print(f"Saved {out_path}")
+
+root = os.path.join(os.path.dirname(__file__), "..")
+render(bg=(255, 255, 255, 255), fg=(17, 17, 17, 255), out_path=os.path.join(root, "logo-white.png"))
+render(bg=(17, 17, 17, 255), fg=(255, 255, 255, 255), out_path=os.path.join(root, "logo-black.png"))
+# Mantenemos un alias por compatibilidad con plantillas viejas
+import shutil
+shutil.copy(os.path.join(root, "logo-black.png"), os.path.join(root, "logo-email.png"))
+print("Alias: logo-email.png copiado de logo-black.png")

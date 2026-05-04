@@ -29,6 +29,8 @@ npm-debug.log*
 *.png
 !screenshots/*.png
 !logo-email.png
+!logo-black.png
+!logo-white.png
 !icon-192.png
 !icon-512.png
 

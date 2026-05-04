@@ -171,11 +171,18 @@ input, textarea, select { font-family: inherit; color: inherit; }
   letter-spacing: -0.3px;
 }
 .brand-logo {
-  width: 32px; height: 32px;
-  display: block;
+  display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
 }
-img.brand-logo { object-fit: contain; }
+.brand-logo-img { display: block; object-fit: contain; }
+
+/* Logo theme-switch */
+.logo-on-dark { display: none; }   /* En tema claro: ocultamos el logo blanco */
+[data-theme="light"] .logo-on-dark { display: none; }
+[data-theme="light"] .logo-on-light { display: block; }
+:root:not([data-theme="light"]) .logo-on-light { display: none; }
+:root:not([data-theme="light"]) .logo-on-dark { display: block; }
 
 .nav-list { display: flex; flex-direction: column; gap: 3px; }
 .nav-item {
@@ -452,13 +459,16 @@ main {
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 24px;
 }
-/* Versión img: usada con el PNG del logo de YudBot */
-img.auth-logo {
+/* Wrap del logo de marca en pantallas auth — ya no necesita fondo (los SVGs lo traen) */
+.auth-logo-img-wrap {
+  width: 56px; height: 56px;
   background: transparent;
   border-radius: 0;
   display: block;
-  object-fit: contain;
+  margin: 0 auto 24px;
+  line-height: 0;
 }
+.auth-logo-img-wrap img { width: 56px; height: 56px; object-fit: contain; }
 .auth-card h1 {
   text-align: center;
   font-family: 'Inter Tight', sans-serif;
@@ -1197,7 +1207,10 @@ function renderShell() {
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-logo" src="/logo-email.png" alt="YudBot" width="32" height="32"/>
+          <span class="brand-logo">
+            <img class="brand-logo-img logo-on-light" src="/logo-black.svg" alt="YudBot" width="32" height="32"/>
+            <img class="brand-logo-img logo-on-dark" src="/logo-white.svg" alt="YudBot" width="32" height="32"/>
+          </span>
           YudBot
         </div>
         <div class="nav-list">
@@ -1226,7 +1239,10 @@ function renderShell() {
       <main>
         <div class="mobile-top">
           <div class="brand">
-            <img class="brand-logo" src="/logo-email.png" alt="YudBot" width="28" height="28"/>
+            <span class="brand-logo">
+              <img class="brand-logo-img logo-on-light" src="/logo-black.svg" alt="YudBot" width="28" height="28"/>
+              <img class="brand-logo-img logo-on-dark" src="/logo-white.svg" alt="YudBot" width="28" height="28"/>
+            </span>
             YudBot
           </div>
           <button class="theme-toggle-mobile theme-toggle-trigger" aria-label="Cambiar tema">
@@ -1484,7 +1500,10 @@ function renderAuth() {
       <div class="auth-bg"></div>
       <div class="auth-grid"></div>
       <div class="auth-card fade-up">
-        <img class="auth-logo" src="/logo-email.png" alt="YudBot" width="56" height="56"/>
+        <span class="auth-logo auth-logo-img-wrap">
+          <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="56" height="56"/>
+          <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="56" height="56"/>
+        </span>
         <h1>${isLogin ? 'Bienvenido de vuelta' : 'Crea tu cuenta'}</h1>
         <p class="sub">${isLogin ? 'Accede a tus bots de trading' : 'Empieza gratis. Solo pagas al crear un bot'}</p>
 
