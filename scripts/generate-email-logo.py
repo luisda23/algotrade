@@ -48,7 +48,27 @@ def render(bg, fg, out_path):
 root = os.path.join(os.path.dirname(__file__), "..")
 render(bg=(255, 255, 255, 255), fg=(17, 17, 17, 255), out_path=os.path.join(root, "logo-white.png"))
 render(bg=(17, 17, 17, 255), fg=(255, 255, 255, 255), out_path=os.path.join(root, "logo-black.png"))
-# Mantenemos un alias por compatibilidad con plantillas viejas
+# Alias por compatibilidad con plantillas viejas
 import shutil
 shutil.copy(os.path.join(root, "logo-black.png"), os.path.join(root, "logo-email.png"))
-print("Alias: logo-email.png copiado de logo-black.png")
+
+# Iconos de PWA / favicon — usamos el negro (visible en todas las pestañas/sistemas)
+def render_icon(size, out_path):
+    global SIZE, RADIUS_PX, LINE_WIDTH, POINTS, DOT_CENTER, DOT_RADIUS, PAD
+    prev_size = SIZE
+    SIZE = size
+    RADIUS_PX = SIZE * (56 / 256)
+    LINE_WIDTH = max(2, round(SIZE * (14 / 256)))
+    def s(p):
+        sc = SIZE / 256
+        return (int(p[0] * sc), int(p[1] * sc))
+    POINTS = [s((56,168)), s((102,118)), s((142,148)), s((192,82))]
+    DOT_CENTER = s((192, 82))
+    DOT_RADIUS = max(2, round(SIZE * (16 / 256)))
+    PAD = round(SIZE * (16 / 256))
+    render(bg=(17, 17, 17, 255), fg=(255, 255, 255, 255), out_path=out_path)
+    SIZE = prev_size
+
+render_icon(192, os.path.join(root, "icon-192.png"))
+render_icon(512, os.path.join(root, "icon-512.png"))
+print("Iconos PWA actualizados (icon-192.png, icon-512.png)")

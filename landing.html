@@ -62,9 +62,12 @@
 
 html, body { transition: background-color 0.3s var(--ease), color 0.3s var(--ease); }
 
-.logo-rect { fill: var(--text); }
-.logo-line { stroke: var(--bg); }
-.logo-dot { fill: var(--bg); }
+/* Logo theme switch — muestra logo-black sobre fondo claro y logo-white sobre fondo oscuro */
+.logo-on-dark { display: none; }
+[data-theme="light"] .logo-on-dark { display: none; }
+[data-theme="light"] .logo-on-light { display: inline-block; vertical-align: middle; }
+:root:not([data-theme="light"]) .logo-on-light { display: none; }
+:root:not([data-theme="light"]) .logo-on-dark { display: inline-block; vertical-align: middle; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -721,11 +724,8 @@ footer {
 <!-- ============ NAVBAR ============ -->
 <nav class="nav" id="nav">
   <a href="/" class="nav-logo">
-    <svg viewBox="0 0 32 32" fill="none" class="logo-svg">
-      <rect width="32" height="32" rx="8" class="logo-rect"/>
-      <path d="M5 22 L11 16 L17 19 L23 11 L28 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" class="logo-line"/>
-      <circle cx="28" cy="8" r="2" class="logo-dot"/>
-    </svg>
+    <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="32" height="32"/>
+    <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="32" height="32"/>
     YudBot
   </a>
   <div class="nav-links">
@@ -1021,11 +1021,8 @@ footer {
 <footer>
   <div class="footer-content">
     <div class="footer-logo">
-      <svg viewBox="0 0 32 32" fill="none" width="24" height="24" class="logo-svg">
-        <rect width="32" height="32" rx="8" class="logo-rect"/>
-        <path d="M5 22 L11 16 L17 19 L23 11 L28 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" class="logo-line"/>
-        <circle cx="28" cy="8" r="2" class="logo-dot"/>
-      </svg>
+      <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="24" height="24"/>
+      <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="24" height="24"/>
       YudBot
     </div>
     <div class="footer-meta">
