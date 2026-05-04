@@ -1004,7 +1004,8 @@ const state = {
   authMode: 'login',          // login | signup
   authError: null,
   authLoading: false,
-  needsVerification: false,   // true tras signup, muestra UI de código
+  // Login con MFA: tras pasar email+password, guardamos pendingToken aquí y mostramos pantalla OTP
+  loginPending: null,         // { pendingToken, emailHint } | null
   wizard: {
     step: 0,
     generating: false,
@@ -1131,15 +1132,14 @@ function render() {
   const root = document.getElementById('root');
   loadAuth();
   if (!state.token) {
+    // Login con MFA pendiente: mostramos la pantalla del código en vez del formulario
+    if (state.loginPending) {
+      root.innerHTML = renderLoginMFA();
+      bindLoginMFA();
+      return;
+    }
     root.innerHTML = renderAuth();
     bindAuth();
-    return;
-  }
-  // Si el usuario está logueado pero no ha verificado el email, bloqueamos hasta que lo haga
-  if (state.user && state.user.emailVerified === false) {
-    state.needsVerification = true;
-    root.innerHTML = renderVerify();
-    bindVerify();
     return;
   }
   // App shell con sidebar
@@ -1344,28 +1344,28 @@ function renderAuth() {
   `;
 }
 
-function renderVerify() {
-  const u = state.user || {};
+function renderLoginMFA() {
+  const hint = state.loginPending?.emailHint || '';
   return `
     <div class="auth-screen">
       <div class="auth-bg"></div>
       <div class="auth-grid"></div>
       <div class="auth-card fade-up">
         <div class="auth-logo">${I.mail}</div>
-        <h1>Verifica tu email</h1>
-        <p class="sub">Hemos enviado un código de 6 dígitos a<br/><strong style="color:var(--text)">${u.email || ''}</strong></p>
+        <h1>Verifica que eres tú</h1>
+        <p class="sub">Hemos enviado un código de 6 dígitos a<br/><strong style="color:var(--text)">${hint}</strong></p>
 
         <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
           ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
         </div>
 
-        <form class="auth-form" id="verify-form">
+        <form class="auth-form" id="mfa-form">
           <div class="otp-row" id="otp-row">
             ${[0,1,2,3,4,5].map(i => `<input class="otp-input" type="tel" inputmode="numeric" maxlength="1" autocomplete="one-time-code" data-otp-i="${i}"/>`).join('')}
           </div>
-          <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:16px" id="verify-submit">
+          <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:16px" id="mfa-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
-            <span>Verificar</span>
+            <span>Acceder</span>
             ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
           </button>
         </form>
@@ -1375,16 +1375,15 @@ function renderVerify() {
           <button type="button" class="auth-link-sub" id="resend-code">Reenviar código</button>
         </div>
         <div style="text-align:center;margin-top:12px">
-          <button type="button" class="auth-link-sub" id="back-to-login" style="font-size:12px">Cerrar sesión</button>
+          <button type="button" class="auth-link-sub" id="back-to-login" style="font-size:12px">Cancelar y volver</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function bindVerify() {
+function bindLoginMFA() {
   const inputs = document.querySelectorAll('.otp-input');
-  // Auto-focus primero + auto-avance al siguiente al teclear
   inputs[0]?.focus();
   inputs.forEach((el, i) => {
     el.addEventListener('input', (e) => {
@@ -1405,7 +1404,7 @@ function bindVerify() {
     });
   });
 
-  document.getElementById('verify-form')?.addEventListener('submit', async (e) => {
+  document.getElementById('mfa-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = [...inputs].map(x => x.value).join('');
     if (!/^\d{6}$/.test(code)) {
@@ -1417,16 +1416,21 @@ function bindVerify() {
     state.authLoading = true;
     render();
     try {
-      await api('/auth/verify', { method: 'POST', body: JSON.stringify({ code }) });
-      // Refrescar info del usuario y entrar al dashboard
-      const me = await api('/auth/me');
-      state.user = me;
-      try { localStorage.setItem('user', JSON.stringify(me)); } catch (_) {}
-      state.needsVerification = false;
-      state.currentScreen = 'dashboard';
-      state.authLoading = false;
-      toast(`¡Email verificado! Bienvenido a Yudbot`, 'success');
-      render();
+      const data = await api('/auth/verify-login', {
+        method: 'POST',
+        body: JSON.stringify({
+          pendingToken: state.loginPending.pendingToken,
+          code,
+        }),
+      });
+      if (data.token) {
+        saveAuth(data.token, data.user);
+        state.loginPending = null;
+        state.currentScreen = 'dashboard';
+        state.authLoading = false;
+        toast(`¡Hola ${data.user?.name?.split(' ')[0] || ''}!`, 'success');
+        render();
+      }
     } catch (err) {
       state.authError = err.message || 'Código incorrecto';
       state.authLoading = false;
@@ -1436,7 +1440,10 @@ function bindVerify() {
 
   document.getElementById('resend-code')?.addEventListener('click', async () => {
     try {
-      await api('/auth/resend-verification', { method: 'POST' });
+      await api('/auth/resend-login-code', {
+        method: 'POST',
+        body: JSON.stringify({ pendingToken: state.loginPending.pendingToken }),
+      });
       toast('Código reenviado. Revisa tu email.', 'success');
     } catch (err) {
       toast(err.message || 'No se pudo reenviar', 'error');
@@ -1444,9 +1451,8 @@ function bindVerify() {
   });
 
   document.getElementById('back-to-login')?.addEventListener('click', () => {
-    clearAuth();
-    state.needsVerification = false;
-    state.currentScreen = 'auth';
+    state.loginPending = null;
+    state.authError = null;
     render();
   });
 }
@@ -1533,15 +1539,9 @@ function bindAuth() {
         const data = await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
         if (data.token) {
           saveAuth(data.token, data.user);
+          state.currentScreen = 'dashboard';
           state.authLoading = false;
-          // Si el email no está verificado, muestra pantalla de verificación
-          if (data.user && data.user.emailVerified === false) {
-            state.needsVerification = true;
-            state.currentScreen = 'auth'; // se queda en auth pero render decide qué mostrar
-          } else {
-            state.currentScreen = 'dashboard';
-            toast(`Bienvenido, ${data.user?.name || 'trader'} 👋`, 'success');
-          }
+          toast(`¡Bienvenido a Yudbot, ${data.user?.name?.split(' ')[0] || 'trader'}! 👋`, 'success');
           render();
         }
       } catch (err) {
@@ -1559,6 +1559,15 @@ function bindAuth() {
     render();
     try {
       const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      if (data.requiresMFA && data.pendingToken) {
+        // Email + contraseña OK. Toca pantalla del código.
+        state.loginPending = { pendingToken: data.pendingToken, emailHint: data.emailHint || email };
+        state.authLoading = false;
+        state.authError = null;
+        render();
+        return;
+      }
+      // Fallback (login sin MFA, no debería pasar)
       if (data.token) {
         saveAuth(data.token, data.user);
         state.currentScreen = 'dashboard';
