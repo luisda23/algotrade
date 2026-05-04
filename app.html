@@ -2872,7 +2872,19 @@ function loadAccount(root) {
             <input class="input" id="acc-email" name="email" type="email" required value="${(u.email || '').replace(/"/g, '&quot;')}" autocomplete="email" style="flex:1"/>
             <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
           </div>
-          <div class="text-dim" style="font-size:12px;margin-top:8px">Si cambias el email tendrás que iniciar sesión con el nuevo.</div>
+          <div class="text-dim" style="font-size:12px;margin-top:8px">Te enviaremos un código al nuevo email para confirmar el cambio.</div>
+
+          <div id="email-change-verify" style="display:none;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
+            <div class="field-label">Confirma tu nuevo email</div>
+            <div class="text-dim" style="font-size:12px;margin-bottom:12px">Hemos enviado un código de 6 dígitos a <strong id="email-change-hint" style="color:var(--text)"></strong>. Introdúcelo aquí:</div>
+            <div class="otp-row" style="margin-bottom:14px">
+              ${[0,1,2,3,4,5].map(i => `<input class="otp-input email-change-otp" type="tel" inputmode="numeric" maxlength="1" data-otp-i="${i}"/>`).join('')}
+            </div>
+            <div style="display:flex;gap:10px">
+              <button type="button" class="btn btn-primary" id="email-change-confirm" style="flex:1;justify-content:center">Confirmar</button>
+              <button type="button" class="btn btn-soft" id="email-change-cancel" style="white-space:nowrap">Cancelar</button>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -2944,21 +2956,71 @@ function loadAccount(root) {
     }
   });
 
-  // Update email
+  // Update email — pide código al nuevo email antes de aplicar el cambio
+  const emailVerifyBox = document.getElementById('email-change-verify');
+  const emailHintEl = document.getElementById('email-change-hint');
+  const emailOtpInputs = document.querySelectorAll('.email-change-otp');
+
+  // OTP UX (auto-avance, backspace, paste)
+  emailOtpInputs.forEach((el, i) => {
+    el.addEventListener('input', (e) => {
+      const v = (e.target.value || '').replace(/\D/g, '').slice(0, 1);
+      e.target.value = v;
+      if (v && emailOtpInputs[i + 1]) emailOtpInputs[i + 1].focus();
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && emailOtpInputs[i - 1]) emailOtpInputs[i - 1].focus();
+    });
+    el.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      [...text].forEach((ch, idx) => { if (emailOtpInputs[idx]) emailOtpInputs[idx].value = ch; });
+      if (text.length === 6) emailOtpInputs[5]?.focus();
+    });
+  });
+
   document.getElementById('account-email-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('acc-email').value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Email no válido', 'error'); return; }
     if (email === (state.user?.email || '').toLowerCase()) { toast('Ese email ya es el tuyo', 'info'); return; }
-    if (!confirm('Vas a cambiar el email de tu cuenta. Tendrás que iniciar sesión con el nuevo. ¿Continuar?')) return;
     try {
       const data = await api('/auth/me', { method: 'PUT', body: JSON.stringify({ email }) });
-      state.user = data.user;
-      try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
-      toast('Email actualizado', 'success');
-      render();
+      if (data.emailChangeRequested) {
+        // Mostrar el bloque de OTP con la pista del email
+        emailHintEl.textContent = data.emailHint || email;
+        emailVerifyBox.style.display = '';
+        emailOtpInputs.forEach(x => x.value = '');
+        emailOtpInputs[0]?.focus();
+        toast('Código enviado al nuevo email', 'success');
+      } else {
+        toast('Email actualizado', 'success');
+        state.user = data.user;
+        try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
+        render();
+      }
     } catch (err) {
       toast(err.message || 'No se pudo actualizar', 'error');
+    }
+  });
+
+  document.getElementById('email-change-cancel')?.addEventListener('click', () => {
+    emailVerifyBox.style.display = 'none';
+    emailOtpInputs.forEach(x => x.value = '');
+  });
+
+  document.getElementById('email-change-confirm')?.addEventListener('click', async () => {
+    const code = [...emailOtpInputs].map(x => x.value).join('');
+    if (!/^\d{6}$/.test(code)) { toast('Mete los 6 dígitos del código', 'error'); return; }
+    try {
+      const data = await api('/auth/verify-email-change', { method: 'POST', body: JSON.stringify({ code }) });
+      state.user = data.user;
+      try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
+      toast('Email actualizado correctamente', 'success');
+      emailVerifyBox.style.display = 'none';
+      render();
+    } catch (err) {
+      toast(err.message || 'Código incorrecto', 'error');
     }
   });
 
