@@ -540,6 +540,18 @@ main {
 }
 .auth-link-sub:hover { color: var(--text); }
 
+.account-section { margin-top: 32px; }
+.account-section-title {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-mute);
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.account-form { padding: 20px; }
+.account-form .field-label { display: block; }
+
 /* Icon sizing default (todos los SVG inline) */
 svg { display: block; }
 .input-icon svg { width: 18px; height: 18px; }
@@ -2677,23 +2689,75 @@ function loadAccount(root) {
 
       <div class="card card-pad-lg fade-up" style="margin-top:28px;display:flex;align-items:center;gap:18px;">
         <div class="user-avatar" style="width:64px;height:64px;font-size:24px;">${initial}</div>
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <div style="font-family:'Inter Tight';font-size:22px;font-weight:800;letter-spacing:-0.02em;">${u.name || 'Usuario'}</div>
-          <div class="text-dim mt-2" style="font-size:14px;">${u.email || ''}</div>
+          <div class="text-dim mt-2" style="font-size:14px;overflow:hidden;text-overflow:ellipsis">${u.email || ''}</div>
         </div>
       </div>
 
-      <div class="card fade-up" style="margin-top:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="goto-support">
-        ${I.mail}
-        <div style="flex:1">
-          <div class="h3">Contactar soporte</div>
-        </div>
-        ${I.arrow}
+      <div class="account-section">
+        <h2 class="account-section-title">Información personal</h2>
+
+        <form class="card account-form" id="account-name-form">
+          <label class="field-label" for="acc-name">Nombre completo</label>
+          <div style="display:flex;gap:10px">
+            <input class="input" id="acc-name" name="name" type="text" required maxlength="80" value="${(u.name || '').replace(/"/g, '&quot;')}" autocomplete="name" style="flex:1"/>
+            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
+          </div>
+        </form>
+
+        <form class="card account-form" id="account-email-form" style="margin-top:12px">
+          <label class="field-label" for="acc-email">Email</label>
+          <div style="display:flex;gap:10px">
+            <input class="input" id="acc-email" name="email" type="email" required value="${(u.email || '').replace(/"/g, '&quot;')}" autocomplete="email" style="flex:1"/>
+            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
+          </div>
+          <div class="text-dim" style="font-size:12px;margin-top:8px">Si cambias el email tendrás que iniciar sesión con el nuevo.</div>
+        </form>
       </div>
 
-      <button class="btn btn-soft fade-up" id="logout-btn" style="margin-top:24px;width:100%;justify-content:center;color:var(--neg);border-color:rgba(255,71,87,0.2)">${I.logout} Cerrar sesión</button>
+      <div class="account-section">
+        <h2 class="account-section-title">Seguridad</h2>
+
+        <form class="card account-form" id="account-pw-form">
+          <label class="field-label" for="acc-pw-current">Contraseña actual</label>
+          <input class="input" id="acc-pw-current" type="password" required autocomplete="current-password" placeholder="••••••••"/>
+
+          <label class="field-label" for="acc-pw-new" style="margin-top:14px">Nueva contraseña</label>
+          <input class="input" id="acc-pw-new" type="password" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres"/>
+          <div id="acc-pw-strength" style="display:none;margin-top:8px">
+            <div class="pw-bar"><div class="pw-bar-fill" id="acc-pw-bar-fill"></div></div>
+            <div class="pw-rules">
+              <span class="pw-rule" id="acc-r-len">${I.dot} 8+ caracteres</span>
+              <span class="pw-rule" id="acc-r-upper">${I.dot} Una mayúscula</span>
+              <span class="pw-rule" id="acc-r-num">${I.dot} Un número</span>
+            </div>
+          </div>
+
+          <label class="field-label" for="acc-pw-new2" style="margin-top:14px">Repetir nueva contraseña</label>
+          <input class="input" id="acc-pw-new2" type="password" required autocomplete="new-password" placeholder="Repite la nueva contraseña"/>
+
+          <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center">Cambiar contraseña</button>
+        </form>
+      </div>
+
+      <div class="account-section">
+        <h2 class="account-section-title">Ayuda y cuenta</h2>
+
+        <div class="card fade-up" style="display:flex;align-items:center;gap:14px;cursor:pointer" id="goto-support">
+          ${I.mail}
+          <div style="flex:1">
+            <div class="h3">Contactar soporte</div>
+          </div>
+          ${I.arrow}
+        </div>
+
+        <button class="btn btn-soft" id="logout-btn" style="margin-top:12px;width:100%;justify-content:center;color:var(--neg);border-color:rgba(255,71,87,0.2)">${I.logout} Cerrar sesión</button>
+      </div>
     </div>
   `;
+
+  // Logout
   document.getElementById('logout-btn')?.addEventListener('click', () => {
     clearAuth();
     state.currentScreen = 'auth';
@@ -2702,6 +2766,88 @@ function loadAccount(root) {
   document.getElementById('goto-support')?.addEventListener('click', () => {
     state.currentScreen = 'support';
     render();
+  });
+
+  // Update name
+  document.getElementById('account-name-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('acc-name').value.trim();
+    if (name.length < 2) { toast('Pon tu nombre completo', 'error'); return; }
+    try {
+      const data = await api('/auth/me', { method: 'PUT', body: JSON.stringify({ name }) });
+      state.user = data.user;
+      try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
+      toast('Nombre actualizado', 'success');
+      render();
+    } catch (err) {
+      toast(err.message || 'No se pudo actualizar', 'error');
+    }
+  });
+
+  // Update email
+  document.getElementById('account-email-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('acc-email').value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Email no válido', 'error'); return; }
+    if (email === (state.user?.email || '').toLowerCase()) { toast('Ese email ya es el tuyo', 'info'); return; }
+    if (!confirm('Vas a cambiar el email de tu cuenta. Tendrás que iniciar sesión con el nuevo. ¿Continuar?')) return;
+    try {
+      const data = await api('/auth/me', { method: 'PUT', body: JSON.stringify({ email }) });
+      state.user = data.user;
+      try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
+      toast('Email actualizado', 'success');
+      render();
+    } catch (err) {
+      toast(err.message || 'No se pudo actualizar', 'error');
+    }
+  });
+
+  // Password strength meter
+  const pwNew = document.getElementById('acc-pw-new');
+  const fill = document.getElementById('acc-pw-bar-fill');
+  const strengthBox = document.getElementById('acc-pw-strength');
+  const rLen = document.getElementById('acc-r-len');
+  const rUpper = document.getElementById('acc-r-upper');
+  const rNum = document.getElementById('acc-r-num');
+  pwNew?.addEventListener('input', () => {
+    const v = pwNew.value || '';
+    if (strengthBox) strengthBox.style.display = v.length > 0 ? '' : 'none';
+    const okLen = v.length >= 8;
+    const okUpper = /[A-Z]/.test(v);
+    const okNum = /\d/.test(v);
+    rLen?.classList.toggle('ok', okLen);
+    rUpper?.classList.toggle('ok', okUpper);
+    rNum?.classList.toggle('ok', okNum);
+    const score = (okLen ? 1 : 0) + (okUpper ? 1 : 0) + (okNum ? 1 : 0) + (v.length >= 12 ? 1 : 0);
+    if (fill) {
+      fill.style.width = (score / 4) * 100 + '%';
+      fill.className = 'pw-bar-fill s' + Math.max(1, score);
+    }
+  });
+
+  // Change password
+  document.getElementById('account-pw-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById('acc-pw-current').value;
+    const newPassword = document.getElementById('acc-pw-new').value;
+    const confirm2 = document.getElementById('acc-pw-new2').value;
+    if (newPassword !== confirm2) { toast('Las contraseñas nuevas no coinciden', 'error'); return; }
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      toast('La nueva contraseña necesita 8+ chars, mayúscula y número', 'error');
+      return;
+    }
+    if (currentPassword === newPassword) { toast('La nueva contraseña debe ser distinta de la actual', 'error'); return; }
+    try {
+      await api('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
+      toast('Contraseña actualizada', 'success');
+      // Reset form
+      document.getElementById('acc-pw-current').value = '';
+      document.getElementById('acc-pw-new').value = '';
+      document.getElementById('acc-pw-new2').value = '';
+      if (strengthBox) strengthBox.style.display = 'none';
+    } catch (err) {
+      toast(err.message || 'No se pudo cambiar la contraseña', 'error');
+    }
   });
 }
 
