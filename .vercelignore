@@ -1,0 +1,27 @@
+# Backend code lives on Railway, never serve it from the frontend domain.
+backend/
+
+# Internal scripts (logo / cover generators) — not needed at runtime.
+scripts/
+
+# Documentation that we do not want indexed or readable publicly.
+*.md
+!README.md
+
+# Local / build artefacts
+node_modules/
+.env
+.env.*
+.git/
+.gitignore
+.claude/
+
+# Image generation artefacts that should not be on the CDN
+gumroad-cover.png
+*-test.png
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
