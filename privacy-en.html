@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Privacy Policy · YudBot</title>
+<meta name="description" content="Privacy policy of YudBot — how we handle your personal data under the GDPR."/>
+<meta name="robots" content="index, follow"/>
+<meta name="theme-color" content="#000000"/>
+<link rel="canonical" href="https://yudbot.com/en/privacy"/>
+<link rel="alternate" hreflang="es" href="https://yudbot.com/privacy"/>
+<link rel="alternate" hreflang="en" href="https://yudbot.com/en/privacy"/>
+<link rel="icon" type="image/png" href="/icon-192.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<script>
+(() => {
+  const stored = localStorage.getItem('theme');
+  if (stored !== 'dark') document.documentElement.setAttribute('data-theme', 'light');
+  try { localStorage.setItem('lang', 'en'); } catch (e) {}
+})();
+</script>
+
+<style>
+:root {
+  --bg: #000000;
+  --bg-card: #0A0A0A;
+  --bg-soft: #050505;
+  --border: rgba(255,255,255,0.10);
+  --text: #FFFFFF;
+  --text-dim: rgba(255,255,255,0.70);
+  --text-mute: rgba(255,255,255,0.45);
+  --accent-bg: rgba(120,180,255,0.06);
+  --accent-border: rgba(120,180,255,0.20);
+}
+[data-theme="light"] {
+  --bg: #FFFFFF;
+  --bg-card: #F7F7F7;
+  --bg-soft: #FAFAFA;
+  --border: rgba(0,0,0,0.10);
+  --text: #000000;
+  --text-dim: rgba(0,0,0,0.72);
+  --text-mute: rgba(0,0,0,0.50);
+  --accent-bg: rgba(0,80,200,0.04);
+  --accent-border: rgba(0,80,200,0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { transition: background-color 0.3s ease, color 0.3s ease; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.logo-on-dark { display: none; }
+[data-theme="light"] .logo-on-light { display: inline-block; vertical-align: middle; }
+:root:not([data-theme="light"]) .logo-on-light { display: none; }
+:root:not([data-theme="light"]) .logo-on-dark { display: inline-block; vertical-align: middle; }
+
+.nav { border-bottom: 1px solid var(--border); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-soft); position: sticky; top: 0; backdrop-filter: blur(8px); z-index: 10; }
+.nav-logo { display: inline-flex; align-items: center; gap: 10px; font-family: 'Inter Tight'; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.lang-toggle { background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: 12px; font-weight: 600; letter-spacing: 0.5px; padding: 6px 10px; border-radius: 8px; text-decoration: none; transition: color 0.2s, border-color 0.2s; }
+.lang-toggle:hover { color: var(--text); border-color: var(--text); }
+.nav-back { font-size: 14px; color: var(--text-dim); text-decoration: none; font-weight: 500; }
+.nav-back:hover { color: var(--text); }
+
+main { max-width: 760px; margin: 0 auto; padding: 60px 24px 80px; }
+
+h1 { font-family: 'Inter Tight'; font-size: 44px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; line-height: 1.1; }
+.updated { color: var(--text-mute); font-size: 13px; margin-bottom: 40px; }
+h2 { font-family: 'Inter Tight'; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 48px 0 14px; scroll-margin-top: 80px; }
+h3 { font-family: 'Inter Tight'; font-size: 17px; font-weight: 700; margin: 24px 0 8px; }
+p { margin-bottom: 14px; color: var(--text-dim); }
+ul, ol { margin: 8px 0 18px 22px; color: var(--text-dim); }
+li { margin-bottom: 6px; }
+strong { color: var(--text); font-weight: 600; }
+a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { opacity: 0.7; }
+
+.toc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; margin-bottom: 40px; }
+.toc-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-mute); margin-bottom: 12px; }
+.toc ol { margin: 0 0 0 20px; column-count: 2; column-gap: 30px; }
+.toc li { margin-bottom: 4px; break-inside: avoid; }
+.toc a { color: var(--text-dim); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--text); }
+@media (max-width: 600px) { .toc ol { column-count: 1; } }
+
+table { width: 100%; border-collapse: collapse; margin: 14px 0 24px; font-size: 13.5px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--bg-soft); font-weight: 600; color: var(--text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+tr:last-child td { border-bottom: 0; }
+
+.callout { background: var(--accent-bg); border: 1px solid var(--accent-border); border-radius: 12px; padding: 16px 20px; margin: 16px 0; font-size: 14px; color: var(--text); }
+
+footer { border-top: 1px solid var(--border); padding: 30px 24px; text-align: center; color: var(--text-mute); font-size: 13px; }
+footer a { color: var(--text-dim); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="/en">
+    <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="24" height="24"/>
+    <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="24" height="24"/>
+    YudBot
+  </a>
+  <div class="nav-right">
+    <a class="lang-toggle" href="/privacy" title="Español">ES</a>
+    <a class="nav-back" href="/en">← Back to home</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Privacy Policy</h1>
+  <div class="updated">Last updated: May 5, 2026 · Compliant with the EU GDPR (2016/679) and Spanish LOPDGDD 3/2018</div>
+
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#controller">Data controller</a></li>
+      <li><a href="#data">Data we collect</a></li>
+      <li><a href="#basis">Legal basis</a></li>
+      <li><a href="#purpose">Purpose</a></li>
+      <li><a href="#third-parties">Third parties and subprocessors</a></li>
+      <li><a href="#transfers">International transfers</a></li>
+      <li><a href="#retention">Data retention</a></li>
+      <li><a href="#rights">Your GDPR rights</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#cookies">Cookies and local storage</a></li>
+      <li><a href="#minors">Minors</a></li>
+      <li><a href="#changes">Changes to this policy</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </div>
+
+  <h2 id="controller">1. Data controller</h2>
+  <p>The data controller for your personal data is the operator of <strong>YudBot</strong> (<a href="https://yudbot.com">yudbot.com</a>), reachable at <a href="mailto:support@yudbot.com">support@yudbot.com</a>.</p>
+  <p>We take privacy seriously. This policy explains what data we collect, why, with whom we share it, and what rights you have.</p>
+
+  <h2 id="data">2. Data we collect</h2>
+  <p>We only collect the data strictly necessary for the Service to work:</p>
+
+  <table>
+    <thead>
+      <tr><th>Category</th><th>Data</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Account</td>
+        <td>Name, email, password (bcrypt hash — never plaintext)</td>
+        <td>On signup</td>
+      </tr>
+      <tr>
+        <td>Verification</td>
+        <td>6-digit OTP codes, reset tokens, expiration timestamps</td>
+        <td>On email verification or password reset</td>
+      </tr>
+      <tr>
+        <td>Bots</td>
+        <td>Bot configuration (market, pair, strategy, indicators, risk parameters)</td>
+        <td>On building a bot in the wizard</td>
+      </tr>
+      <tr>
+        <td>Payment</td>
+        <td>Lemon Squeezy order identifiers. We do <strong>NOT</strong> store card numbers or CVVs.</td>
+        <td>On completing a payment</td>
+      </tr>
+      <tr>
+        <td>Technical</td>
+        <td>IP address, User-Agent, timestamp of requests (server logs)</td>
+        <td>While using the Service</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    🔒 <strong>We do NOT collect:</strong> your broker's data, API keys for your trading account, balance, trades executed by the bot, card numbers, or sensitive data (race, ideology, health, etc.).
+  </div>
+
+  <h2 id="basis">3. Legal basis for processing</h2>
+  <p>We process your data on the following legal bases under article 6 of the GDPR:</p>
+  <ul>
+    <li><strong>Performance of contract</strong> (art. 6(1)(b)): to create your account, generate bots and process payments.</li>
+    <li><strong>Consent</strong> (art. 6(1)(a)): to send transactional emails (codes, receipts) which you accept upon signup.</li>
+    <li><strong>Legitimate interest</strong> (art. 6(1)(f)): to keep the Service secure (detect fraud, abuse, attacks).</li>
+    <li><strong>Legal obligation</strong> (art. 6(1)(c)): to keep tax records as required by Spanish law.</li>
+  </ul>
+
+  <h2 id="purpose">4. Purpose</h2>
+  <ul>
+    <li>Create and maintain your user account.</li>
+    <li>Generate and deliver the .mq4/.mq5 files you have purchased.</li>
+    <li>Send account-related emails: welcome, verification code, password reset, email-change confirmation, receipts.</li>
+    <li>Handle support requests.</li>
+    <li>Detect and prevent fraudulent or abusive activity.</li>
+    <li>Comply with legal obligations (taxes, court requests).</li>
+  </ul>
+  <p><strong>We do not use your data for personalized advertising</strong>, do not sell it, and do not transfer it to data brokers.</p>
+
+  <h2 id="third-parties">5. Third parties and subprocessors</h2>
+  <p>To deliver the Service, we share strictly necessary data with the following providers, who act as <strong>data processors</strong> under contract:</p>
+
+  <table>
+    <thead>
+      <tr><th>Provider</th><th>Function</th><th>Data shared</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener">Lemon Squeezy</a></td>
+        <td>Payment processing (Merchant of Record), invoicing</td>
+        <td>Email, name, payment data, country</td>
+      </tr>
+      <tr>
+        <td><a href="https://resend.com" target="_blank" rel="noopener">Resend</a></td>
+        <td>Sending transactional emails</td>
+        <td>Email, name, message content</td>
+      </tr>
+      <tr>
+        <td><a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a></td>
+        <td>PostgreSQL database</td>
+        <td>Full account and bots data</td>
+      </tr>
+      <tr>
+        <td><a href="https://railway.com" target="_blank" rel="noopener">Railway</a></td>
+        <td>Backend hosting</td>
+        <td>Logs, data in transit</td>
+      </tr>
+      <tr>
+        <td><a href="https://vercel.com" target="_blank" rel="noopener">Vercel</a></td>
+        <td>Frontend hosting</td>
+        <td>IP and User-Agent (access logs)</td>
+      </tr>
+      <tr>
+        <td><a href="https://hostinger.com" target="_blank" rel="noopener">Hostinger</a></td>
+        <td>Domain email hosting (@yudbot.com)</td>
+        <td>Messages received at support@yudbot.com</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Each of them is GDPR-compliant and applies appropriate technical and organizational security measures. You can review their privacy policies on their respective websites.</p>
+
+  <h2 id="transfers">6. International transfers</h2>
+  <p>Some of the providers listed above (Lemon Squeezy, Resend, Vercel, Railway) may process data on servers outside the European Economic Area, primarily in the <strong>United States</strong>. In those cases, transfers rely on one of the mechanisms in Chapter V of the GDPR:</p>
+  <ul>
+    <li>Standard Contractual Clauses (SCCs) approved by the European Commission.</li>
+    <li>EU-U.S. Data Privacy Framework (where applicable).</li>
+    <li>Your explicit consent when using the Service.</li>
+  </ul>
+
+  <h2 id="retention">7. Data retention</h2>
+  <ul>
+    <li><strong>Account and bot data:</strong> while your account is active.</li>
+    <li><strong>After account deletion:</strong> personal data is deleted within a maximum of 30 days.</li>
+    <li><strong>Tax data</strong> (invoices, payment records): kept for 6 years as required by Spanish law (Commercial Code, art. 30).</li>
+    <li><strong>Technical logs:</strong> up to 90 days.</li>
+    <li><strong>Verification / reset tokens:</strong> 10-60 minutes (auto-expire).</li>
+  </ul>
+
+  <h2 id="rights">8. Your GDPR rights</h2>
+  <p>As a user you have the following rights regarding your personal data:</p>
+  <ul>
+    <li><strong>Access (art. 15):</strong> obtain a copy of the data we hold about you.</li>
+    <li><strong>Rectification (art. 16):</strong> correct inaccurate data. Some can be edited directly from the "Account" section.</li>
+    <li><strong>Erasure (art. 17):</strong> "right to be forgotten" — request deletion of your data.</li>
+    <li><strong>Restriction (art. 18):</strong> limit processing in certain cases.</li>
+    <li><strong>Portability (art. 20):</strong> receive your data in a structured format (JSON) to take it to another service.</li>
+    <li><strong>Objection (art. 21):</strong> object to processing based on legitimate interest.</li>
+    <li><strong>Withdraw consent</strong> at any time, without affecting the lawfulness of prior processing.</li>
+  </ul>
+  <p>To exercise any right, write to <a href="mailto:support@yudbot.com">support@yudbot.com</a> from your registered email. We will respond within a maximum of 30 days.</p>
+  <p>If you believe your request has not been handled correctly, you have the right to lodge a complaint with the <strong>Spanish Data Protection Agency</strong> (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>) or your country's supervisory authority.</p>
+
+  <h2 id="security">9. Security</h2>
+  <p>We apply reasonable technical and organizational measures to protect your data:</p>
+  <ul>
+    <li>Encrypted connections (HTTPS/TLS) across the entire Service.</li>
+    <li>Passwords stored using <strong>bcrypt</strong> hash (never plaintext).</li>
+    <li>Authentication via signed JSON Web Tokens (JWT).</li>
+    <li>Email verification on first login to detect unauthorized access.</li>
+    <li>Restricted access to the production backend, with least-privilege principle.</li>
+  </ul>
+  <p>No measure is foolproof. If we detect a security breach that may affect you, we will notify you without undue delay and, where appropriate, also notify the AEPD as required by GDPR articles 33-34.</p>
+
+  <h2 id="cookies">10. Cookies and local storage</h2>
+  <p>YudBot <strong>does not use tracking or advertising cookies</strong>. We do not install Facebook pixels, Google Analytics, or cross-site trackers.</p>
+  <p>We do use the browser's <strong>localStorage</strong>, a cookie-similar but strictly local technology, for:</p>
+  <ul>
+    <li>Keeping you signed in (JWT token).</li>
+    <li>Remembering your theme preference (light/dark).</li>
+    <li>Preserving the configuration of a bot under construction so you don't lose it on page reload.</li>
+  </ul>
+  <p>You can clear this storage at any time from your browser settings. If you clear it, you will need to sign in again.</p>
+
+  <h2 id="minors">11. Minors</h2>
+  <p>The Service is intended for users 18 years or older. We do not knowingly collect data from minors. If you believe a minor has created an account, write to <a href="mailto:support@yudbot.com">support@yudbot.com</a> and we will delete it without delay.</p>
+
+  <h2 id="changes">12. Changes to this policy</h2>
+  <p>We may update this policy. When we do, we will update the "Last updated" date and, if changes are substantial (e.g. new third parties, new purposes), we will notify you by email before they take effect.</p>
+
+  <h2 id="contact">13. Contact</h2>
+  <ul>
+    <li>Email: <a href="mailto:support@yudbot.com">support@yudbot.com</a></li>
+    <li>Web: <a href="https://yudbot.com">yudbot.com</a></li>
+  </ul>
+</main>
+
+<footer>
+  © 2026 YudBot ·
+  <a href="/en/terms">Terms</a> ·
+  <a href="/en/privacy">Privacy</a> ·
+  <a href="mailto:support@yudbot.com">support@yudbot.com</a>
+</footer>
+
+</body>
+</html>

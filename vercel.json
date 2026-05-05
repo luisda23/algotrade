@@ -3,6 +3,9 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/landing" },
+    { "source": "/en", "destination": "/landing-en" },
+    { "source": "/en/terms", "destination": "/terms-en" },
+    { "source": "/en/privacy", "destination": "/privacy-en" },
     { "source": "/app", "destination": "/app.html" },
     { "source": "/app/(.*)", "destination": "/app.html" }
   ],

@@ -91,6 +91,20 @@ body {
   font-weight: 500;
 }
 .nav-back:hover { color: var(--text); }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.lang-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.lang-toggle:hover { color: var(--text); border-color: var(--text); }
 
 main {
   max-width: 760px;
@@ -185,7 +199,10 @@ footer a { color: var(--text-dim); margin: 0 10px; }
     <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="24" height="24"/>
     YudBot
   </a>
-  <a class="nav-back" href="/">← Volver al inicio</a>
+  <div class="nav-right">
+    <a class="lang-toggle" href="/en/terms" title="English" onclick="try{localStorage.setItem('lang','en');}catch(e){}">EN</a>
+    <a class="nav-back" href="/">← Volver al inicio</a>
+  </div>
 </nav>
 
 <main>
