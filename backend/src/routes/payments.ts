@@ -81,44 +81,85 @@ function sanitizeBotConfig(raw: any): { error: string; data: null } | { error: n
 }
 
 // ───── Verificar pago con la API de Lemon y crear bot ─────
+// Estrategia robusta: si tenemos orderNumber lo usamos; si no, buscamos
+// la orden pagada más reciente del email del usuario (últimos 60 min)
+// y aún no asociada a un bot. Esto cubre el caso en que Lemon Squeezy
+// no añada `order_number` al redirect URL.
 router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { orderNumber, botConfig } = req.body;
-    if (!orderNumber || (typeof orderNumber !== 'string' && typeof orderNumber !== 'number')) {
-      return res.status(400).json({ error: 'orderNumber requerido' });
-    }
     if (!LEMON_API_KEY || !LEMON_STORE_ID) {
       return res.status(500).json({ error: 'Pasarela de pago no configurada' });
     }
 
-    // Buscar orden por order_number en nuestro store
-    const list = await lemonApi(
-      `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&filter[order_number]=${encodeURIComponent(String(orderNumber))}`
-    );
-    const order = Array.isArray(list?.data) ? list.data[0] : null;
-    if (!order) return res.status(404).json({ error: 'Orden no encontrada' });
+    const reqUser = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!reqUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const myEmail = (reqUser.email || '').toLowerCase();
+
+    let order: any = null;
+    let foundOrderNumber: string | undefined;
+
+    if (orderNumber) {
+      const list = await lemonApi(
+        `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&filter[order_number]=${encodeURIComponent(String(orderNumber))}`
+      );
+      order = Array.isArray(list?.data) ? list.data[0] : null;
+      if (order) foundOrderNumber = String(orderNumber);
+    } else {
+      // Sin orderNumber: buscar las órdenes pagadas más recientes del store
+      // y elegir la primera del email del usuario que aún no tenga bot creado.
+      const list = await lemonApi(
+        `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&filter[status]=paid&sort=-created_at&page[size]=25`
+      );
+      const candidates = Array.isArray(list?.data) ? list.data : [];
+
+      for (const c of candidates) {
+        const cAttrs = c.attributes || {};
+        const cEmail = (cAttrs.user_email || '').toLowerCase();
+        const cUserId = cAttrs?.first_order_item?.custom_data?.user_id || cAttrs?.custom_data?.user_id;
+
+        const matchById = cUserId && cUserId === req.userId;
+        const matchByEmail = cEmail && myEmail && cEmail === myEmail;
+        if (!matchById && !matchByEmail) continue;
+
+        // Limita a órdenes recientes (60 min) para no asociar compras viejas
+        const created = new Date(cAttrs.created_at || 0).getTime();
+        const ageMin = (Date.now() - created) / 60000;
+        if (ageMin > 60 || ageMin < 0) continue;
+
+        // Skip si ya hay un bot con esta orden
+        const orderId = String(c.id);
+        const already = await prisma.bot.findFirst({
+          where: { userId: req.userId, parameters: { path: ['lemonOrderId'], equals: orderId } as any },
+        });
+        if (already) continue;
+
+        order = c;
+        foundOrderNumber = String(cAttrs.order_number || '');
+        break;
+      }
+    }
+
+    if (!order) {
+      return res.status(404).json({ error: 'Orden no encontrada o ya procesada' });
+    }
 
     const attrs = order.attributes || {};
-    const status = attrs.status; // 'paid' | 'pending' | 'failed' | 'refunded'
+    const status = attrs.status;
     if (status !== 'paid') {
       return res.status(400).json({ error: 'Pago no confirmado', status });
     }
 
-    // Validar que la orden pertenece a este usuario (custom data o email)
-    const customUserId = attrs?.first_order_item?.custom_data?.user_id
-      || attrs?.custom_data?.user_id;
+    // Validación final de propietario
+    const customUserId = attrs?.first_order_item?.custom_data?.user_id || attrs?.custom_data?.user_id;
     const orderEmail = (attrs.user_email || '').toLowerCase();
-
-    const reqUser = await prisma.user.findUnique({ where: { id: req.userId } });
-    const myEmail = (reqUser?.email || '').toLowerCase();
-
     const matchById = customUserId && customUserId === req.userId;
     const matchByEmail = orderEmail && myEmail && orderEmail === myEmail;
     if (!matchById && !matchByEmail) {
       return res.status(403).json({ error: 'La orden no pertenece a este usuario' });
     }
 
-    // Idempotencia: si ya existe un bot creado con este order_id, devolverlo
+    // Idempotencia
     const orderKey = String(order.id);
     const existing = await prisma.bot.findFirst({
       where: {
@@ -142,7 +183,7 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
         name: data.name,
         description: data.description,
         strategy: data.strategy,
-        parameters: { ...data.parameters, lemonOrderId: orderKey, lemonOrderNumber: String(orderNumber) },
+        parameters: { ...data.parameters, lemonOrderId: orderKey, lemonOrderNumber: foundOrderNumber || '' },
       },
     });
 

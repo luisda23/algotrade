@@ -3688,17 +3688,17 @@ function loadBotDetail(root) {
 // =====================================================
 async function verifyPendingPayment() {
   const params = new URLSearchParams(window.location.search);
-  // Lemon Squeezy redirige con ?order_number=XXX tras el pago.
-  // Mantenemos compatibilidad con el flag explícito payment=success por si alguien
-  // configura redirect_url con ese parámetro adicional.
   const orderNumber = params.get('order_number');
-  if (!orderNumber) return;
+
+  // Si no hay orderNumber en la URL, intentamos verificar igualmente
+  // siempre que tengamos un pendingBotConfig en localStorage. El backend
+  // buscará la orden pagada más reciente del email del usuario.
+  let botConfig = null;
+  try { botConfig = JSON.parse(localStorage.getItem('pendingBotConfig') || 'null'); } catch (e) {}
+  if (!orderNumber && !botConfig) return;
 
   loadAuth();
   if (!state.token) return;
-
-  let botConfig = null;
-  try { botConfig = JSON.parse(localStorage.getItem('pendingBotConfig') || 'null'); } catch (e) {}
 
   const cleanUrl = () => window.history.replaceState({}, '', '/app');
 
@@ -3713,7 +3713,11 @@ async function verifyPendingPayment() {
     toast(`Bot "${res.bot?.name || 'creado'}" añadido a tu cuenta`, 'success');
   } catch (e) {
     cleanUrl();
-    toast('No se pudo verificar el pago. Contacta soporte.', 'error');
+    // Si la verificación falla por orden no encontrada, mantenemos el
+    // pendingBotConfig para que el usuario pueda reintentar más tarde
+    // (p.ej. si el webhook de Lemon aún no ha procesado la orden).
+    const msg = (e && e.message) || 'No se pudo verificar el pago. Contacta soporte.';
+    toast(msg, 'error');
   }
 }
 
