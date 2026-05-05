@@ -220,6 +220,87 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
 });
 
 // ───── Webhook de Lemon Squeezy (auditoría / fallback) ─────
+// ───── Recuperar bots de pagos previos ─────
+// Lista todas las órdenes pagadas del usuario (por email o user_id en custom_data)
+// y crea un bot para cada una que aún no tenga. Útil cuando:
+//   - el usuario pagó con un email distinto al de su cuenta YudBot
+//   - el redirect tras pago no llegó a verificar a tiempo
+//   - se borró el pendingBotConfig de localStorage
+// Crea bots con configuración por defecto + el bot_name del custom_data;
+// el usuario puede editarlos después desde el detalle del bot.
+router.post('/recover', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!LEMON_API_KEY || !LEMON_STORE_ID) {
+      return res.status(500).json({ error: 'Pasarela de pago no configurada' });
+    }
+
+    const reqUser = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!reqUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const myEmail = (reqUser.email || '').toLowerCase();
+
+    const list = await lemonApi(
+      `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&page[size]=100`
+    );
+    const allOrders = Array.isArray(list?.data) ? list.data : [];
+
+    const recovered: any[] = [];
+
+    for (const c of allOrders) {
+      const cAttrs = c.attributes || {};
+      if (cAttrs.status !== 'paid') continue; // ignora refunded/pending/failed
+
+      const cEmail = (cAttrs.user_email || '').toLowerCase();
+      const cUserId = cAttrs?.first_order_item?.custom_data?.user_id || cAttrs?.custom_data?.user_id;
+      const matchById = cUserId && cUserId === req.userId;
+      const matchByEmail = cEmail && myEmail && cEmail === myEmail;
+      if (!matchById && !matchByEmail) continue;
+
+      const orderId = String(c.id);
+      const already = await prisma.bot.findFirst({
+        where: { userId: req.userId, parameters: { path: ['lemonOrderId'], equals: orderId } as any },
+      });
+      if (already) continue;
+
+      const customBotName = cAttrs?.first_order_item?.custom_data?.bot_name
+        || cAttrs?.custom_data?.bot_name
+        || 'Mi Bot';
+
+      const bot = await prisma.bot.create({
+        data: {
+          userId: req.userId!,
+          name: String(customBotName).slice(0, 60),
+          description: 'Bot recuperado de pago previo · puedes editarlo',
+          strategy: 'momentum',
+          parameters: {
+            market: 'forex',
+            pair: 'EURUSD',
+            leverage: 30,
+            indicators: ['rsi', 'ema'],
+            timeframe: 'M15',
+            lot: { mode: 'auto', fixedLot: 0.10 },
+            risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
+            news: { enabled: false, beforeMin: 30, afterMin: 15, impactMin: 'high', events: [] },
+            funded: { enabled: false, firm: null },
+            lemonOrderId: orderId,
+            lemonOrderNumber: String(cAttrs.order_number || ''),
+            recovered: true,
+          },
+        },
+      });
+      recovered.push({ id: bot.id, name: bot.name, orderNumber: cAttrs.order_number });
+    }
+
+    return res.json({
+      message: `${recovered.length} bot(s) recuperado(s)`,
+      count: recovered.length,
+      recovered,
+    });
+  } catch (error: any) {
+    console.error('Recover error:', error);
+    res.status(500).json({ error: error.message || 'Error recuperando bots' });
+  }
+});
+
 router.post('/lemon-webhook', async (req: Request, res: Response) => {
   try {
     if (!LEMON_WEBHOOK_SECRET) {

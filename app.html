@@ -3254,6 +3254,18 @@ function loadAccount(root) {
       </div>
 
       <div class="account-section">
+        <h2 class="account-section-title">Pagos y bots</h2>
+        <div class="card fade-up" style="display:flex;align-items:center;gap:14px;cursor:pointer" id="recover-bots-btn">
+          ${I.download}
+          <div style="flex:1">
+            <div class="h3">Recuperar bots pagados</div>
+            <div class="text-dim mt-2" style="font-size:13px">Si pagaste un bot pero no aparece en tu dashboard, click aquí. Buscamos en Lemon Squeezy las órdenes a tu nombre y creamos los bots que falten.</div>
+          </div>
+          ${I.arrow}
+        </div>
+      </div>
+
+      <div class="account-section">
         <h2 class="account-section-title">Ayuda y cuenta</h2>
 
         <div class="card fade-up" style="display:flex;align-items:center;gap:14px;cursor:pointer" id="goto-support">
@@ -3278,6 +3290,26 @@ function loadAccount(root) {
   document.getElementById('goto-support')?.addEventListener('click', () => {
     state.currentScreen = 'support';
     render();
+  });
+  document.getElementById('recover-bots-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('recover-bots-btn');
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    const originalText = btn.querySelector('.h3')?.textContent;
+    if (btn.querySelector('.h3')) btn.querySelector('.h3').textContent = 'Buscando órdenes…';
+    try {
+      const res = await api('/payments/recover', { method: 'POST' });
+      if (res.count > 0) {
+        toast(`✅ ${res.count} bot${res.count > 1 ? 's' : ''} recuperado${res.count > 1 ? 's' : ''}. Ve al Dashboard.`, 'success');
+      } else {
+        toast('No hay pagos pendientes a tu nombre', 'success');
+      }
+    } catch (e) {
+      toast(e.message || 'Error al recuperar bots', 'error');
+    } finally {
+      btn.dataset.busy = '0';
+      if (btn.querySelector('.h3') && originalText) btn.querySelector('.h3').textContent = originalText;
+    }
   });
 
   // Update name
