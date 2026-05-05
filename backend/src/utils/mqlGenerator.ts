@@ -446,63 +446,130 @@ ${generateStrategyLogic(strategy, indicators)}
 }
 
 // Genera la lógica específica de la estrategia
+//
+// Diseño: cada indicador del usuario aporta su propia señal de compra/venta.
+// Las señales se combinan con AND (todos deben estar de acuerdo) para entrar
+// con confirmación, evitando falsos positivos. Si el usuario marca 0 indicadores,
+// usamos un fallback de price-action simple (rango de N velas) para que el bot
+// AÚN OPERE en lugar de quedarse en silencio para siempre.
+//
+// La estrategia "breakout" usa siempre Donchian (ruptura de rango) — los
+// indicadores son confirmación opcional. La estrategia "mean" invierte la
+// dirección al usar Bollinger (banda inferior = compra).
 function generateStrategyLogic(strategy: string, indicators: string[]): string {
-  const hasRSI = indicators.includes('rsi');
-  const hasEMA = indicators.includes('ema');
-  const hasMACD = indicators.includes('macd');
-  const hasBB = indicators.includes('bb');
+  const has = (id: string) => indicators.includes(id);
+  const setup: string[] = [];
+  const buyConds: string[] = [];
+  const sellConds: string[] = [];
 
-  if (strategy === 'scalping' || strategy === 'momentum') {
-    return `   // Estrategia: ${strategy}
-   double rsi[], emaFast[], emaSlow[];
-${hasRSI ? '   CopyBuffer(handleRSI, 0, 0, 2, rsi);' : ''}
-${hasEMA ? '   CopyBuffer(handleEMA_fast, 0, 0, 2, emaFast);\n   CopyBuffer(handleEMA_slow, 0, 0, 2, emaSlow);' : ''}
+  // Precio actual (lo necesitan varias estrategias)
+  setup.push(`double bidPrice = SymbolInfoDouble(InpSymbol, SYMBOL_BID);`);
 
-${hasRSI && hasEMA ? `   // Buy: RSI < 30 y EMA rápida > EMA lenta
-   if(rsi[0] < 30 && emaFast[0] > emaSlow[0]) buySignal = true;
-   // Sell: RSI > 70 y EMA rápida < EMA lenta
-   if(rsi[0] > 70 && emaFast[0] < emaSlow[0]) sellSignal = true;` :
-   hasRSI ? `   // Buy: RSI < 30 (sobrevendido)
-   if(rsi[0] < 30) buySignal = true;
-   // Sell: RSI > 70 (sobrecomprado)
-   if(rsi[0] > 70) sellSignal = true;` :
-   hasEMA ? `   // Buy: cruce alcista de EMAs
-   if(emaFast[0] > emaSlow[0] && emaFast[1] <= emaSlow[1]) buySignal = true;
-   // Sell: cruce bajista de EMAs
-   if(emaFast[0] < emaSlow[0] && emaFast[1] >= emaSlow[1]) sellSignal = true;` :
-   `   // Sin indicadores configurados — agrega RSI o EMA al bot
-   buySignal = false;
-   sellSignal = false;`}`;
+  // ── RSI ── sobreventa = buy, sobrecompra = sell (estándar)
+  if (has('rsi')) {
+    setup.push(`double rsi[]; ArraySetAsSeries(rsi, true); CopyBuffer(handleRSI, 0, 0, 2, rsi);`);
+    if (strategy === 'mean' || strategy === 'reversal') {
+      // Mean reversion: aún más estricto (35/65 para más oportunidades)
+      buyConds.push(`rsi[0] < 35`);
+      sellConds.push(`rsi[0] > 65`);
+    } else {
+      buyConds.push(`rsi[0] < 30`);
+      sellConds.push(`rsi[0] > 70`);
+    }
   }
 
-  if (strategy === 'mean') {
-    return `   // Estrategia: Mean Reversion
-   double bb_upper[], bb_lower[], bb_middle[];
-${hasBB ? '   CopyBuffer(handleBB, UPPER_BAND, 0, 1, bb_upper);\n   CopyBuffer(handleBB, LOWER_BAND, 0, 1, bb_lower);\n   CopyBuffer(handleBB, BASE_LINE, 0, 1, bb_middle);' : ''}
-   double price = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
-
-${hasBB ? `   // Buy: precio toca banda inferior
-   if(price <= bb_lower[0]) buySignal = true;
-   // Sell: precio toca banda superior
-   if(price >= bb_upper[0]) sellSignal = true;` : `   // Activa Bollinger Bands para esta estrategia`}`;
+  // ── EMA cross ── EMA rápida cruza la lenta
+  if (has('ema')) {
+    setup.push(`double emaFast[], emaSlow[]; ArraySetAsSeries(emaFast, true); ArraySetAsSeries(emaSlow, true);`);
+    setup.push(`CopyBuffer(handleEMA_fast, 0, 0, 2, emaFast);`);
+    setup.push(`CopyBuffer(handleEMA_slow, 0, 0, 2, emaSlow);`);
+    if (indicators.length === 1) {
+      // Si EMA es el único indicador, usar el cruce exacto (más selectivo)
+      buyConds.push(`(emaFast[0] > emaSlow[0] && emaFast[1] <= emaSlow[1])`);
+      sellConds.push(`(emaFast[0] < emaSlow[0] && emaFast[1] >= emaSlow[1])`);
+    } else {
+      // Si hay más indicadores, EMA solo confirma la dirección de tendencia
+      buyConds.push(`emaFast[0] > emaSlow[0]`);
+      sellConds.push(`emaFast[0] < emaSlow[0]`);
+    }
   }
 
+  // ── MACD ── histograma cambia de signo / línea cruza señal
+  if (has('macd')) {
+    setup.push(`double macdMain[], macdSignal[]; ArraySetAsSeries(macdMain, true); ArraySetAsSeries(macdSignal, true);`);
+    setup.push(`CopyBuffer(handleMACD, 0, 0, 2, macdMain);`);
+    setup.push(`CopyBuffer(handleMACD, 1, 0, 2, macdSignal);`);
+    if (indicators.length === 1) {
+      // Solo MACD: cruce exacto de línea principal con la señal
+      buyConds.push(`(macdMain[0] > macdSignal[0] && macdMain[1] <= macdSignal[1])`);
+      sellConds.push(`(macdMain[0] < macdSignal[0] && macdMain[1] >= macdSignal[1])`);
+    } else {
+      // Con más indicadores: MACD solo confirma momento (positivo o negativo)
+      buyConds.push(`macdMain[0] > macdSignal[0]`);
+      sellConds.push(`macdMain[0] < macdSignal[0]`);
+    }
+  }
+
+  // ── Bollinger Bands ──
+  if (has('bb')) {
+    setup.push(`double bbUpper[], bbLower[], bbMiddle[]; ArraySetAsSeries(bbUpper, true); ArraySetAsSeries(bbLower, true); ArraySetAsSeries(bbMiddle, true);`);
+    setup.push(`CopyBuffer(handleBB, UPPER_BAND, 0, 1, bbUpper);`);
+    setup.push(`CopyBuffer(handleBB, LOWER_BAND, 0, 1, bbLower);`);
+    setup.push(`CopyBuffer(handleBB, BASE_LINE, 0, 1, bbMiddle);`);
+    if (strategy === 'mean' || strategy === 'reversal') {
+      // Mean reversion: tocar banda = entrar contra la dirección
+      buyConds.push(`bidPrice <= bbLower[0]`);
+      sellConds.push(`bidPrice >= bbUpper[0]`);
+    } else {
+      // Trend / breakout / momentum: ruptura de banda = entrar a favor
+      buyConds.push(`bidPrice >= bbUpper[0]`);
+      sellConds.push(`bidPrice <= bbLower[0]`);
+    }
+  }
+
+  // ── ATR ── solo se usa como filtro de volatilidad mínima (no señal por sí mismo)
+  // No añade condición de buy/sell, pero el handle existe y se podría usar para
+  // dimensionar SL dinámico en futuras versiones.
+
+  // ── Lógica específica de estrategia ──
   if (strategy === 'breakout') {
-    return `   // Estrategia: Breakout
-   double high20 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 20, 1));
-   double low20  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 20, 1));
-   double price  = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
-
-   // Buy: ruptura de máximo de 20 velas
-   if(price > high20) buySignal = true;
-   // Sell: ruptura de mínimo de 20 velas
-   if(price < low20) sellSignal = true;`;
+    // Breakout siempre usa Donchian de 20 velas, indicadores confirman
+    setup.push(`double high20 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 20, 1));`);
+    setup.push(`double low20  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 20, 1));`);
+    buyConds.push(`bidPrice > high20`);
+    sellConds.push(`bidPrice < low20`);
   }
 
-  // Default: lógica genérica
-  return `   // Lógica de estrategia genérica
-   // TODO: Personalizar según ${strategy}
-   ${hasRSI ? `double rsi[]; CopyBuffer(handleRSI, 0, 0, 1, rsi);
-   if(rsi[0] < 30) buySignal = true;
-   if(rsi[0] > 70) sellSignal = true;` : 'buySignal = false; sellSignal = false;'}`;
+  if (strategy === 'trend') {
+    // Trend following: requiere precio sobre/debajo de EMA50 si está disponible
+    if (has('ema')) {
+      // Ya se añadió la lógica de EMA, no duplicamos
+    } else {
+      // Fallback: usar EMA50 directa
+      setup.push(`double ema50 = iMA(InpSymbol, InpTimeframe, 50, 0, MODE_EMA, PRICE_CLOSE);`);
+      buyConds.push(`bidPrice > ema50`);
+      sellConds.push(`bidPrice < ema50`);
+    }
+  }
+
+  // Fallback si el usuario no eligió indicadores ni estrategias con lógica propia:
+  // ruptura del rango de las últimas 10 velas (price action puro). Garantiza que
+  // el bot SIEMPRE pueda generar señales en lugar de quedarse en silencio.
+  if (buyConds.length === 0 && sellConds.length === 0) {
+    setup.push(`double recentHigh = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 10, 1));`);
+    setup.push(`double recentLow  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 10, 1));`);
+    buyConds.push(`bidPrice > recentHigh`);
+    sellConds.push(`bidPrice < recentLow`);
+  }
+
+  const buyExpr = buyConds.length > 0 ? buyConds.join(' && ') : 'false';
+  const sellExpr = sellConds.length > 0 ? sellConds.join(' && ') : 'false';
+
+  return `   // Estrategia: ${strategy} · ${indicators.length} indicador(es): ${indicators.join(', ') || '(ninguno)'}
+   ${setup.join('\n   ')}
+
+   // Buy: TODAS las condiciones de los indicadores deben cumplirse
+   if(${buyExpr}) buySignal = true;
+   // Sell: TODAS las condiciones de los indicadores deben cumplirse
+   if(${sellExpr}) sellSignal = true;`;
 }
