@@ -2947,6 +2947,7 @@ async function startCheckout() {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
       avatar: w.data.avatar, indicators: w.data.indicators, risk: w.data.risk, news: w.data.news, funded: w.data.funded,
     },
+    _ts: Date.now(),
   };
   localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
 
@@ -3704,11 +3705,21 @@ async function verifyPendingPayment() {
   const params = new URLSearchParams(window.location.search);
   const orderNumber = params.get('order_number');
 
-  // Si no hay orderNumber en la URL, intentamos verificar igualmente
-  // siempre que tengamos un pendingBotConfig en localStorage. El backend
-  // buscará la orden pagada más reciente del email del usuario.
   let botConfig = null;
   try { botConfig = JSON.parse(localStorage.getItem('pendingBotConfig') || 'null'); } catch (e) {}
+
+  // Solo intentamos verificar cuando hay señal real de retorno desde Lemon:
+  //   - order_number en la URL (redirect tras pago), o
+  //   - pendingBotConfig reciente (<60 min) para cubrir el caso de que
+  //     Lemon no añada order_number al redirect.
+  // Si el config es viejo, lo limpiamos en silencio: el usuario ya no
+  // está intentando completar ese pago. Sin esto, recargar /app muestra
+  // "Orden no encontrada" en bucle.
+  const STALE_MS = 60 * 60 * 1000; // 60 min
+  if (botConfig && botConfig._ts && Date.now() - botConfig._ts > STALE_MS) {
+    localStorage.removeItem('pendingBotConfig');
+    botConfig = null;
+  }
   if (!orderNumber && !botConfig) return;
 
   loadAuth();
@@ -3724,15 +3735,25 @@ async function verifyPendingPayment() {
     localStorage.removeItem('pendingBotConfig');
     cleanUrl();
     state.currentScreen = 'dashboard';
-    // toast() ya escapa msg internamente, pero lo dejo limpio para que sea obvio
     toast(`Bot "${res.bot?.name || 'creado'}" añadido a tu cuenta`, 'success');
   } catch (e) {
     cleanUrl();
-    // Si la verificación falla por orden no encontrada, mantenemos el
-    // pendingBotConfig para que el usuario pueda reintentar más tarde
-    // (p.ej. si el webhook de Lemon aún no ha procesado la orden).
-    const msg = (e && e.message) || 'No se pudo verificar el pago. Contacta soporte.';
-    toast(msg, 'error');
+    const msg = (e && e.message) || '';
+    // Si la orden no existe (404), eliminamos el pendingBotConfig para
+    // que recargas posteriores no muestren el error en bucle. Solo
+    // mantenemos el config si el error parece transitorio (5xx, red).
+    const stale = /orden no encontrada|order not found/i.test(msg);
+    if (stale) {
+      localStorage.removeItem('pendingBotConfig');
+      // Si el usuario llegó aquí con order_number explícito, sí avisamos
+      // (significa que Lemon le redirigió pero algo falló). Sin order_number
+      // suele ser config viejo de un test → silencioso.
+      if (orderNumber) {
+        toast('No pudimos verificar tu pago. Si el cargo sí se hizo, contacta soporte.', 'error');
+      }
+    } else {
+      toast(msg || 'No se pudo verificar el pago. Reintenta o contacta soporte.', 'error');
+    }
   }
 }
 
