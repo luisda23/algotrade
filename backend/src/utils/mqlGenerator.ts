@@ -454,47 +454,124 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
 
   // ─── SOPORTE / RESISTENCIA ───
   fib: {
-    // Fibonacci simplificado: detecta swing high/low de las últimas 50 velas
-    // y señala cuando el precio retrocede al 50% (zona de equilibrio).
+    // Fibonacci profesional: usa iFractals para detectar swing high y swing
+    // low REALES (puntos de inflexión confirmados), no solo el high/low de
+    // N velas. Computa los niveles 0.236 / 0.382 / 0.5 / 0.618 / 0.786 y
+    // señala cuando el precio retrocede a la zona dorada (0.382-0.618) en
+    // la dirección del swing.
+    //   En swing alcista (low antes que high) → BUY en retracción
+    //   En swing bajista (high antes que low) → SELL en retracción
+    globals: 'int handleFib_Fractals;',
+    init: '   handleFib_Fractals = iFractals(InpSymbol, InpTimeframe);\n   if(handleFib_Fractals == INVALID_HANDLE) { Print("Error creando Fractals para Fib"); return INIT_FAILED; }',
+    release: '   IndicatorRelease(handleFib_Fractals);',
     logic: () => ({
       setup: [
-        `double fibHigh = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 50, 1));`,
-        `double fibLow  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 50, 1));`,
-        `double fibRange = fibHigh - fibLow;`,
-        `double fib50 = fibLow + fibRange * 0.5;`,
-        `double fibTol = fibRange * 0.05;`,
+        `double fibUp[], fibDn[]; ArraySetAsSeries(fibUp, true); ArraySetAsSeries(fibDn, true);`,
+        `CopyBuffer(handleFib_Fractals, 0, 0, 100, fibUp);`,
+        `CopyBuffer(handleFib_Fractals, 1, 0, 100, fibDn);`,
+        // Encontrar los fractales más recientes (no son confirmados hasta 2 barras después)
+        `double fib_swingHigh = 0; int fib_swingHighBar = -1;`,
+        `for(int fi = 2; fi < 100 && fib_swingHighBar == -1; fi++) {`,
+        `   if(fibUp[fi] != EMPTY_VALUE && fibUp[fi] > 0) { fib_swingHigh = fibUp[fi]; fib_swingHighBar = fi; }`,
+        `}`,
+        `double fib_swingLow = 0; int fib_swingLowBar = -1;`,
+        `for(int fj = 2; fj < 100 && fib_swingLowBar == -1; fj++) {`,
+        `   if(fibDn[fj] != EMPTY_VALUE && fibDn[fj] > 0) { fib_swingLow = fibDn[fj]; fib_swingLowBar = fj; }`,
+        `}`,
+        // ¿La tendencia desde el swing más antiguo va al alza o a la baja?
+        // ArraySetAsSeries(true) → índice mayor = más antiguo.
+        // Si swingLow tiene índice MAYOR que swingHigh, el low fue antes → uptrend.
+        `bool fib_uptrend = (fib_swingLowBar > fib_swingHighBar);`,
+        `double fib_range = fib_swingHigh - fib_swingLow;`,
+        // Niveles de retracción
+        `double fib_236 = fib_uptrend ? fib_swingHigh - fib_range * 0.236 : fib_swingLow + fib_range * 0.236;`,
+        `double fib_382 = fib_uptrend ? fib_swingHigh - fib_range * 0.382 : fib_swingLow + fib_range * 0.382;`,
+        `double fib_50  = (fib_swingHigh + fib_swingLow) / 2.0;`,
+        `double fib_618 = fib_uptrend ? fib_swingHigh - fib_range * 0.618 : fib_swingLow + fib_range * 0.618;`,
+        `double fib_786 = fib_uptrend ? fib_swingHigh - fib_range * 0.786 : fib_swingLow + fib_range * 0.786;`,
+        `double fib_tol = fib_range * 0.04;`,
+        // Buy en uptrend cuando el precio toca la zona dorada (entre 0.382 y 0.618)
+        `bool fib_inGoldenZone = (fib_uptrend ? (bidPrice <= fib_382 && bidPrice >= fib_618) : (bidPrice >= fib_382 && bidPrice <= fib_618));`,
+        // Confirmación: cerca de uno de los niveles principales
+        `bool fib_atKeyLevel = (MathAbs(bidPrice - fib_382) < fib_tol || MathAbs(bidPrice - fib_50) < fib_tol || MathAbs(bidPrice - fib_618) < fib_tol);`,
       ],
-      buy: `(fibRange > 0 && MathAbs(bidPrice - (fibLow + fibRange * 0.382)) < fibTol)`,
-      sell: `(fibRange > 0 && MathAbs(bidPrice - (fibLow + fibRange * 0.618)) < fibTol)`,
+      buy: `(fib_range > 0 && fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
+      sell: `(fib_range > 0 && !fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
     }),
   },
   pivots: {
-    // Pivot Points clásicos del día anterior.
+    // Pivot Points clásicos (Floor): P, R1/R2/R3, S1/S2/S3. Tracking del
+    // precio de la barra anterior para detectar BOUNCE en lugar de simple
+    // proximidad — entrar cuando el precio toca un soporte y empieza a
+    // subir, no cuando solo está cerca.
     logic: () => ({
       setup: [
-        `double pivYH = iHigh(InpSymbol, PERIOD_D1, 1);`,
-        `double pivYL = iLow(InpSymbol, PERIOD_D1, 1);`,
-        `double pivYC = iClose(InpSymbol, PERIOD_D1, 1);`,
-        `double pivP = (pivYH + pivYL + pivYC) / 3.0;`,
-        `double pivR1 = 2.0 * pivP - pivYL;`,
-        `double pivS1 = 2.0 * pivP - pivYH;`,
-        `double pivTol = (pivYH - pivYL) * 0.1;`,
+        `double piv_yH = iHigh(InpSymbol, PERIOD_D1, 1);`,
+        `double piv_yL = iLow(InpSymbol, PERIOD_D1, 1);`,
+        `double piv_yC = iClose(InpSymbol, PERIOD_D1, 1);`,
+        `double piv_yRange = piv_yH - piv_yL;`,
+        `double piv_P  = (piv_yH + piv_yL + piv_yC) / 3.0;`,
+        `double piv_R1 = 2.0 * piv_P - piv_yL;`,
+        `double piv_S1 = 2.0 * piv_P - piv_yH;`,
+        `double piv_R2 = piv_P + piv_yRange;`,
+        `double piv_S2 = piv_P - piv_yRange;`,
+        `double piv_R3 = piv_yH + 2.0 * (piv_P - piv_yL);`,
+        `double piv_S3 = piv_yL - 2.0 * (piv_yH - piv_P);`,
+        `double piv_tol = piv_yRange * 0.08;`,
+        // ¿Está cerca de algún soporte o resistencia?
+        `bool piv_nearS = (MathAbs(bidPrice - piv_S1) < piv_tol || MathAbs(bidPrice - piv_S2) < piv_tol || MathAbs(bidPrice - piv_S3) < piv_tol);`,
+        `bool piv_nearR = (MathAbs(bidPrice - piv_R1) < piv_tol || MathAbs(bidPrice - piv_R2) < piv_tol || MathAbs(bidPrice - piv_R3) < piv_tol);`,
+        // Detección de bounce: precio actual vs barra anterior cerrada
+        `double piv_prevClose = iClose(InpSymbol, InpTimeframe, 1);`,
+        `bool piv_bounceUp = (bidPrice > piv_prevClose);`,
+        `bool piv_bounceDown = (bidPrice < piv_prevClose);`,
       ],
-      buy: `(pivYH > pivYL && MathAbs(bidPrice - pivS1) < pivTol)`,
-      sell: `(pivYH > pivYL && MathAbs(bidPrice - pivR1) < pivTol)`,
+      buy: `(piv_yRange > 0 && piv_nearS && piv_bounceUp)`,
+      sell: `(piv_yRange > 0 && piv_nearR && piv_bounceDown)`,
     }),
   },
   sr: {
-    // S/R automático: usa los extremos de 50 velas como niveles. Buy cerca
-    // del soporte, sell cerca de la resistencia.
+    // S/R Auto profesional: usa iFractals para detectar pivots en las últimas
+    // 200 velas. Agrupa pivots cercanos (dentro de 1.5*ATR) en niveles
+    // significativos. Un nivel con 3+ tocados = soporte/resistencia fuerte.
+    // Usa el más cercano por encima/debajo del precio actual como referencia.
+    globals: 'int handleSR_Fractals;\nint handleSR_ATR;',
+    init: '   handleSR_Fractals = iFractals(InpSymbol, InpTimeframe);\n   handleSR_ATR = iATR(InpSymbol, InpTimeframe, 14);\n   if(handleSR_Fractals == INVALID_HANDLE || handleSR_ATR == INVALID_HANDLE) { Print("Error creando handles S/R"); return INIT_FAILED; }',
+    release: '   IndicatorRelease(handleSR_Fractals);\n   IndicatorRelease(handleSR_ATR);',
     logic: () => ({
       setup: [
-        `double srRes = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 50, 1));`,
-        `double srSup = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 50, 1));`,
-        `double srTol = (srRes - srSup) * 0.05;`,
+        `double srUpBuf[], srDnBuf[], srAtrBuf[];`,
+        `ArraySetAsSeries(srUpBuf, true); ArraySetAsSeries(srDnBuf, true); ArraySetAsSeries(srAtrBuf, true);`,
+        `CopyBuffer(handleSR_Fractals, 0, 0, 200, srUpBuf);`,
+        `CopyBuffer(handleSR_Fractals, 1, 0, 200, srDnBuf);`,
+        `CopyBuffer(handleSR_ATR, 0, 0, 1, srAtrBuf);`,
+        // Recolectar pivots no vacíos
+        `double srLevels[400]; int srLevelCount = 0;`,
+        `for(int sri = 2; sri < 200 && srLevelCount < 400; sri++) {`,
+        `   if(srUpBuf[sri] != EMPTY_VALUE && srUpBuf[sri] > 0) srLevels[srLevelCount++] = srUpBuf[sri];`,
+        `   if(srDnBuf[sri] != EMPTY_VALUE && srDnBuf[sri] > 0) srLevels[srLevelCount++] = srDnBuf[sri];`,
+        `}`,
+        // Tolerancia para clustering basada en ATR
+        `double srTol = srAtrBuf[0] * 1.5;`,
+        // Encontrar el soporte y resistencia más cercanos al precio actual
+        // que tengan al menos 3 toques (incluyéndose a sí mismos)
+        `double srSupport = 0;`,
+        `double srResistance = 999999;`,
+        `for(int srI = 0; srI < srLevelCount; srI++) {`,
+        `   int srTouches = 0;`,
+        `   for(int srJ = 0; srJ < srLevelCount; srJ++) if(MathAbs(srLevels[srI] - srLevels[srJ]) < srTol) srTouches++;`,
+        `   if(srTouches < 3) continue;`,
+        `   if(srLevels[srI] < bidPrice && srLevels[srI] > srSupport) srSupport = srLevels[srI];`,
+        `   if(srLevels[srI] > bidPrice && srLevels[srI] < srResistance) srResistance = srLevels[srI];`,
+        `}`,
+        // Bounce detection: precio rebotando del soporte hacia arriba o de la resistencia hacia abajo
+        `double srBounceTol = srAtrBuf[0] * 0.5;`,
+        `double sr_prevClose = iClose(InpSymbol, InpTimeframe, 1);`,
+        `bool sr_buy_signal = (srSupport > 0 && (bidPrice - srSupport) < srBounceTol && (bidPrice - srSupport) > 0 && bidPrice > sr_prevClose);`,
+        `bool sr_sell_signal = (srResistance < 999999 && (srResistance - bidPrice) < srBounceTol && (srResistance - bidPrice) > 0 && bidPrice < sr_prevClose);`,
       ],
-      buy: `(srRes > srSup && MathAbs(bidPrice - srSup) < srTol)`,
-      sell: `(srRes > srSup && MathAbs(bidPrice - srRes) < srTol)`,
+      buy: `sr_buy_signal`,
+      sell: `sr_sell_signal`,
     }),
   },
 };
