@@ -1952,7 +1952,7 @@ const WIZARD_STEPS = [
   { id: 'funded', title: 'Cuenta de fondeo', subtitle: 'Reglas de prop firm (opcional)' },
   { id: 'generate', title: 'Generando tu bot', subtitle: 'Construyendo el archivo MQL...' },
   { id: 'review', title: 'Revisar', subtitle: 'Repasa la configuración antes del pago' },
-  { id: 'pay', title: 'Pago', subtitle: 'Pago único de €9.99 vía Stripe' },
+  { id: 'pay', title: 'Pago', subtitle: 'Pago único de €9.99 vía Lemon Squeezy' },
 ];
 
 const MARKETS = [
@@ -2284,7 +2284,7 @@ function renderWizard() {
 function renderWizardCTA(isLast) {
   return `
     <button class="btn btn-primary wizard-cta" id="wizard-next">
-      <span>${isLast ? `Pagar €9.99 con Stripe` : 'Continuar'}</span>
+      <span>${isLast ? `Pagar €9.99` : 'Continuar'}</span>
       <span class="btn-arrow">→</span>
     </button>
     ${isLast ? '<div class="text-center text-mute mt-2" style="font-size:11px;margin-top:10px">✓ Pago único · Sin suscripciones · El bot es tuyo para siempre</div>' : ''}
@@ -2718,7 +2718,7 @@ function renderStepPay() {
   return `
     <div class="card card-pad-lg text-center">
       <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 18px"></div>
-      <h3 class="h3">Redirigiendo a Stripe...</h3>
+      <h3 class="h3">Redirigiendo a la pasarela de pago...</h3>
       <p class="text-dim mt-2">Si no se abre automáticamente, haz click en el botón de abajo.</p>
     </div>
   `;
@@ -3305,10 +3305,10 @@ function loadAccount(root) {
 // =====================================================
 const FAQ_DB = [
   // ───── COMPRA / FACTURACIÓN ─────
-  { id: 'comprar', cat: 'Compra', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr','cuanto vale','factura'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99 con Stripe"\n4. Pagas con tarjeta vía Stripe (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
+  { id: 'comprar', cat: 'Compra', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr','cuanto vale','factura'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99"\n4. Pagas con tarjeta vía Lemon Squeezy (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
   { id: 'reembolso', cat: 'Compra', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero','no me gusta'], q: '¿Puedo pedir un reembolso?', a: 'Política de reembolsos:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si no estás satisfecho: caso por caso\n\nEscríbenos a support@yudbot.com con el ID del bot.' },
-  { id: 'metodos-pago', cat: 'Compra', kw: ['metodo de pago','paypal','crypto','bizum','transferencia','google pay','apple pay'], q: '¿Qué métodos de pago aceptáis?', a: 'A través de Stripe aceptamos:\n\n• Tarjeta crédito/débito (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• Link (autocompletado de Stripe)\n\nDe momento no admitimos PayPal, transferencia bancaria ni crypto.' },
-  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Stripe lo calcula automáticamente).\n\nSi necesitas factura con tu CIF/empresa, escríbenos a support@yudbot.com con el ID del bot, tu nombre fiscal y NIF/CIF.' },
+  { id: 'metodos-pago', cat: 'Compra', kw: ['metodo de pago','paypal','crypto','bizum','transferencia','google pay','apple pay'], q: '¿Qué métodos de pago aceptáis?', a: 'A través de Lemon Squeezy aceptamos:\n\n• Tarjeta crédito/débito (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• PayPal\n\nDe momento no admitimos transferencia bancaria ni crypto.' },
+  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Lemon Squeezy actúa como Merchant of Record y se encarga del IVA automáticamente).\n\nSi necesitas factura con tu CIF/empresa, en el checkout puedes introducir tu razón social y NIF y Lemon Squeezy te emite la factura. Si tienes problemas, escríbenos a support@yudbot.com.' },
 
   // ───── DESCARGA / INSTALACIÓN ─────
   { id: 'descargar', cat: 'Instalación', kw: ['descarg','archivo','baj','obtener','dónde está','no encuentro'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
@@ -3349,7 +3349,7 @@ const FAQ_DB = [
   { id: 'cambiar-email', cat: 'Cuenta', kw: ['cambiar email','correo','actualizar email','nuevo correo'], q: '¿Cómo cambio mi email?', a: 'De momento no se puede cambiar el email desde la app. Escríbenos a support@yudbot.com desde el email registrado pidiendo el cambio y indicando el nuevo email.' },
   { id: 'contraseña', cat: 'Cuenta', kw: ['contraseña','password','olvide','restablecer','recuperar contraseña','reset'], q: 'He olvidado mi contraseña', a: 'Por ahora la recuperación es manual: escríbenos a support@yudbot.com desde el email de tu cuenta y te enviamos un enlace para restablecer.\n\nEstamos trabajando en una recuperación automática para próximas versiones.' },
   { id: 'borrar-cuenta', cat: 'Cuenta', kw: ['borrar cuenta','eliminar cuenta','dar de baja','rgpd','gdpr'], q: '¿Cómo elimino mi cuenta?', a: 'Escríbenos a support@yudbot.com desde el email registrado pidiendo la eliminación. Borraremos tu cuenta y todos tus datos en un máximo de 30 días, conforme al RGPD.\n\nLos archivos .mq4/.mq5 que ya descargaste son tuyos y los conservas.' },
-  { id: 'datos', cat: 'Cuenta', kw: ['privacidad','que datos','rgpd','gdpr','protección de datos'], q: '¿Qué datos guardáis sobre mí?', a: 'Solo lo necesario:\n\n• Email + contraseña hasheada\n• Nombre\n• Lista de bots creados (config)\n• Pagos via Stripe (Stripe gestiona los datos de tarjeta, no nosotros)\n\nNO guardamos:\n• Datos de tu broker\n• Operaciones que hace tu bot\n• Saldo de tu cuenta\n\nCumplimos con el RGPD. Puedes pedir borrar tu cuenta cuando quieras.' },
+  { id: 'datos', cat: 'Cuenta', kw: ['privacidad','que datos','rgpd','gdpr','protección de datos'], q: '¿Qué datos guardáis sobre mí?', a: 'Solo lo necesario:\n\n• Email + contraseña hasheada\n• Nombre\n• Lista de bots creados (config)\n• Pagos via Lemon Squeezy (Lemon Squeezy gestiona los datos de tarjeta, no nosotros)\n\nNO guardamos:\n• Datos de tu broker\n• Operaciones que hace tu bot\n• Saldo de tu cuenta\n\nCumplimos con el RGPD. Puedes pedir borrar tu cuenta cuando quieras.' },
 
   // ───── SOPORTE HUMANO ─────
   { id: 'soporte', cat: 'Contacto', kw: ['soporte humano','persona','hablar','contacto humano','email soporte'], q: '¿Cómo contacto soporte humano?', a: 'Email: support@yudbot.com\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
@@ -3688,9 +3688,11 @@ function loadBotDetail(root) {
 // =====================================================
 async function verifyPendingPayment() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('payment') !== 'success') return;
-  const sessionId = params.get('session');
-  if (!sessionId) return;
+  // Lemon Squeezy redirige con ?order_number=XXX tras el pago.
+  // Mantenemos compatibilidad con el flag explícito payment=success por si alguien
+  // configura redirect_url con ese parámetro adicional.
+  const orderNumber = params.get('order_number');
+  if (!orderNumber) return;
 
   loadAuth();
   if (!state.token) return;
@@ -3703,7 +3705,7 @@ async function verifyPendingPayment() {
   try {
     const res = await api('/payments/verify', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, botConfig }),
+      body: JSON.stringify({ orderNumber, botConfig }),
     });
     localStorage.removeItem('pendingBotConfig');
     cleanUrl();

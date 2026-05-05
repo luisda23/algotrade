@@ -11,10 +11,18 @@ interface BotParams {
     posSize?: number;
     dailyLoss?: number;
   };
+  news?: {
+    enabled?: boolean;
+    beforeMin?: number;
+    afterMin?: number;
+    impactMin?: 'high' | 'medium' | 'all';
+    events?: string[]; // ids seleccionados desde el wizard
+  };
   funded?: { enabled?: boolean; firm?: string };
 }
 
 export function generateMQL5(bot: {
+  id?: string;
   name: string;
   description?: string | null;
   strategy: string;
@@ -31,6 +39,46 @@ export function generateMQL5(bot: {
   const symbol = pair.replace('/', '');
   const indicators = p.indicators || [];
   const strategy = bot.strategy || 'momentum';
+  const news = p.news || {};
+  const newsEnabled = news.enabled !== false;
+  const newsBefore = news.beforeMin ?? 30;
+  const newsAfter = news.afterMin ?? 15;
+  const newsImpactMQL = news.impactMin === 'all' ? 'CALENDAR_IMPORTANCE_LOW'
+                     : news.impactMin === 'medium' ? 'CALENDAR_IMPORTANCE_MODERATE'
+                     : 'CALENDAR_IMPORTANCE_HIGH';
+  // Mapeo id -> patrones que matchean en el calendario de MT5
+  // (multiple patterns separados por |, evaluado como substring case-insensitive)
+  const NEWS_EVENT_PATTERNS: Record<string, string> = {
+    'nfp':       'Nonfarm Payrolls',
+    'fomc':      'Federal Funds Rate|FOMC',
+    'cpi-us':    'Consumer Price Index|CPI',
+    'powell':    'Powell|FOMC Press',
+    'gdp-us':    'Gross Domestic Product|GDP',
+    'retail-us': 'Retail Sales',
+    'unemp-us':  'Unemployment Rate',
+    'ism-us':    'ISM',
+    'ecb-rate':  'Main Refinancing|Deposit Facility|ECB Interest',
+    'ecb-press': 'ECB Press|Lagarde',
+    'cpi-eu':    'Consumer Price Index|CPI|HICP',
+    'gdp-eu':    'Gross Domestic Product|GDP',
+    'pmi-eu':    'PMI',
+    'boe-rate':  'Bank Rate|BOE Interest',
+    'cpi-uk':    'Consumer Price Index|CPI',
+    'gdp-uk':    'Gross Domestic Product|GDP',
+    'boj-rate':  'BOJ Interest|Policy Rate',
+  };
+  const selectedEventIds = (news.events && Array.isArray(news.events))
+    ? news.events
+    : Object.keys(NEWS_EVENT_PATTERNS); // si no llega array, asumimos todos
+  // Si el usuario marcó "Ninguno" (events=[]), su intent es NO filtrar por eventos.
+  // Desactivamos el filtro completo en lugar de pausar en todos (que sería lo opuesto).
+  const effectiveNewsEnabled = newsEnabled && selectedEventIds.length > 0;
+  const newsPatternsStr = selectedEventIds
+    .map(id => NEWS_EVENT_PATTERNS[id])
+    .filter(Boolean)
+    .join('||')
+    .replace(/"/g, '\\"');
+  const newsHasEventFilter = selectedEventIds.length > 0 && selectedEventIds.length < Object.keys(NEWS_EVENT_PATTERNS).length;
   const generatedDate = new Date().toISOString().split('T')[0];
 
   // Mapear estrategia a comentario descriptivo
@@ -50,11 +98,11 @@ export function generateMQL5(bot: {
 
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq5 |
-//|                              Generado por AlgoTrade · ${generatedDate} |
-//|                                          https://algotrade.app |
+//|                              Generado por YudBot · ${generatedDate} |
+//|                                          https://yudbot.com |
 //+------------------------------------------------------------------+
-#property copyright "AlgoTrade"
-#property link      "https://algotrade.app"
+#property copyright "YudBot"
+#property link      "https://yudbot.com"
 #property version   "1.00"
 #property description "${bot.description || bot.name}"
 #property description "Estrategia: ${strategyDescriptions[strategy] || strategy}"
@@ -82,6 +130,14 @@ input bool     InpUseTimeFilter    = true;               // Usar filtro horario
 input int      InpStartHour        = 8;                  // Hora inicio (UTC)
 input int      InpEndHour          = 22;                 // Hora fin (UTC)
 
+input group    "═══ FILTRO DE NOTICIAS ═══"
+input bool     InpFilterNews       = ${effectiveNewsEnabled};       // Pausar bot durante noticias
+input int      InpNewsMinutesBefore = ${newsBefore};                // Minutos antes de la noticia
+input int      InpNewsMinutesAfter  = ${newsAfter};                 // Minutos después de la noticia
+input ENUM_CALENDAR_EVENT_IMPORTANCE InpNewsMinImpact = ${newsImpactMQL}; // Impacto mínimo a evitar
+input bool     InpNewsFilterByName  = ${newsHasEventFilter};        // Filtrar solo eventos específicos
+input string   InpNewsPatterns      = "${newsPatternsStr}";          // Patrones separados por || (no editar)
+
 //--- Variables globales
 CTrade        trade;
 CPositionInfo position;
@@ -103,7 +159,7 @@ int OnInit()
 {
    Print("═══════════════════════════════════════");
    Print("  ${bot.name}");
-   Print("  Generado por AlgoTrade · ${generatedDate}");
+   Print("  Generado por YudBot · ${generatedDate}");
    Print("═══════════════════════════════════════");
 
    trade.SetExpertMagicNumber(InpMagicNumber);
@@ -150,6 +206,71 @@ ${indicators.includes('ema') ? '   IndicatorRelease(handleEMA_fast);\n   Indicat
 ${indicators.includes('macd') ? '   IndicatorRelease(handleMACD);' : ''}
 ${indicators.includes('bb') ? '   IndicatorRelease(handleBB);' : ''}
 ${indicators.includes('atr') ? '   IndicatorRelease(handleATR);' : ''}
+}
+
+//+------------------------------------------------------------------+
+//| Comprueba si el nombre del evento coincide con alguno de los     |
+//| patrones (separados por "||"), comparación case-insensitive.     |
+//+------------------------------------------------------------------+
+bool EventMatchesPatterns(const string eventName, const string patterns)
+{
+   if(StringLen(patterns) == 0) return true; // Sin filtro, todos pasan
+   string lname = eventName;
+   StringToLower(lname);
+
+   string parts[];
+   int n = StringSplit(patterns, '|', parts);
+   for(int i = 0; i < n; i++)
+   {
+      string p = parts[i];
+      if(StringLen(p) == 0) continue;
+      string lp = p;
+      StringToLower(lp);
+      if(StringFind(lname, lp) >= 0) return true;
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Filtro de noticias: usa el calendario económico de MetaTrader    |
+//| para evitar operar en ventanas alrededor de eventos relevantes.  |
+//+------------------------------------------------------------------+
+bool IsNewsTime()
+{
+   if(!InpFilterNews) return false;
+
+   // Buscar la divisa base y cotizada del símbolo (ej. EURUSD → EUR, USD)
+   string base = StringSubstr(InpSymbol, 0, 3);
+   string quote = StringSubstr(InpSymbol, 3, 3);
+
+   datetime fromTime = TimeCurrent() - InpNewsMinutesAfter * 60;
+   datetime toTime   = TimeCurrent() + InpNewsMinutesBefore * 60;
+
+   string countries[2] = { base, quote };
+   for(int c = 0; c < 2; c++)
+   {
+      MqlCalendarValue values[];
+      int n = CalendarValueHistory(values, fromTime, toTime, NULL, countries[c]);
+      for(int i = 0; i < n; i++)
+      {
+         MqlCalendarEvent ev;
+         if(!CalendarEventById(values[i].event_id, ev)) continue;
+         if(ev.importance < InpNewsMinImpact) continue;
+
+         // Si el usuario pidió filtrar por evento específico, comprueba el nombre
+         if(InpNewsFilterByName && !EventMatchesPatterns(ev.name, InpNewsPatterns))
+            continue;
+
+         long evTime = (long)values[i].time;
+         long now    = (long)TimeCurrent();
+         long diff   = evTime - now;
+         if(diff <= InpNewsMinutesBefore * 60 && diff >= -InpNewsMinutesAfter * 60)
+         {
+            return true;
+         }
+      }
+   }
+   return false;
 }
 
 //+------------------------------------------------------------------+
@@ -217,6 +338,7 @@ void OnTick()
 {
    if(!CheckDailyLoss()) return;
    if(!IsTradingHours()) return;
+   if(IsNewsTime()) return; // Pausado por noticia inminente / reciente
    if(PositionsTotal() > 0) return; // Solo una posición a la vez
 
    // Verificar si hay nuevas barras
@@ -251,7 +373,7 @@ ${generateStrategyLogic(strategy, indicators)}
 }
 
 //+------------------------------------------------------------------+
-//| END OF FILE — Generado por AlgoTrade                             |
+//| END OF FILE — Generado por YudBot                             |
 //+------------------------------------------------------------------+
 `;
 }
