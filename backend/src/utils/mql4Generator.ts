@@ -509,12 +509,15 @@ function buildIndicatorBlocksMQL4(indicators: string[], strategy: string) {
   return { setupLines, triggerBuys, triggerSells, filterBuys, filterSells };
 }
 
+// Cuando solo hay filtros (sin triggers), el fallback price-action sirve
+// como evento de entrada y los filtros confirman. Sin esto, los indicadores
+// "filter-only" (ATR, OBV) harían que el bot disparara continuamente.
 function combine(triggers: string[], filters: string[], fallback: string): string {
   const triggerOr = triggers.length > 0 ? `(${triggers.join(' || ')})` : '';
   const filterAnd = filters.length > 0 ? `(${filters.join(' && ')})` : '';
   if (triggers.length > 0 && filters.length > 0) return `${triggerOr} && ${filterAnd}`;
   if (triggers.length > 0) return triggerOr;
-  if (filters.length > 0) return filterAnd;
+  if (filters.length > 0) return `(${fallback}) && ${filterAnd}`;
   return fallback;
 }
 
@@ -561,14 +564,13 @@ export function generateMQL4(bot: {
 
   const ind = buildIndicatorBlocksMQL4(indicators, strategy);
 
-  let fallbackBuy = `false`;
-  let fallbackSell = `false`;
-  if (ind.triggerBuys.length === 0 && ind.filterBuys.length === 0) {
+  const needsPriceAction = ind.triggerBuys.length === 0;
+  if (needsPriceAction) {
     ind.setupLines.push(`double recentHigh = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 10, 1));`);
     ind.setupLines.push(`double recentLow  = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 10, 1));`);
-    fallbackBuy = `Bid > recentHigh`;
-    fallbackSell = `Bid < recentLow`;
   }
+  const fallbackBuy = needsPriceAction ? `Bid > recentHigh` : `false`;
+  const fallbackSell = needsPriceAction ? `Bid < recentLow` : `false`;
 
   const buyExpr = combine(ind.triggerBuys, ind.filterBuys, fallbackBuy);
   const sellExpr = combine(ind.triggerSells, ind.filterSells, fallbackSell);

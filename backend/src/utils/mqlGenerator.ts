@@ -600,14 +600,19 @@ function buildIndicatorBlocks(indicators: string[], strategy: string) {
 
 // Combina trigger (OR — al menos uno fire) y filter (AND — todos confirman).
 //   1+ trigger + 0+ filter   → triggerOr && filterAnd
-//   0   trigger + 1+ filter  → filterAnd       (puro filtro de estado)
-//   0   trigger + 0   filter → fallback        (price action 10 velas)
+//   0   trigger + 1+ filter  → fallback && filterAnd  (price-action como trigger,
+//                                                       filtros como confirmación)
+//   0   trigger + 0   filter → fallback               (price action 10 velas)
+//
+// El fallback price-action es necesario cuando solo hay indicadores filtro
+// (ATR, OBV) — sin él el bot no tiene una señal de entrada y dispararía
+// continuamente mientras los filtros se cumplan.
 function combine(triggers: string[], filters: string[], fallback: string): string {
   const triggerOr = triggers.length > 0 ? `(${triggers.join(' || ')})` : '';
   const filterAnd = filters.length > 0 ? `(${filters.join(' && ')})` : '';
   if (triggers.length > 0 && filters.length > 0) return `${triggerOr} && ${filterAnd}`;
   if (triggers.length > 0) return triggerOr;
-  if (filters.length > 0) return filterAnd;
+  if (filters.length > 0) return `(${fallback}) && ${filterAnd}`;
   return fallback;
 }
 
@@ -687,15 +692,16 @@ export function generateMQL5(bot: {
 
   const ind = buildIndicatorBlocks(indicators, strategy);
 
-  // Fallback si no hay indicadores: ruptura de rango 10 velas
-  let fallbackBuy = `false`;
-  let fallbackSell = `false`;
-  if (ind.triggerBuys.length === 0 && ind.filterBuys.length === 0) {
+  // Si NO hay triggers, hace falta un trigger de price-action.
+  // Con filtros: actúa como entrada que los filtros confirman.
+  // Sin nada: única lógica del bot (10-bar breakout puro).
+  const needsPriceAction = ind.triggerBuys.length === 0;
+  if (needsPriceAction) {
     ind.setupLines.push(`double recentHigh = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 10, 1));`);
     ind.setupLines.push(`double recentLow  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 10, 1));`);
-    fallbackBuy = `bidPrice > recentHigh`;
-    fallbackSell = `bidPrice < recentLow`;
   }
+  const fallbackBuy = needsPriceAction ? `bidPrice > recentHigh` : `false`;
+  const fallbackSell = needsPriceAction ? `bidPrice < recentLow` : `false`;
 
   const buyExpr = combine(ind.triggerBuys, ind.filterBuys, fallbackBuy);
   const sellExpr = combine(ind.triggerSells, ind.filterSells, fallbackSell);
