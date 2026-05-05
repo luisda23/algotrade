@@ -98,8 +98,11 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     },
   },
   stochrsi: {
-    // StochRSI = (RSI - min(RSI, N)) / (max(RSI, N) - min(RSI, N)) * 100
-    // Necesita un handle interno de RSI propio para no chocar con el del usuario.
+    // Stoch RSI profesional: aplica el estocástico al RSI (período 14) y
+    // suaviza con %K (3 barras SMA) y %D (3 barras SMA de %K). Esto da
+    // señales más fiables que el Stoch RSI crudo.
+    //   Buy: %K cruza al alza %D en zona de sobreventa
+    //   Sell: %K cruza a la baja %D en zona de sobrecompra
     globals: 'int handleStochRSI_internalRSI;',
     init: '   handleStochRSI_internalRSI = iRSI(InpSymbol, InpTimeframe, 14, PRICE_CLOSE);\n   if(handleStochRSI_internalRSI == INVALID_HANDLE) { Print("Error creando Stoch RSI"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleStochRSI_internalRSI);',
@@ -108,14 +111,31 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          `double stochRsi_buf[]; ArraySetAsSeries(stochRsi_buf, true); CopyBuffer(handleStochRSI_internalRSI, 0, 0, 14, stochRsi_buf);`,
-          `int stochRsi_hiIdx = ArrayMaximum(stochRsi_buf, 0, 14);`,
-          `int stochRsi_loIdx = ArrayMinimum(stochRsi_buf, 0, 14);`,
-          `double stochRsi_range = stochRsi_buf[stochRsi_hiIdx] - stochRsi_buf[stochRsi_loIdx];`,
-          `double stochRsi = (stochRsi_range > 0) ? (stochRsi_buf[0] - stochRsi_buf[stochRsi_loIdx]) / stochRsi_range * 100.0 : 50.0;`,
+          // Necesitamos los últimos 16 valores de RSI para poder calcular
+          // 3 valores de Stoch RSI consecutivos y luego suavizarlos.
+          `double srsi_rsi[]; ArraySetAsSeries(srsi_rsi, true); CopyBuffer(handleStochRSI_internalRSI, 0, 0, 16, srsi_rsi);`,
+          // Stoch RSI para los últimos 3 valores: cada uno usa una ventana de 14 RSI.
+          `double srsi_K_raw[3];`,
+          `for(int sri = 0; sri < 3; sri++) {`,
+          `   double sri_lo = srsi_rsi[sri], sri_hi = srsi_rsi[sri];`,
+          `   for(int sri2 = sri; sri2 < sri + 14; sri2++) { if(srsi_rsi[sri2] < sri_lo) sri_lo = srsi_rsi[sri2]; if(srsi_rsi[sri2] > sri_hi) sri_hi = srsi_rsi[sri2]; }`,
+          `   srsi_K_raw[sri] = (sri_hi > sri_lo) ? (srsi_rsi[sri] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
+          `}`,
+          // %K = SMA(stochRsi, 3), %D = SMA(%K, 3) — pero como solo tenemos 3
+          // valores raw, %K es la SMA de los 3 y %D necesita historial; para %D
+          // usamos un pequeño tracking estático.
+          `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
+          `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
+          `static double srsi_K_prev = 50.0;`,
+          `double srsi_D = (srsi_K + srsi_D_prev1 + srsi_D_prev2) / 3.0;`,
+          // Detección de cruce
+          `bool srsi_crossUp   = (srsi_K_prev <= srsi_D_prev1 && srsi_K > srsi_D);`,
+          `bool srsi_crossDown = (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
+          // Actualizar historial estático (en orden inverso para no sobreescribir)
+          `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K;`,
         ],
-        buy: `stochRsi < ${lo}`,
-        sell: `stochRsi > ${hi}`,
+        buy: `(srsi_crossUp && srsi_K < ${lo + 30})`,
+        sell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
       };
     },
   },
@@ -253,19 +273,41 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     }),
   },
   supertrend: {
-    // SuperTrend simplificado: ATR(10) con multiplicador 3, basado en HL2.
+    // SuperTrend profesional: línea de trailing que alterna entre upper-band
+    // y lower-band según la dirección de la tendencia. Cuando el precio cruza
+    // la línea activa, la tendencia se invierte (esto genera la señal). La
+    // línea no retrocede: en uptrend solo sube, en downtrend solo baja.
+    //   Buy: trend acaba de cambiar a alcista (de -1 a +1)
+    //   Sell: trend acaba de cambiar a bajista (de +1 a -1)
     globals: 'int handleST_ATR;',
     init: '   handleST_ATR = iATR(InpSymbol, InpTimeframe, 10);\n   if(handleST_ATR == INVALID_HANDLE) { Print("Error creando SuperTrend"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleST_ATR);',
     logic: () => ({
       setup: [
-        `double stAtr[]; ArraySetAsSeries(stAtr, true); CopyBuffer(handleST_ATR, 0, 0, 1, stAtr);`,
-        `double stHL2 = (iHigh(InpSymbol, InpTimeframe, 1) + iLow(InpSymbol, InpTimeframe, 1)) / 2.0;`,
-        `double stUpper = stHL2 + 3.0 * stAtr[0];`,
-        `double stLower = stHL2 - 3.0 * stAtr[0];`,
+        `double stAtrBuf[]; ArraySetAsSeries(stAtrBuf, true); CopyBuffer(handleST_ATR, 0, 0, 1, stAtrBuf);`,
+        `double stMid = (iHigh(InpSymbol, InpTimeframe, 1) + iLow(InpSymbol, InpTimeframe, 1)) / 2.0;`,
+        `double stClosePrev = iClose(InpSymbol, InpTimeframe, 1);`,
+        `double stBasicUp = stMid + 3.0 * stAtrBuf[0];`,
+        `double stBasicDn = stMid - 3.0 * stAtrBuf[0];`,
+        // Estado persistido entre barras
+        `static double st_line = 0;`,
+        `static int st_dir = 0; // 0=init, 1=up, -1=down`,
+        `int st_prevDir = st_dir;`,
+        `if(st_dir == 0) {`,
+        `   st_dir = (stClosePrev > stMid) ? 1 : -1;`,
+        `   st_line = (st_dir == 1) ? stBasicDn : stBasicUp;`,
+        `} else if(st_dir == 1) {`,
+        `   double newLine = MathMax(stBasicDn, st_line); // la línea no baja en uptrend`,
+        `   if(stClosePrev < newLine) { st_dir = -1; st_line = stBasicUp; } else { st_line = newLine; }`,
+        `} else {`,
+        `   double newLine = MathMin(stBasicUp, st_line); // la línea no sube en downtrend`,
+        `   if(stClosePrev > newLine) { st_dir = 1; st_line = stBasicDn; } else { st_line = newLine; }`,
+        `}`,
+        `bool st_buy_signal  = (st_dir == 1  && st_prevDir != 1);`,
+        `bool st_sell_signal = (st_dir == -1 && st_prevDir != -1);`,
       ],
-      buy: `bidPrice > stUpper`,
-      sell: `bidPrice < stLower`,
+      buy: `st_buy_signal`,
+      sell: `st_sell_signal`,
     }),
   },
 
@@ -364,16 +406,35 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     }),
   },
   vwap: {
-    // VWAP simplificado: usa las últimas 50 velas (no resetea por sesión, pero sí
-    // refleja un "fair value" reciente). Buy si el precio está por encima.
+    // VWAP profesional: resetea al inicio de cada día UTC y acumula
+    // typical_price * volumen. Es la referencia institucional clásica.
+    //   Buy: precio cruza por encima del VWAP (de abajo a arriba)
+    //   Sell: precio cruza por debajo del VWAP
     logic: () => ({
       setup: [
-        `double vwapNum = 0; double vwapDen = 0;`,
-        `for(int vwI = 1; vwI <= 50; vwI++) { double tp = (iHigh(InpSymbol, InpTimeframe, vwI) + iLow(InpSymbol, InpTimeframe, vwI) + iClose(InpSymbol, InpTimeframe, vwI)) / 3.0; long vol = iVolume(InpSymbol, InpTimeframe, vwI); vwapNum += tp * vol; vwapDen += vol; }`,
-        `double vwap = (vwapDen > 0) ? vwapNum / vwapDen : bidPrice;`,
+        `MqlDateTime vwap_dt; TimeToStruct(TimeCurrent(), vwap_dt);`,
+        `static int vwap_day = 0;`,
+        `static double vwap_cumPV = 0;`,
+        `static double vwap_cumV = 0;`,
+        `static double vwap_prev = 0;`,
+        `static double vwap_prevPrice = 0;`,
+        // Reset al cambiar de día
+        `if(vwap_dt.day != vwap_day) {`,
+        `   vwap_cumPV = 0; vwap_cumV = 0; vwap_day = vwap_dt.day;`,
+        `}`,
+        // Acumular barra que acaba de cerrar (bar 1)
+        `double vwap_tp = (iHigh(InpSymbol, InpTimeframe, 1) + iLow(InpSymbol, InpTimeframe, 1) + iClose(InpSymbol, InpTimeframe, 1)) / 3.0;`,
+        `long vwap_v = iVolume(InpSymbol, InpTimeframe, 1);`,
+        `vwap_cumPV += vwap_tp * vwap_v;`,
+        `vwap_cumV  += vwap_v;`,
+        `double vwap = (vwap_cumV > 0) ? vwap_cumPV / vwap_cumV : bidPrice;`,
+        // Detección de cruce sobre VWAP
+        `bool vwap_crossUp   = (vwap_prev > 0 && vwap_prevPrice <= vwap_prev && bidPrice > vwap);`,
+        `bool vwap_crossDown = (vwap_prev > 0 && vwap_prevPrice >= vwap_prev && bidPrice < vwap);`,
+        `vwap_prev = vwap; vwap_prevPrice = bidPrice;`,
       ],
-      buy: `bidPrice > vwap`,
-      sell: `bidPrice < vwap`,
+      buy: `vwap_crossUp`,
+      sell: `vwap_crossDown`,
     }),
   },
   mfi: {

@@ -60,18 +60,30 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
     },
   },
   stochrsi: {
-    // Aprox manual: usa iRSI sobre 14 barras y normaliza al rango.
+    // Stoch RSI profesional con suavizado %K (3) y %D (3) y detección de cruces.
     logic: (s) => {
       const lo = isReversal(s) ? 25 : 20;
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          `double srsiBuf[14]; for(int siI=0; siI<14; siI++) srsiBuf[siI] = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, siI);`,
-          `double srsiHi = srsiBuf[0]; double srsiLo = srsiBuf[0]; for(int siJ=1; siJ<14; siJ++) { if(srsiBuf[siJ] > srsiHi) srsiHi = srsiBuf[siJ]; if(srsiBuf[siJ] < srsiLo) srsiLo = srsiBuf[siJ]; }`,
-          `double stochRsi = (srsiHi > srsiLo) ? (srsiBuf[0] - srsiLo) / (srsiHi - srsiLo) * 100.0 : 50.0;`,
+          // Necesitamos 16 valores de RSI para calcular 3 valores de stoch RSI
+          `double srsi_rsi[16]; for(int sri = 0; sri < 16; sri++) srsi_rsi[sri] = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, sri);`,
+          `double srsi_K_raw[3];`,
+          `for(int sriI = 0; sriI < 3; sriI++) {`,
+          `   double sri_lo = srsi_rsi[sriI], sri_hi = srsi_rsi[sriI];`,
+          `   for(int sriJ = sriI; sriJ < sriI + 14; sriJ++) { if(srsi_rsi[sriJ] < sri_lo) sri_lo = srsi_rsi[sriJ]; if(srsi_rsi[sriJ] > sri_hi) sri_hi = srsi_rsi[sriJ]; }`,
+          `   srsi_K_raw[sriI] = (sri_hi > sri_lo) ? (srsi_rsi[sriI] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
+          `}`,
+          `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
+          `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
+          `static double srsi_K_prev = 50.0;`,
+          `double srsi_D = (srsi_K + srsi_D_prev1 + srsi_D_prev2) / 3.0;`,
+          `bool srsi_crossUp   = (srsi_K_prev <= srsi_D_prev1 && srsi_K > srsi_D);`,
+          `bool srsi_crossDown = (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
+          `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K;`,
         ],
-        buy: `stochRsi < ${lo}`,
-        sell: `stochRsi > ${hi}`,
+        buy: `(srsi_crossUp && srsi_K < ${lo + 30})`,
+        sell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
       };
     },
   },
@@ -178,15 +190,32 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
     }),
   },
   supertrend: {
+    // SuperTrend profesional: línea de trailing con tracking de tendencia.
     logic: () => ({
       setup: [
         `double stAtr0 = iATR(Symbol(), InpTimeframe, 10, 0);`,
-        `double stHL2  = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1)) / 2.0;`,
-        `double stUpper = stHL2 + 3.0 * stAtr0;`,
-        `double stLower = stHL2 - 3.0 * stAtr0;`,
+        `double stMid = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1)) / 2.0;`,
+        `double stClosePrev = iClose(Symbol(), InpTimeframe, 1);`,
+        `double stBasicUp = stMid + 3.0 * stAtr0;`,
+        `double stBasicDn = stMid - 3.0 * stAtr0;`,
+        `static double st_line = 0;`,
+        `static int st_dir = 0;`,
+        `int st_prevDir = st_dir;`,
+        `if(st_dir == 0) {`,
+        `   st_dir = (stClosePrev > stMid) ? 1 : -1;`,
+        `   st_line = (st_dir == 1) ? stBasicDn : stBasicUp;`,
+        `} else if(st_dir == 1) {`,
+        `   double newLine = MathMax(stBasicDn, st_line);`,
+        `   if(stClosePrev < newLine) { st_dir = -1; st_line = stBasicUp; } else { st_line = newLine; }`,
+        `} else {`,
+        `   double newLine = MathMin(stBasicUp, st_line);`,
+        `   if(stClosePrev > newLine) { st_dir = 1; st_line = stBasicDn; } else { st_line = newLine; }`,
+        `}`,
+        `bool st_buy_signal  = (st_dir == 1  && st_prevDir != 1);`,
+        `bool st_sell_signal = (st_dir == -1 && st_prevDir != -1);`,
       ],
-      buy: `Bid > stUpper`,
-      sell: `Bid < stLower`,
+      buy: `st_buy_signal`,
+      sell: `st_sell_signal`,
     }),
   },
 
@@ -263,14 +292,29 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
     }),
   },
   vwap: {
+    // VWAP profesional: resetea al cambiar de día y acumula TP*V por barra.
     logic: () => ({
       setup: [
-        `double vwapNum = 0; double vwapDen = 0;`,
-        `for(int vwI = 1; vwI <= 50; vwI++) { double tp = (iHigh(Symbol(), InpTimeframe, vwI) + iLow(Symbol(), InpTimeframe, vwI) + iClose(Symbol(), InpTimeframe, vwI)) / 3.0; long vol = iVolume(Symbol(), InpTimeframe, vwI); vwapNum += tp * vol; vwapDen += vol; }`,
-        `double vwap = (vwapDen > 0) ? vwapNum / vwapDen : Bid;`,
+        `int vwap_today = TimeDay(TimeCurrent());`,
+        `static int vwap_day = 0;`,
+        `static double vwap_cumPV = 0;`,
+        `static double vwap_cumV = 0;`,
+        `static double vwap_prev = 0;`,
+        `static double vwap_prevPrice = 0;`,
+        `if(vwap_today != vwap_day) {`,
+        `   vwap_cumPV = 0; vwap_cumV = 0; vwap_day = vwap_today;`,
+        `}`,
+        `double vwap_tp = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1) + iClose(Symbol(), InpTimeframe, 1)) / 3.0;`,
+        `long vwap_v = iVolume(Symbol(), InpTimeframe, 1);`,
+        `vwap_cumPV += vwap_tp * vwap_v;`,
+        `vwap_cumV  += vwap_v;`,
+        `double vwap = (vwap_cumV > 0) ? vwap_cumPV / vwap_cumV : Bid;`,
+        `bool vwap_crossUp   = (vwap_prev > 0 && vwap_prevPrice <= vwap_prev && Bid > vwap);`,
+        `bool vwap_crossDown = (vwap_prev > 0 && vwap_prevPrice >= vwap_prev && Bid < vwap);`,
+        `vwap_prev = vwap; vwap_prevPrice = Bid;`,
       ],
-      buy: `Bid > vwap`,
-      sell: `Bid < vwap`,
+      buy: `vwap_crossUp`,
+      sell: `vwap_crossDown`,
     }),
   },
   mfi: {
