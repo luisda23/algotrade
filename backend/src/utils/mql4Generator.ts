@@ -1,8 +1,7 @@
 // mql4Generator.ts — Genera código MQL4 (MetaTrader 4) desde la config del bot
 //
-// Mismo modelo que mqlGenerator.ts, pero MQL4 no tiene handles: las funciones
-// iX() devuelven el valor directamente. Solo necesitamos las "logic blocks"
-// con setup local y las condiciones buy/sell.
+// Mismo modelo trigger+filter que mqlGenerator.ts, pero MQL4 no usa handles:
+// las funciones iX() devuelven el valor directamente.
 
 interface BotParams {
   market?: string;
@@ -26,7 +25,13 @@ const STRATEGY_DEFAULT_TF_MQL4: Record<string, string> = {
 };
 
 type IndDef4 = {
-  logic: (strategy: string, isOnly: boolean) => { setup: string[]; buy: string; sell: string };
+  logic: (strategy: string) => {
+    setup: string[];
+    triggerBuy?: string;
+    triggerSell?: string;
+    filterBuy?: string;
+    filterSell?: string;
+  };
 };
 const isReversal = (s: string) => s === 'mean' || s === 'reversal';
 
@@ -37,36 +42,41 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
       const lo = isReversal(s) ? 35 : 30;
       const hi = isReversal(s) ? 65 : 70;
       return {
-        setup: [`double rsi0 = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);`],
-        buy: `rsi0 < ${lo}`,
-        sell: `rsi0 > ${hi}`,
+        setup: [
+          `double rsi0 = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);`,
+          `double rsi1 = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 1);`,
+        ],
+        triggerBuy:  `(rsi0 < ${lo} && rsi1 >= ${lo})`,
+        triggerSell: `(rsi0 > ${hi} && rsi1 <= ${hi})`,
+        filterBuy:   `rsi0 < ${lo + 10}`,
+        filterSell:  `rsi0 > ${hi - 10}`,
       };
     },
   },
   stoch: {
-    logic: (s, only) => {
-      const lo = isReversal(s) ? 25 : 20;
-      const hi = isReversal(s) ? 75 : 80;
-      const setup = [
-        `double stochM0 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_MAIN, 0);`,
-        `double stochS0 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_SIGNAL, 0);`,
-      ];
-      if (only) {
-        setup.push(`double stochM1 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);`);
-        setup.push(`double stochS1 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_SIGNAL, 1);`);
-        return { setup, buy: `(stochM0 > stochS0 && stochM1 <= stochS1 && stochM0 < ${lo + 30})`, sell: `(stochM0 < stochS0 && stochM1 >= stochS1 && stochM0 > ${hi - 30})` };
-      }
-      return { setup, buy: `stochM0 < ${lo}`, sell: `stochM0 > ${hi}` };
-    },
-  },
-  stochrsi: {
-    // Stoch RSI profesional con suavizado %K (3) y %D (3) y detección de cruces.
     logic: (s) => {
       const lo = isReversal(s) ? 25 : 20;
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          // Necesitamos 16 valores de RSI para calcular 3 valores de stoch RSI
+          `double stochM0 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_MAIN, 0);`,
+          `double stochS0 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_SIGNAL, 0);`,
+          `double stochM1 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);`,
+          `double stochS1 = iStochastic(Symbol(), InpTimeframe, 5, 3, 3, MODE_SMA, 0, MODE_SIGNAL, 1);`,
+        ],
+        triggerBuy:  `(stochM0 > stochS0 && stochM1 <= stochS1 && stochM0 < ${lo + 30})`,
+        triggerSell: `(stochM0 < stochS0 && stochM1 >= stochS1 && stochM0 > ${hi - 30})`,
+        filterBuy:   `stochM0 < ${lo + 20}`,
+        filterSell:  `stochM0 > ${hi - 20}`,
+      };
+    },
+  },
+  stochrsi: {
+    logic: (s) => {
+      const lo = isReversal(s) ? 25 : 20;
+      const hi = isReversal(s) ? 75 : 80;
+      return {
+        setup: [
           `double srsi_rsi[16]; for(int sri = 0; sri < 16; sri++) srsi_rsi[sri] = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, sri);`,
           `double srsi_K_raw[3];`,
           `for(int sriI = 0; sriI < 3; sriI++) {`,
@@ -82,115 +92,141 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
           `bool srsi_crossDown = (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
           `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K;`,
         ],
-        buy: `(srsi_crossUp && srsi_K < ${lo + 30})`,
-        sell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
+        triggerBuy:  `(srsi_crossUp && srsi_K < ${lo + 30})`,
+        triggerSell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
+        filterBuy:   `srsi_K < 50`,
+        filterSell:  `srsi_K > 50`,
       };
     },
   },
   cci: {
     logic: () => ({
-      setup: [`double cci0 = iCCI(Symbol(), InpTimeframe, 14, PRICE_TYPICAL, 0);`],
-      buy: `cci0 < -100`,
-      sell: `cci0 > 100`,
+      setup: [
+        `double cci0 = iCCI(Symbol(), InpTimeframe, 14, PRICE_TYPICAL, 0);`,
+        `double cci1 = iCCI(Symbol(), InpTimeframe, 14, PRICE_TYPICAL, 1);`,
+      ],
+      triggerBuy:  `(cci0 < -100 && cci1 >= -100)`,
+      triggerSell: `(cci0 > 100 && cci1 <= 100)`,
+      filterBuy:   `cci0 < 0`,
+      filterSell:  `cci0 > 0`,
     }),
   },
   williams: {
     logic: () => ({
-      setup: [`double wpr0 = iWPR(Symbol(), InpTimeframe, 14, 0);`],
-      buy: `wpr0 < -80`,
-      sell: `wpr0 > -20`,
+      setup: [
+        `double wpr0 = iWPR(Symbol(), InpTimeframe, 14, 0);`,
+        `double wpr1 = iWPR(Symbol(), InpTimeframe, 14, 1);`,
+      ],
+      triggerBuy:  `(wpr0 < -80 && wpr1 >= -80)`,
+      triggerSell: `(wpr0 > -20 && wpr1 <= -20)`,
+      filterBuy:   `wpr0 < -50`,
+      filterSell:  `wpr0 > -50`,
     }),
   },
   roc: {
     logic: () => ({
-      setup: [`double mom0 = iMomentum(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0); double roc = mom0 - 100.0;`],
-      buy: `roc > 0.5`,
-      sell: `roc < -0.5`,
+      setup: [
+        `double mom0 = iMomentum(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);`,
+        `double mom1 = iMomentum(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 1);`,
+        `double roc = mom0 - 100.0;`,
+        `double rocPrev = mom1 - 100.0;`,
+      ],
+      triggerBuy:  `(roc > 0 && rocPrev <= 0)`,
+      triggerSell: `(roc < 0 && rocPrev >= 0)`,
+      filterBuy:   `roc > 0`,
+      filterSell:  `roc < 0`,
     }),
   },
 
   // Tendencia
   ema: {
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double emaFast0 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 0);`,
         `double emaSlow0 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 0);`,
-      ];
-      if (only) {
-        setup.push(`double emaFast1 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 1);`);
-        setup.push(`double emaSlow1 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 1);`);
-        return { setup, buy: `(emaFast0 > emaSlow0 && emaFast1 <= emaSlow1)`, sell: `(emaFast0 < emaSlow0 && emaFast1 >= emaSlow1)` };
-      }
-      return { setup, buy: `emaFast0 > emaSlow0`, sell: `emaFast0 < emaSlow0` };
-    },
+        `double emaFast1 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 1);`,
+        `double emaSlow1 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 1);`,
+      ],
+      triggerBuy:  `(emaFast0 > emaSlow0 && emaFast1 <= emaSlow1)`,
+      triggerSell: `(emaFast0 < emaSlow0 && emaFast1 >= emaSlow1)`,
+      filterBuy:   `emaFast0 > emaSlow0`,
+      filterSell:  `emaFast0 < emaSlow0`,
+    }),
   },
   sma: {
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double smaFast0 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_SMA, PRICE_CLOSE, 0);`,
         `double smaSlow0 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_SMA, PRICE_CLOSE, 0);`,
-      ];
-      if (only) {
-        setup.push(`double smaFast1 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_SMA, PRICE_CLOSE, 1);`);
-        setup.push(`double smaSlow1 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_SMA, PRICE_CLOSE, 1);`);
-        return { setup, buy: `(smaFast0 > smaSlow0 && smaFast1 <= smaSlow1)`, sell: `(smaFast0 < smaSlow0 && smaFast1 >= smaSlow1)` };
-      }
-      return { setup, buy: `smaFast0 > smaSlow0`, sell: `smaFast0 < smaSlow0` };
-    },
+        `double smaFast1 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_SMA, PRICE_CLOSE, 1);`,
+        `double smaSlow1 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_SMA, PRICE_CLOSE, 1);`,
+      ],
+      triggerBuy:  `(smaFast0 > smaSlow0 && smaFast1 <= smaSlow1)`,
+      triggerSell: `(smaFast0 < smaSlow0 && smaFast1 >= smaSlow1)`,
+      filterBuy:   `smaFast0 > smaSlow0`,
+      filterSell:  `smaFast0 < smaSlow0`,
+    }),
   },
   macd: {
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double macdM0 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_MAIN, 0);`,
         `double macdS0 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_SIGNAL, 0);`,
-      ];
-      if (only) {
-        setup.push(`double macdM1 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_MAIN, 1);`);
-        setup.push(`double macdS1 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_SIGNAL, 1);`);
-        return { setup, buy: `(macdM0 > macdS0 && macdM1 <= macdS1)`, sell: `(macdM0 < macdS0 && macdM1 >= macdS1)` };
-      }
-      return { setup, buy: `macdM0 > macdS0`, sell: `macdM0 < macdS0` };
-    },
+        `double macdM1 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_MAIN, 1);`,
+        `double macdS1 = iMACD(Symbol(), InpTimeframe, 12, 26, 9, PRICE_CLOSE, MODE_SIGNAL, 1);`,
+      ],
+      triggerBuy:  `(macdM0 > macdS0 && macdM1 <= macdS1)`,
+      triggerSell: `(macdM0 < macdS0 && macdM1 >= macdS1)`,
+      filterBuy:   `macdM0 > macdS0`,
+      filterSell:  `macdM0 < macdS0`,
+    }),
   },
   adx: {
     logic: () => ({
       setup: [
         `double adxM0    = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_MAIN, 0);`,
-        `double adxPlus  = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_PLUSDI, 0);`,
-        `double adxMinus = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_MINUSDI, 0);`,
+        `double adxPlus0 = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_PLUSDI, 0);`,
+        `double adxMinus0 = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_MINUSDI, 0);`,
+        `double adxPlus1 = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_PLUSDI, 1);`,
+        `double adxMinus1 = iADX(Symbol(), InpTimeframe, 14, PRICE_CLOSE, MODE_MINUSDI, 1);`,
       ],
-      buy: `(adxM0 > 20 && adxPlus > adxMinus)`,
-      sell: `(adxM0 > 20 && adxPlus < adxMinus)`,
+      triggerBuy:  `(adxPlus0 > adxMinus0 && adxPlus1 <= adxMinus1 && adxM0 > 20)`,
+      triggerSell: `(adxPlus0 < adxMinus0 && adxPlus1 >= adxMinus1 && adxM0 > 20)`,
+      filterBuy:   `(adxM0 > 20 && adxPlus0 > adxMinus0)`,
+      filterSell:  `(adxM0 > 20 && adxPlus0 < adxMinus0)`,
     }),
   },
   ichi: {
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double ichiTen0 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_TENKANSEN, 0);`,
         `double ichiKij0 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_KIJUNSEN, 0);`,
         `double ichiSpA  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANA, 0);`,
         `double ichiSpB  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANB, 0);`,
-      ];
-      if (only) {
-        setup.push(`double ichiTen1 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_TENKANSEN, 1);`);
-        setup.push(`double ichiKij1 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_KIJUNSEN, 1);`);
-        return { setup,
-          buy: `(ichiTen0 > ichiKij0 && ichiTen1 <= ichiKij1 && Bid > ichiSpA)`,
-          sell: `(ichiTen0 < ichiKij0 && ichiTen1 >= ichiKij1 && Bid < ichiSpB)`,
-        };
-      }
-      return { setup, buy: `(ichiTen0 > ichiKij0 && Bid > ichiSpA)`, sell: `(ichiTen0 < ichiKij0 && Bid < ichiSpB)` };
-    },
+        `double ichiTen1 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_TENKANSEN, 1);`,
+        `double ichiKij1 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_KIJUNSEN, 1);`,
+      ],
+      triggerBuy:  `(ichiTen0 > ichiKij0 && ichiTen1 <= ichiKij1 && Bid > ichiSpA)`,
+      triggerSell: `(ichiTen0 < ichiKij0 && ichiTen1 >= ichiKij1 && Bid < ichiSpB)`,
+      filterBuy:   `(ichiTen0 > ichiKij0 && Bid > ichiSpA)`,
+      filterSell:  `(ichiTen0 < ichiKij0 && Bid < ichiSpB)`,
+    }),
   },
   psar: {
     logic: () => ({
-      setup: [`double sar0 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 0);`],
-      buy: `Bid > sar0`,
-      sell: `Bid < sar0`,
+      setup: [
+        `double sar0 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 0);`,
+        `double sar1 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 1);`,
+        `double psarPrevClose = iClose(Symbol(), InpTimeframe, 1);`,
+        `double psarPrevPrevClose = iClose(Symbol(), InpTimeframe, 2);`,
+      ],
+      triggerBuy:  `(psarPrevClose > sar0 && psarPrevPrevClose <= sar1)`,
+      triggerSell: `(psarPrevClose < sar0 && psarPrevPrevClose >= sar1)`,
+      filterBuy:   `Bid > sar0`,
+      filterSell:  `Bid < sar0`,
     }),
   },
   supertrend: {
-    // SuperTrend profesional: línea de trailing con tracking de tendencia.
     logic: () => ({
       setup: [
         `double stAtr0 = iATR(Symbol(), InpTimeframe, 10, 0);`,
@@ -211,11 +247,11 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `   double newLine = MathMin(stBasicUp, st_line);`,
         `   if(stClosePrev > newLine) { st_dir = 1; st_line = stBasicDn; } else { st_line = newLine; }`,
         `}`,
-        `bool st_buy_signal  = (st_dir == 1  && st_prevDir != 1);`,
-        `bool st_sell_signal = (st_dir == -1 && st_prevDir != -1);`,
       ],
-      buy: `st_buy_signal`,
-      sell: `st_sell_signal`,
+      triggerBuy:  `(st_dir == 1 && st_prevDir != 1)`,
+      triggerSell: `(st_dir == -1 && st_prevDir != -1)`,
+      filterBuy:   `st_dir == 1`,
+      filterSell:  `st_dir == -1`,
     }),
   },
 
@@ -225,9 +261,27 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
       const setup = [
         `double bbU = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 0);`,
         `double bbL = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 0);`,
+        `double bbM = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_MAIN, 0);`,
+        `double bbU1 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 1);`,
+        `double bbL1 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 1);`,
+        `double bbPrevClose = iClose(Symbol(), InpTimeframe, 1);`,
       ];
-      if (isReversal(s)) return { setup, buy: `Bid <= bbL`, sell: `Bid >= bbU` };
-      return { setup, buy: `Bid >= bbU`, sell: `Bid <= bbL` };
+      if (isReversal(s)) {
+        return {
+          setup,
+          triggerBuy:  `(Bid <= bbL && bbPrevClose > bbL1)`,
+          triggerSell: `(Bid >= bbU && bbPrevClose < bbU1)`,
+          filterBuy:   `Bid <= bbM`,
+          filterSell:  `Bid >= bbM`,
+        };
+      }
+      return {
+        setup,
+        triggerBuy:  `(Bid >= bbU && bbPrevClose < bbU1)`,
+        triggerSell: `(Bid <= bbL && bbPrevClose > bbL1)`,
+        filterBuy:   `Bid >= bbM`,
+        filterSell:  `Bid <= bbM`,
+      };
     },
   },
   atr: {
@@ -236,34 +290,48 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `double atr0 = iATR(Symbol(), InpTimeframe, 14, 0);`,
         `double atrAvg = 0; for(int aiI = 0; aiI < 50; aiI++) atrAvg += iATR(Symbol(), InpTimeframe, 14, aiI); atrAvg /= 50.0;`,
         `bool atrActive = (atr0 >= atrAvg * 0.5);`,
-        `double atrHigh5 = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 5, 1));`,
-        `double atrLow5  = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 5, 1));`,
       ],
-      buy: `(atrActive && Bid > atrHigh5)`,
-      sell: `(atrActive && Bid < atrLow5)`,
+      filterBuy:  `atrActive`,
+      filterSell: `atrActive`,
     }),
   },
   donchian: {
-    logic: (s) => ({
-      setup: [
+    logic: (s) => {
+      const setup = [
         `double donHigh = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 20, 1));`,
         `double donLow  = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 20, 1));`,
-      ],
-      buy: isReversal(s) ? `Bid <= donLow` : `Bid >= donHigh`,
-      sell: isReversal(s) ? `Bid >= donHigh` : `Bid <= donLow`,
-    }),
+      ];
+      if (isReversal(s)) {
+        return { setup, triggerBuy: `Bid <= donLow`, triggerSell: `Bid >= donHigh` };
+      }
+      return { setup, triggerBuy: `Bid >= donHigh`, triggerSell: `Bid <= donLow` };
+    },
   },
   kc: {
-    logic: (s) => ({
-      setup: [
+    logic: (s) => {
+      const setup = [
         `double kcEma = iMA(Symbol(), InpTimeframe, 20, 0, MODE_EMA, PRICE_CLOSE, 0);`,
         `double kcAtr = iATR(Symbol(), InpTimeframe, 10, 0);`,
         `double kcUpper = kcEma + 2.0 * kcAtr;`,
         `double kcLower = kcEma - 2.0 * kcAtr;`,
-      ],
-      buy: isReversal(s) ? `Bid <= kcLower` : `Bid >= kcUpper`,
-      sell: isReversal(s) ? `Bid >= kcUpper` : `Bid <= kcLower`,
-    }),
+      ];
+      if (isReversal(s)) {
+        return {
+          setup,
+          triggerBuy:  `Bid <= kcLower`,
+          triggerSell: `Bid >= kcUpper`,
+          filterBuy:   `Bid <= kcEma`,
+          filterSell:  `Bid >= kcEma`,
+        };
+      }
+      return {
+        setup,
+        triggerBuy:  `Bid >= kcUpper`,
+        triggerSell: `Bid <= kcLower`,
+        filterBuy:   `Bid >= kcEma`,
+        filterSell:  `Bid <= kcEma`,
+      };
+    },
   },
 
   // Volumen
@@ -276,23 +344,22 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `double volHi5 = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 5, 1));`,
         `double volLo5 = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 5, 1));`,
       ],
-      buy: `(volSpike && Bid > volHi5)`,
-      sell: `(volSpike && Bid < volLo5)`,
+      triggerBuy:  `(volSpike && Bid > volHi5)`,
+      triggerSell: `(volSpike && Bid < volLo5)`,
+      filterBuy:   `volSpike`,
+      filterSell:  `volSpike`,
     }),
   },
   obv: {
-    // MQL4 no tiene iOBV nativo; aproximamos con MFI bajo/alto como volumen-momentum.
-    // O usamos diferencia de precio*volumen acumulada de N velas.
     logic: () => ({
       setup: [
         `double obvSum = 0; for(int oiI = 0; oiI < 20; oiI++) { double prev = iClose(Symbol(), InpTimeframe, oiI + 1); double curr = iClose(Symbol(), InpTimeframe, oiI); long v = iVolume(Symbol(), InpTimeframe, oiI); if(curr > prev) obvSum += v; else if(curr < prev) obvSum -= v; }`,
       ],
-      buy: `obvSum > 0`,
-      sell: `obvSum < 0`,
+      filterBuy:  `obvSum > 0`,
+      filterSell: `obvSum < 0`,
     }),
   },
   vwap: {
-    // VWAP profesional: resetea al cambiar de día y acumula TP*V por barra.
     logic: () => ({
       setup: [
         `int vwap_today = TimeDay(TimeCurrent());`,
@@ -313,8 +380,10 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `bool vwap_crossDown = (vwap_prev > 0 && vwap_prevPrice >= vwap_prev && Bid < vwap);`,
         `vwap_prev = vwap; vwap_prevPrice = Bid;`,
       ],
-      buy: `vwap_crossUp`,
-      sell: `vwap_crossDown`,
+      triggerBuy:  `vwap_crossUp`,
+      triggerSell: `vwap_crossDown`,
+      filterBuy:   `Bid > vwap`,
+      filterSell:  `Bid < vwap`,
     }),
   },
   mfi: {
@@ -322,21 +391,22 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
       const lo = isReversal(s) ? 25 : 20;
       const hi = isReversal(s) ? 75 : 80;
       return {
-        setup: [`double mfi0 = iMFI(Symbol(), InpTimeframe, 14, 0);`],
-        buy: `mfi0 < ${lo}`,
-        sell: `mfi0 > ${hi}`,
+        setup: [
+          `double mfi0 = iMFI(Symbol(), InpTimeframe, 14, 0);`,
+          `double mfi1 = iMFI(Symbol(), InpTimeframe, 14, 1);`,
+        ],
+        triggerBuy:  `(mfi0 < ${lo} && mfi1 >= ${lo})`,
+        triggerSell: `(mfi0 > ${hi} && mfi1 <= ${hi})`,
+        filterBuy:   `mfi0 < 50`,
+        filterSell:  `mfi0 > 50`,
       };
     },
   },
 
   // S/R
   fib: {
-    // Fibonacci profesional con iFractals: detecta el último swing alto y bajo
-    // CONFIRMADOS y usa los niveles de retracción 0.382/0.5/0.618 como zona de
-    // entrada en la dirección del swing.
     logic: () => ({
       setup: [
-        // Buscar los fractales más recientes (no son confirmados hasta 2 barras después)
         `double fib_swingHigh = 0; int fib_swingHighBar = -1;`,
         `for(int fi = 2; fi < 100 && fib_swingHighBar == -1; fi++) {`,
         `   double fr = iFractals(Symbol(), InpTimeframe, MODE_UPPER, fi);`,
@@ -353,15 +423,15 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `double fib_50  = (fib_swingHigh + fib_swingLow) / 2.0;`,
         `double fib_618 = fib_uptrend ? fib_swingHigh - fib_range * 0.618 : fib_swingLow + fib_range * 0.618;`,
         `double fib_tol = fib_range * 0.04;`,
-        `bool fib_inGoldenZone = (fib_uptrend ? (Bid <= fib_382 && Bid >= fib_618) : (Bid >= fib_382 && Bid <= fib_618));`,
         `bool fib_atKeyLevel = (MathAbs(Bid - fib_382) < fib_tol || MathAbs(Bid - fib_50) < fib_tol || MathAbs(Bid - fib_618) < fib_tol);`,
       ],
-      buy: `(fib_range > 0 && fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
-      sell: `(fib_range > 0 && !fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
+      triggerBuy:  `(fib_range > 0 && fib_uptrend && fib_atKeyLevel)`,
+      triggerSell: `(fib_range > 0 && !fib_uptrend && fib_atKeyLevel)`,
+      filterBuy:   `(fib_range > 0 && fib_uptrend)`,
+      filterSell:  `(fib_range > 0 && !fib_uptrend)`,
     }),
   },
   pivots: {
-    // Pivot Points clásicos completos con detección de bounce.
     logic: () => ({
       setup: [
         `double piv_yH = iHigh(Symbol(), PERIOD_D1, 1);`,
@@ -382,15 +452,15 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `bool piv_bounceUp = (Bid > piv_prevClose);`,
         `bool piv_bounceDown = (Bid < piv_prevClose);`,
       ],
-      buy: `(piv_yRange > 0 && piv_nearS && piv_bounceUp)`,
-      sell: `(piv_yRange > 0 && piv_nearR && piv_bounceDown)`,
+      triggerBuy:  `(piv_yRange > 0 && piv_nearS && piv_bounceUp)`,
+      triggerSell: `(piv_yRange > 0 && piv_nearR && piv_bounceDown)`,
+      filterBuy:  `(piv_yRange > 0 && Bid < piv_P)`,
+      filterSell: `(piv_yRange > 0 && Bid > piv_P)`,
     }),
   },
   sr: {
-    // S/R Auto profesional: detección fractal + clustering por ATR.
     logic: () => ({
       setup: [
-        // Recolectar pivots de las últimas 200 velas
         `double srLevels[400]; int srLevelCount = 0;`,
         `for(int sri = 2; sri < 200 && srLevelCount < 400; sri++) {`,
         `   double srU = iFractals(Symbol(), InpTimeframe, MODE_UPPER, sri);`,
@@ -411,29 +481,41 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `}`,
         `double srBounceTol = srAtr0 * 0.5;`,
         `double sr_prevClose = iClose(Symbol(), InpTimeframe, 1);`,
-        `bool sr_buy_signal = (srSupport > 0 && (Bid - srSupport) < srBounceTol && (Bid - srSupport) > 0 && Bid > sr_prevClose);`,
-        `bool sr_sell_signal = (srResistance < 999999 && (srResistance - Bid) < srBounceTol && (srResistance - Bid) > 0 && Bid < sr_prevClose);`,
       ],
-      buy: `sr_buy_signal`,
-      sell: `sr_sell_signal`,
+      triggerBuy:  `(srSupport > 0 && (Bid - srSupport) < srBounceTol && (Bid - srSupport) > 0 && Bid > sr_prevClose)`,
+      triggerSell: `(srResistance < 999999 && (srResistance - Bid) < srBounceTol && (srResistance - Bid) > 0 && Bid < sr_prevClose)`,
+      filterBuy:  `(srSupport > 0 && Bid > srSupport)`,
+      filterSell: `(srResistance < 999999 && Bid < srResistance)`,
     }),
   },
 };
 
 function buildIndicatorBlocksMQL4(indicators: string[], strategy: string) {
   const setupLines: string[] = [];
-  const buyConds: string[] = [];
-  const sellConds: string[] = [];
-  const isOnly = indicators.length === 1;
+  const triggerBuys: string[] = [];
+  const triggerSells: string[] = [];
+  const filterBuys: string[] = [];
+  const filterSells: string[] = [];
   for (const id of indicators) {
     const def = INDICATOR_DEFS_MQL4[id];
     if (!def) continue;
-    const { setup, buy, sell } = def.logic(strategy, isOnly);
-    setupLines.push(...setup);
-    buyConds.push(buy);
-    sellConds.push(sell);
+    const r = def.logic(strategy);
+    setupLines.push(...r.setup);
+    if (r.triggerBuy) triggerBuys.push(`(${r.triggerBuy})`);
+    if (r.triggerSell) triggerSells.push(`(${r.triggerSell})`);
+    if (r.filterBuy) filterBuys.push(`(${r.filterBuy})`);
+    if (r.filterSell) filterSells.push(`(${r.filterSell})`);
   }
-  return { setupLines, buyConds, sellConds };
+  return { setupLines, triggerBuys, triggerSells, filterBuys, filterSells };
+}
+
+function combine(triggers: string[], filters: string[], fallback: string): string {
+  const triggerOr = triggers.length > 0 ? `(${triggers.join(' || ')})` : '';
+  const filterAnd = filters.length > 0 ? `(${filters.join(' && ')})` : '';
+  if (triggers.length > 0 && filters.length > 0) return `${triggerOr} && ${filterAnd}`;
+  if (triggers.length > 0) return triggerOr;
+  if (filters.length > 0) return filterAnd;
+  return fallback;
 }
 
 export function generateMQL4(bot: {
@@ -478,14 +560,18 @@ export function generateMQL4(bot: {
   const sanitizeName = bot.name.replace(/[^a-zA-Z0-9_]/g, '_');
 
   const ind = buildIndicatorBlocksMQL4(indicators, strategy);
-  if (ind.buyConds.length === 0 && ind.sellConds.length === 0) {
+
+  let fallbackBuy = `false`;
+  let fallbackSell = `false`;
+  if (ind.triggerBuys.length === 0 && ind.filterBuys.length === 0) {
     ind.setupLines.push(`double recentHigh = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 10, 1));`);
     ind.setupLines.push(`double recentLow  = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 10, 1));`);
-    ind.buyConds.push(`Bid > recentHigh`);
-    ind.sellConds.push(`Bid < recentLow`);
+    fallbackBuy = `Bid > recentHigh`;
+    fallbackSell = `Bid < recentLow`;
   }
-  const buyExpr = ind.buyConds.length > 0 ? ind.buyConds.join(' && ') : 'false';
-  const sellExpr = ind.sellConds.length > 0 ? ind.sellConds.join(' && ') : 'false';
+
+  const buyExpr = combine(ind.triggerBuys, ind.filterBuys, fallbackBuy);
+  const sellExpr = combine(ind.triggerSells, ind.filterSells, fallbackSell);
 
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq4 |
@@ -616,6 +702,7 @@ void OnTick()
    lastBarTime = Time[0];
 
    //--- Estrategia: ${strategy} · indicadores: ${indicators.join(', ') || '(ninguno)'}
+   //--- Lógica: (al menos un trigger fire) AND (todos los filtros confirman)
    bool buySignal = false;
    bool sellSignal = false;
 

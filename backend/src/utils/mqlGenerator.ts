@@ -1,14 +1,20 @@
 // mqlGenerator.ts — Genera código MQL5 desde la config del bot
 //
-// Arquitectura:
-//   INDICATOR_DEFS_MQL5 — metadata por indicador (handle declarations en
-//   OnInit, IndicatorRelease en OnDeinit, y la lógica de buy/sell que se
-//   inyecta en OnTick). Añadir un indicador nuevo solo requiere extender
-//   este objeto.
+// Arquitectura trigger+filter:
+//   Cada indicador define hasta 4 condiciones por dirección:
+//     triggerBuy / triggerSell  → fire on transition (cruce, flip, bounce)
+//     filterBuy / filterSell    → continuous (mientras el estado se cumple)
 //
-//   buildIndicatorBlocks() — recorre los indicadores que el usuario
-//   eligió y produce los 4 bloques de código que el template inyecta:
-//   globals, inits, releases, OnTick logic.
+//   La lógica final del bot:
+//     buySignal = (al menos un trigger fire) AND (todos los filtros agree)
+//
+//   Si el usuario solo elige indicadores de tipo filtro → AND de filtros
+//   Si solo elige triggers → OR de triggers
+//   Si mezcla → trigger fire + filtros confirman
+//
+//   Esto permite combinar 24 indicadores cualquiera de forma sensata:
+//   p.ej. MACD-trigger + RSI-filter + Fib-trigger → entra cuando MACD cruzó
+//   o el precio toca Fib mientras RSI está sobrevendido.
 
 interface BotParams {
   market?: string;
@@ -16,16 +22,8 @@ interface BotParams {
   leverage?: number;
   indicators?: string[];
   timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
-  lot?: {
-    mode?: 'auto' | 'fixed';
-    fixedLot?: number;
-  };
-  risk?: {
-    stopLoss?: number;
-    takeProfit?: number;
-    posSize?: number;
-    dailyLoss?: number;
-  };
+  lot?: { mode?: 'auto' | 'fixed'; fixedLot?: number };
+  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number };
   news?: {
     enabled?: boolean;
     beforeMin?: number;
@@ -46,21 +44,19 @@ const STRATEGY_DEFAULT_TIMEFRAME: Record<string, string> = {
   dca: 'H4', hedge: 'H1',
 };
 
-// ─────────────────────────────────────────────────────────────────────
-//  INDICATOR DEFINITIONS (MQL5)
-// ─────────────────────────────────────────────────────────────────────
 type IndDef = {
-  // Línea(s) de declaración global (para handles). Vacío si no hace falta.
   globals?: string;
-  // Código que va en OnInit para crear el handle. Vacío si no hace falta.
   init?: string;
-  // Línea para OnDeinit (IndicatorRelease).
   release?: string;
-  // Devuelve setup + condiciones para inyectar en OnTick.
-  logic: (strategy: string, isOnly: boolean) => { setup: string[]; buy: string; sell: string };
+  logic: (strategy: string) => {
+    setup: string[];
+    triggerBuy?: string;
+    triggerSell?: string;
+    filterBuy?: string;
+    filterSell?: string;
+  };
 };
 
-// Helpers para no repetir
 const isReversal = (s: string) => s === 'mean' || s === 'reversal';
 
 const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
@@ -74,8 +70,10 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const hi = isReversal(s) ? 65 : 70;
       return {
         setup: [`double rsi[]; ArraySetAsSeries(rsi, true); CopyBuffer(handleRSI, 0, 0, 2, rsi);`],
-        buy: `rsi[0] < ${lo}`,
-        sell: `rsi[0] > ${hi}`,
+        triggerBuy:  `(rsi[0] < ${lo} && rsi[1] >= ${lo})`, // recién entró en oversold
+        triggerSell: `(rsi[0] > ${hi} && rsi[1] <= ${hi})`,
+        filterBuy:   `rsi[0] < ${lo + 10}`,                  // amplio: RSI bajo (no exige extremo)
+        filterSell:  `rsi[0] > ${hi - 10}`,
       };
     },
   },
@@ -83,26 +81,23 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     globals: 'int handleStoch;',
     init: '   handleStoch = iStochastic(InpSymbol, InpTimeframe, 5, 3, 3, MODE_SMA, STO_LOWHIGH);\n   if(handleStoch == INVALID_HANDLE) { Print("Error creando Stochastic"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleStoch);',
-    logic: (s, only) => {
+    logic: (s) => {
       const lo = isReversal(s) ? 25 : 20;
       const hi = isReversal(s) ? 75 : 80;
-      const setup = [
-        `double stochMain[], stochSignal[]; ArraySetAsSeries(stochMain, true); ArraySetAsSeries(stochSignal, true);`,
-        `CopyBuffer(handleStoch, 0, 0, 2, stochMain);`,
-        `CopyBuffer(handleStoch, 1, 0, 2, stochSignal);`,
-      ];
-      if (only) {
-        return { setup, buy: `(stochMain[0] > stochSignal[0] && stochMain[1] <= stochSignal[1] && stochMain[0] < ${lo + 30})`, sell: `(stochMain[0] < stochSignal[0] && stochMain[1] >= stochSignal[1] && stochMain[0] > ${hi - 30})` };
-      }
-      return { setup, buy: `stochMain[0] < ${lo}`, sell: `stochMain[0] > ${hi}` };
+      return {
+        setup: [
+          `double stochMain[], stochSignal[]; ArraySetAsSeries(stochMain, true); ArraySetAsSeries(stochSignal, true);`,
+          `CopyBuffer(handleStoch, 0, 0, 2, stochMain);`,
+          `CopyBuffer(handleStoch, 1, 0, 2, stochSignal);`,
+        ],
+        triggerBuy:  `(stochMain[0] > stochSignal[0] && stochMain[1] <= stochSignal[1] && stochMain[0] < ${lo + 30})`,
+        triggerSell: `(stochMain[0] < stochSignal[0] && stochMain[1] >= stochSignal[1] && stochMain[0] > ${hi - 30})`,
+        filterBuy:   `stochMain[0] < ${lo + 20}`,
+        filterSell:  `stochMain[0] > ${hi - 20}`,
+      };
     },
   },
   stochrsi: {
-    // Stoch RSI profesional: aplica el estocástico al RSI (período 14) y
-    // suaviza con %K (3 barras SMA) y %D (3 barras SMA de %K). Esto da
-    // señales más fiables que el Stoch RSI crudo.
-    //   Buy: %K cruza al alza %D en zona de sobreventa
-    //   Sell: %K cruza a la baja %D en zona de sobrecompra
     globals: 'int handleStochRSI_internalRSI;',
     init: '   handleStochRSI_internalRSI = iRSI(InpSymbol, InpTimeframe, 14, PRICE_CLOSE);\n   if(handleStochRSI_internalRSI == INVALID_HANDLE) { Print("Error creando Stoch RSI"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleStochRSI_internalRSI);',
@@ -111,31 +106,25 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          // Necesitamos los últimos 16 valores de RSI para poder calcular
-          // 3 valores de Stoch RSI consecutivos y luego suavizarlos.
           `double srsi_rsi[]; ArraySetAsSeries(srsi_rsi, true); CopyBuffer(handleStochRSI_internalRSI, 0, 0, 16, srsi_rsi);`,
-          // Stoch RSI para los últimos 3 valores: cada uno usa una ventana de 14 RSI.
           `double srsi_K_raw[3];`,
           `for(int sri = 0; sri < 3; sri++) {`,
           `   double sri_lo = srsi_rsi[sri], sri_hi = srsi_rsi[sri];`,
           `   for(int sri2 = sri; sri2 < sri + 14; sri2++) { if(srsi_rsi[sri2] < sri_lo) sri_lo = srsi_rsi[sri2]; if(srsi_rsi[sri2] > sri_hi) sri_hi = srsi_rsi[sri2]; }`,
           `   srsi_K_raw[sri] = (sri_hi > sri_lo) ? (srsi_rsi[sri] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
           `}`,
-          // %K = SMA(stochRsi, 3), %D = SMA(%K, 3) — pero como solo tenemos 3
-          // valores raw, %K es la SMA de los 3 y %D necesita historial; para %D
-          // usamos un pequeño tracking estático.
           `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
           `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
           `static double srsi_K_prev = 50.0;`,
           `double srsi_D = (srsi_K + srsi_D_prev1 + srsi_D_prev2) / 3.0;`,
-          // Detección de cruce
           `bool srsi_crossUp   = (srsi_K_prev <= srsi_D_prev1 && srsi_K > srsi_D);`,
           `bool srsi_crossDown = (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
-          // Actualizar historial estático (en orden inverso para no sobreescribir)
           `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K;`,
         ],
-        buy: `(srsi_crossUp && srsi_K < ${lo + 30})`,
-        sell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
+        triggerBuy:  `(srsi_crossUp && srsi_K < ${lo + 30})`,
+        triggerSell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
+        filterBuy:   `srsi_K < 50`,
+        filterSell:  `srsi_K > 50`,
       };
     },
   },
@@ -145,8 +134,10 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     release: '   IndicatorRelease(handleCCI);',
     logic: () => ({
       setup: [`double cci[]; ArraySetAsSeries(cci, true); CopyBuffer(handleCCI, 0, 0, 2, cci);`],
-      buy: `cci[0] < -100`,
-      sell: `cci[0] > 100`,
+      triggerBuy:  `(cci[0] < -100 && cci[1] >= -100)`,
+      triggerSell: `(cci[0] > 100  && cci[1] <= 100)`,
+      filterBuy:   `cci[0] < 0`,
+      filterSell:  `cci[0] > 0`,
     }),
   },
   williams: {
@@ -155,8 +146,10 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     release: '   IndicatorRelease(handleWPR);',
     logic: () => ({
       setup: [`double wpr[]; ArraySetAsSeries(wpr, true); CopyBuffer(handleWPR, 0, 0, 2, wpr);`],
-      buy: `wpr[0] < -80`,
-      sell: `wpr[0] > -20`,
+      triggerBuy:  `(wpr[0] < -80 && wpr[1] >= -80)`,
+      triggerSell: `(wpr[0] > -20 && wpr[1] <= -20)`,
+      filterBuy:   `wpr[0] < -50`,
+      filterSell:  `wpr[0] > -50`,
     }),
   },
   roc: {
@@ -164,13 +157,15 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleMomentum = iMomentum(InpSymbol, InpTimeframe, 14, PRICE_CLOSE);\n   if(handleMomentum == INVALID_HANDLE) { Print("Error creando ROC"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleMomentum);',
     logic: () => ({
-      // iMomentum devuelve precios donde 100 = sin cambio. Lo convertimos a ROC: (val - 100).
       setup: [
         `double momBuf[]; ArraySetAsSeries(momBuf, true); CopyBuffer(handleMomentum, 0, 0, 2, momBuf);`,
         `double roc = momBuf[0] - 100.0;`,
+        `double rocPrev = momBuf[1] - 100.0;`,
       ],
-      buy: `roc > 0.5`,   // momentum positivo
-      sell: `roc < -0.5`, // momentum negativo
+      triggerBuy:  `(roc > 0 && rocPrev <= 0)`,
+      triggerSell: `(roc < 0 && rocPrev >= 0)`,
+      filterBuy:   `roc > 0`,
+      filterSell:  `roc < 0`,
     }),
   },
 
@@ -179,106 +174,108 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     globals: 'int handleEMA_fast;\nint handleEMA_slow;',
     init: '   handleEMA_fast = iMA(InpSymbol, InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE);\n   handleEMA_slow = iMA(InpSymbol, InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE);\n   if(handleEMA_fast == INVALID_HANDLE || handleEMA_slow == INVALID_HANDLE) { Print("Error creando EMA"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleEMA_fast);\n   IndicatorRelease(handleEMA_slow);',
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double emaFast[], emaSlow[]; ArraySetAsSeries(emaFast, true); ArraySetAsSeries(emaSlow, true);`,
         `CopyBuffer(handleEMA_fast, 0, 0, 2, emaFast);`,
         `CopyBuffer(handleEMA_slow, 0, 0, 2, emaSlow);`,
-      ];
-      if (only) {
-        return { setup, buy: `(emaFast[0] > emaSlow[0] && emaFast[1] <= emaSlow[1])`, sell: `(emaFast[0] < emaSlow[0] && emaFast[1] >= emaSlow[1])` };
-      }
-      return { setup, buy: `emaFast[0] > emaSlow[0]`, sell: `emaFast[0] < emaSlow[0]` };
-    },
+      ],
+      triggerBuy:  `(emaFast[0] > emaSlow[0] && emaFast[1] <= emaSlow[1])`,
+      triggerSell: `(emaFast[0] < emaSlow[0] && emaFast[1] >= emaSlow[1])`,
+      filterBuy:   `emaFast[0] > emaSlow[0]`,
+      filterSell:  `emaFast[0] < emaSlow[0]`,
+    }),
   },
   sma: {
     globals: 'int handleSMA_fast;\nint handleSMA_slow;',
     init: '   handleSMA_fast = iMA(InpSymbol, InpTimeframe, 9, 0, MODE_SMA, PRICE_CLOSE);\n   handleSMA_slow = iMA(InpSymbol, InpTimeframe, 21, 0, MODE_SMA, PRICE_CLOSE);\n   if(handleSMA_fast == INVALID_HANDLE || handleSMA_slow == INVALID_HANDLE) { Print("Error creando SMA"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleSMA_fast);\n   IndicatorRelease(handleSMA_slow);',
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double smaFast[], smaSlow[]; ArraySetAsSeries(smaFast, true); ArraySetAsSeries(smaSlow, true);`,
         `CopyBuffer(handleSMA_fast, 0, 0, 2, smaFast);`,
         `CopyBuffer(handleSMA_slow, 0, 0, 2, smaSlow);`,
-      ];
-      if (only) {
-        return { setup, buy: `(smaFast[0] > smaSlow[0] && smaFast[1] <= smaSlow[1])`, sell: `(smaFast[0] < smaSlow[0] && smaFast[1] >= smaSlow[1])` };
-      }
-      return { setup, buy: `smaFast[0] > smaSlow[0]`, sell: `smaFast[0] < smaSlow[0]` };
-    },
+      ],
+      triggerBuy:  `(smaFast[0] > smaSlow[0] && smaFast[1] <= smaSlow[1])`,
+      triggerSell: `(smaFast[0] < smaSlow[0] && smaFast[1] >= smaSlow[1])`,
+      filterBuy:   `smaFast[0] > smaSlow[0]`,
+      filterSell:  `smaFast[0] < smaSlow[0]`,
+    }),
   },
   macd: {
     globals: 'int handleMACD;',
     init: '   handleMACD = iMACD(InpSymbol, InpTimeframe, 12, 26, 9, PRICE_CLOSE);\n   if(handleMACD == INVALID_HANDLE) { Print("Error creando MACD"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleMACD);',
-    logic: (_s, only) => {
-      const setup = [
+    logic: () => ({
+      setup: [
         `double macdMain[], macdSignal[]; ArraySetAsSeries(macdMain, true); ArraySetAsSeries(macdSignal, true);`,
         `CopyBuffer(handleMACD, 0, 0, 2, macdMain);`,
         `CopyBuffer(handleMACD, 1, 0, 2, macdSignal);`,
-      ];
-      if (only) {
-        return { setup, buy: `(macdMain[0] > macdSignal[0] && macdMain[1] <= macdSignal[1])`, sell: `(macdMain[0] < macdSignal[0] && macdMain[1] >= macdSignal[1])` };
-      }
-      return { setup, buy: `macdMain[0] > macdSignal[0]`, sell: `macdMain[0] < macdSignal[0]` };
-    },
+      ],
+      triggerBuy:  `(macdMain[0] > macdSignal[0] && macdMain[1] <= macdSignal[1])`,
+      triggerSell: `(macdMain[0] < macdSignal[0] && macdMain[1] >= macdSignal[1])`,
+      filterBuy:   `macdMain[0] > macdSignal[0]`,
+      filterSell:  `macdMain[0] < macdSignal[0]`,
+    }),
   },
   adx: {
     globals: 'int handleADX;',
     init: '   handleADX = iADX(InpSymbol, InpTimeframe, 14);\n   if(handleADX == INVALID_HANDLE) { Print("Error creando ADX"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleADX);',
     logic: () => ({
-      // Buffer 0 = ADX (fuerza), 1 = +DI, 2 = -DI. Usamos +DI vs -DI para dirección con ADX>20 como filtro.
       setup: [
         `double adxMain[], adxPlus[], adxMinus[]; ArraySetAsSeries(adxMain, true); ArraySetAsSeries(adxPlus, true); ArraySetAsSeries(adxMinus, true);`,
         `CopyBuffer(handleADX, 0, 0, 2, adxMain);`,
         `CopyBuffer(handleADX, 1, 0, 2, adxPlus);`,
         `CopyBuffer(handleADX, 2, 0, 2, adxMinus);`,
       ],
-      buy: `(adxMain[0] > 20 && adxPlus[0] > adxMinus[0])`,
-      sell: `(adxMain[0] > 20 && adxPlus[0] < adxMinus[0])`,
+      // Trigger: +DI cruza al alza -DI (con tendencia ya activa)
+      triggerBuy:  `(adxPlus[0] > adxMinus[0] && adxPlus[1] <= adxMinus[1] && adxMain[0] > 20)`,
+      triggerSell: `(adxPlus[0] < adxMinus[0] && adxPlus[1] >= adxMinus[1] && adxMain[0] > 20)`,
+      // Filter: dirección continua con tendencia activa
+      filterBuy:   `(adxMain[0] > 20 && adxPlus[0] > adxMinus[0])`,
+      filterSell:  `(adxMain[0] > 20 && adxPlus[0] < adxMinus[0])`,
     }),
   },
   ichi: {
     globals: 'int handleIchi;',
     init: '   handleIchi = iIchimoku(InpSymbol, InpTimeframe, 9, 26, 52);\n   if(handleIchi == INVALID_HANDLE) { Print("Error creando Ichimoku"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleIchi);',
-    logic: (_s, only) => {
-      // Ichimoku buffers: 0=Tenkan, 1=Kijun, 2=SenkouA, 3=SenkouB, 4=Chikou
-      const setup = [
+    logic: () => ({
+      setup: [
         `double ichiTenkan[], ichiKijun[], ichiSenkouA[], ichiSenkouB[]; ArraySetAsSeries(ichiTenkan, true); ArraySetAsSeries(ichiKijun, true); ArraySetAsSeries(ichiSenkouA, true); ArraySetAsSeries(ichiSenkouB, true);`,
         `CopyBuffer(handleIchi, 0, 0, 2, ichiTenkan);`,
         `CopyBuffer(handleIchi, 1, 0, 2, ichiKijun);`,
         `CopyBuffer(handleIchi, 2, 0, 1, ichiSenkouA);`,
         `CopyBuffer(handleIchi, 3, 0, 1, ichiSenkouB);`,
-      ];
-      if (only) {
-        // Cruce Tenkan/Kijun (TK cross) + precio fuera del Kumo
-        return { setup,
-          buy: `(ichiTenkan[0] > ichiKijun[0] && ichiTenkan[1] <= ichiKijun[1] && bidPrice > ichiSenkouA[0])`,
-          sell: `(ichiTenkan[0] < ichiKijun[0] && ichiTenkan[1] >= ichiKijun[1] && bidPrice < ichiSenkouB[0])`,
-        };
-      }
-      return { setup, buy: `(ichiTenkan[0] > ichiKijun[0] && bidPrice > ichiSenkouA[0])`, sell: `(ichiTenkan[0] < ichiKijun[0] && bidPrice < ichiSenkouB[0])` };
-    },
+      ],
+      // Trigger: TK cross + precio fuera del Kumo en la dirección correcta
+      triggerBuy:  `(ichiTenkan[0] > ichiKijun[0] && ichiTenkan[1] <= ichiKijun[1] && bidPrice > ichiSenkouA[0])`,
+      triggerSell: `(ichiTenkan[0] < ichiKijun[0] && ichiTenkan[1] >= ichiKijun[1] && bidPrice < ichiSenkouB[0])`,
+      // Filter: Tenkan vs Kijun + precio relativo al Kumo
+      filterBuy:   `(ichiTenkan[0] > ichiKijun[0] && bidPrice > ichiSenkouA[0])`,
+      filterSell:  `(ichiTenkan[0] < ichiKijun[0] && bidPrice < ichiSenkouB[0])`,
+    }),
   },
   psar: {
     globals: 'int handleSAR;',
     init: '   handleSAR = iSAR(InpSymbol, InpTimeframe, 0.02, 0.2);\n   if(handleSAR == INVALID_HANDLE) { Print("Error creando Parabolic SAR"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleSAR);',
     logic: () => ({
-      setup: [`double sar[]; ArraySetAsSeries(sar, true); CopyBuffer(handleSAR, 0, 0, 2, sar);`],
-      buy: `bidPrice > sar[0]`,   // SAR debajo del precio = uptrend
-      sell: `bidPrice < sar[0]`,  // SAR encima del precio = downtrend
+      setup: [
+        `double sar[]; ArraySetAsSeries(sar, true); CopyBuffer(handleSAR, 0, 0, 2, sar);`,
+        `double psarPrevClose = iClose(InpSymbol, InpTimeframe, 1);`,
+        `double psarPrevPrevClose = iClose(InpSymbol, InpTimeframe, 2);`,
+      ],
+      // Trigger: SAR acaba de cambiar de lado (flip)
+      triggerBuy:  `(psarPrevClose > sar[0] && psarPrevPrevClose <= sar[1])`,
+      triggerSell: `(psarPrevClose < sar[0] && psarPrevPrevClose >= sar[1])`,
+      // Filter: precio sobre/debajo de SAR
+      filterBuy:   `bidPrice > sar[0]`,
+      filterSell:  `bidPrice < sar[0]`,
     }),
   },
   supertrend: {
-    // SuperTrend profesional: línea de trailing que alterna entre upper-band
-    // y lower-band según la dirección de la tendencia. Cuando el precio cruza
-    // la línea activa, la tendencia se invierte (esto genera la señal). La
-    // línea no retrocede: en uptrend solo sube, en downtrend solo baja.
-    //   Buy: trend acaba de cambiar a alcista (de -1 a +1)
-    //   Sell: trend acaba de cambiar a bajista (de +1 a -1)
     globals: 'int handleST_ATR;',
     init: '   handleST_ATR = iATR(InpSymbol, InpTimeframe, 10);\n   if(handleST_ATR == INVALID_HANDLE) { Print("Error creando SuperTrend"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleST_ATR);',
@@ -289,25 +286,24 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `double stClosePrev = iClose(InpSymbol, InpTimeframe, 1);`,
         `double stBasicUp = stMid + 3.0 * stAtrBuf[0];`,
         `double stBasicDn = stMid - 3.0 * stAtrBuf[0];`,
-        // Estado persistido entre barras
         `static double st_line = 0;`,
-        `static int st_dir = 0; // 0=init, 1=up, -1=down`,
+        `static int st_dir = 0;`,
         `int st_prevDir = st_dir;`,
         `if(st_dir == 0) {`,
         `   st_dir = (stClosePrev > stMid) ? 1 : -1;`,
         `   st_line = (st_dir == 1) ? stBasicDn : stBasicUp;`,
         `} else if(st_dir == 1) {`,
-        `   double newLine = MathMax(stBasicDn, st_line); // la línea no baja en uptrend`,
+        `   double newLine = MathMax(stBasicDn, st_line);`,
         `   if(stClosePrev < newLine) { st_dir = -1; st_line = stBasicUp; } else { st_line = newLine; }`,
         `} else {`,
-        `   double newLine = MathMin(stBasicUp, st_line); // la línea no sube en downtrend`,
+        `   double newLine = MathMin(stBasicUp, st_line);`,
         `   if(stClosePrev > newLine) { st_dir = 1; st_line = stBasicDn; } else { st_line = newLine; }`,
         `}`,
-        `bool st_buy_signal  = (st_dir == 1  && st_prevDir != 1);`,
-        `bool st_sell_signal = (st_dir == -1 && st_prevDir != -1);`,
       ],
-      buy: `st_buy_signal`,
-      sell: `st_sell_signal`,
+      triggerBuy:  `(st_dir == 1 && st_prevDir != 1)`,
+      triggerSell: `(st_dir == -1 && st_prevDir != -1)`,
+      filterBuy:   `st_dir == 1`,
+      filterSell:  `st_dir == -1`,
     }),
   },
 
@@ -319,12 +315,27 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: (s) => {
       const setup = [
         `double bbUpper[], bbLower[], bbMiddle[]; ArraySetAsSeries(bbUpper, true); ArraySetAsSeries(bbLower, true); ArraySetAsSeries(bbMiddle, true);`,
-        `CopyBuffer(handleBB, UPPER_BAND, 0, 1, bbUpper);`,
-        `CopyBuffer(handleBB, LOWER_BAND, 0, 1, bbLower);`,
-        `CopyBuffer(handleBB, BASE_LINE, 0, 1, bbMiddle);`,
+        `CopyBuffer(handleBB, UPPER_BAND, 0, 2, bbUpper);`,
+        `CopyBuffer(handleBB, LOWER_BAND, 0, 2, bbLower);`,
+        `CopyBuffer(handleBB, BASE_LINE, 0, 2, bbMiddle);`,
+        `double bbPrevClose = iClose(InpSymbol, InpTimeframe, 1);`,
       ];
-      if (isReversal(s)) return { setup, buy: `bidPrice <= bbLower[0]`, sell: `bidPrice >= bbUpper[0]` };
-      return { setup, buy: `bidPrice >= bbUpper[0]`, sell: `bidPrice <= bbLower[0]` };
+      if (isReversal(s)) {
+        return {
+          setup,
+          triggerBuy:  `(bidPrice <= bbLower[0] && bbPrevClose > bbLower[1])`, // recién toca banda inferior
+          triggerSell: `(bidPrice >= bbUpper[0] && bbPrevClose < bbUpper[1])`,
+          filterBuy:   `bidPrice <= bbMiddle[0]`,                                // continua si está debajo de la media
+          filterSell:  `bidPrice >= bbMiddle[0]`,
+        };
+      }
+      return {
+        setup,
+        triggerBuy:  `(bidPrice >= bbUpper[0] && bbPrevClose < bbUpper[1])`,
+        triggerSell: `(bidPrice <= bbLower[0] && bbPrevClose > bbLower[1])`,
+        filterBuy:   `bidPrice >= bbMiddle[0]`,
+        filterSell:  `bidPrice <= bbMiddle[0]`,
+      };
     },
   },
   atr: {
@@ -332,53 +343,66 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleATR = iATR(InpSymbol, InpTimeframe, 14);\n   if(handleATR == INVALID_HANDLE) { Print("Error creando ATR"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleATR);',
     logic: () => ({
-      // ATR como filtro: solo opera si la volatilidad actual es razonable
-      // (>= 50% de su media en 50 barras). No genera dirección por sí mismo,
-      // así que pareja con price-action: ruptura de 5 velas en alta volatilidad.
+      // ATR es solo filtro: confirma que la volatilidad es operable.
       setup: [
         `double atrBuf[]; ArraySetAsSeries(atrBuf, true); CopyBuffer(handleATR, 0, 0, 50, atrBuf);`,
         `double atrAvg = 0; for(int aiI = 0; aiI < 50; aiI++) atrAvg += atrBuf[aiI]; atrAvg /= 50.0;`,
         `bool atrActive = (atrBuf[0] >= atrAvg * 0.5);`,
-        `double atrHigh5 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 5, 1));`,
-        `double atrLow5  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 5, 1));`,
       ],
-      buy: `(atrActive && bidPrice > atrHigh5)`,
-      sell: `(atrActive && bidPrice < atrLow5)`,
+      filterBuy:  `atrActive`,
+      filterSell: `atrActive`,
     }),
   },
   donchian: {
-    // Donchian = canal de N velas. Sin handle, calculamos in-place.
-    logic: (s) => ({
-      setup: [
+    logic: (s) => {
+      const setup = [
         `double donHigh = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 20, 1));`,
         `double donLow  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 20, 1));`,
-      ],
-      buy: isReversal(s) ? `bidPrice <= donLow` : `bidPrice >= donHigh`,
-      sell: isReversal(s) ? `bidPrice >= donHigh` : `bidPrice <= donLow`,
-    }),
+      ];
+      const buyPx = isReversal(s) ? `donLow` : `donHigh`;
+      const sellPx = isReversal(s) ? `donHigh` : `donLow`;
+      const buyOp = isReversal(s) ? `<=` : `>=`;
+      const sellOp = isReversal(s) ? `>=` : `<=`;
+      return {
+        setup,
+        triggerBuy:  `(bidPrice ${buyOp} ${buyPx})`,
+        triggerSell: `(bidPrice ${sellOp} ${sellPx})`,
+      };
+    },
   },
   kc: {
-    // Keltner Channels = EMA20 ± ATR(10)*2. Reusamos handleATR si está, si
-    // no creamos uno propio. Para simplicidad, creamos handles propios.
     globals: 'int handleKC_EMA;\nint handleKC_ATR;',
     init: '   handleKC_EMA = iMA(InpSymbol, InpTimeframe, 20, 0, MODE_EMA, PRICE_CLOSE);\n   handleKC_ATR = iATR(InpSymbol, InpTimeframe, 10);\n   if(handleKC_EMA == INVALID_HANDLE || handleKC_ATR == INVALID_HANDLE) { Print("Error creando Keltner"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleKC_EMA);\n   IndicatorRelease(handleKC_ATR);',
-    logic: (s) => ({
-      setup: [
+    logic: (s) => {
+      const setup = [
         `double kcEma[], kcAtr[]; ArraySetAsSeries(kcEma, true); ArraySetAsSeries(kcAtr, true);`,
         `CopyBuffer(handleKC_EMA, 0, 0, 1, kcEma);`,
         `CopyBuffer(handleKC_ATR, 0, 0, 1, kcAtr);`,
         `double kcUpper = kcEma[0] + 2.0 * kcAtr[0];`,
         `double kcLower = kcEma[0] - 2.0 * kcAtr[0];`,
-      ],
-      buy: isReversal(s) ? `bidPrice <= kcLower` : `bidPrice >= kcUpper`,
-      sell: isReversal(s) ? `bidPrice >= kcUpper` : `bidPrice <= kcLower`,
-    }),
+      ];
+      if (isReversal(s)) {
+        return {
+          setup,
+          triggerBuy:  `bidPrice <= kcLower`,
+          triggerSell: `bidPrice >= kcUpper`,
+          filterBuy:   `bidPrice <= kcEma[0]`,
+          filterSell:  `bidPrice >= kcEma[0]`,
+        };
+      }
+      return {
+        setup,
+        triggerBuy:  `bidPrice >= kcUpper`,
+        triggerSell: `bidPrice <= kcLower`,
+        filterBuy:   `bidPrice >= kcEma[0]`,
+        filterSell:  `bidPrice <= kcEma[0]`,
+      };
+    },
   },
 
   // ─── VOLUMEN ───
   vol: {
-    // Volume: opera solo cuando el volumen actual supera el promedio reciente.
     logic: () => ({
       setup: [
         `long volNow = iVolume(InpSymbol, InpTimeframe, 0);`,
@@ -387,8 +411,10 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `double volHi5 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 5, 1));`,
         `double volLo5 = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 5, 1));`,
       ],
-      buy: `(volSpike && bidPrice > volHi5)`,
-      sell: `(volSpike && bidPrice < volLo5)`,
+      triggerBuy:  `(volSpike && bidPrice > volHi5)`,
+      triggerSell: `(volSpike && bidPrice < volLo5)`,
+      filterBuy:   `volSpike`,
+      filterSell:  `volSpike`,
     }),
   },
   obv: {
@@ -396,20 +422,15 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleOBV = iOBV(InpSymbol, InpTimeframe, VOLUME_TICK);\n   if(handleOBV == INVALID_HANDLE) { Print("Error creando OBV"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleOBV);',
     logic: () => ({
-      // Comparamos OBV actual contra su media simple de 20 barras.
       setup: [
         `double obv[]; ArraySetAsSeries(obv, true); CopyBuffer(handleOBV, 0, 0, 20, obv);`,
         `double obvAvg = 0; for(int oiI = 0; oiI < 20; oiI++) obvAvg += obv[oiI]; obvAvg /= 20.0;`,
       ],
-      buy: `obv[0] > obvAvg`,
-      sell: `obv[0] < obvAvg`,
+      filterBuy:  `obv[0] > obvAvg`,
+      filterSell: `obv[0] < obvAvg`,
     }),
   },
   vwap: {
-    // VWAP profesional: resetea al inicio de cada día UTC y acumula
-    // typical_price * volumen. Es la referencia institucional clásica.
-    //   Buy: precio cruza por encima del VWAP (de abajo a arriba)
-    //   Sell: precio cruza por debajo del VWAP
     logic: () => ({
       setup: [
         `MqlDateTime vwap_dt; TimeToStruct(TimeCurrent(), vwap_dt);`,
@@ -418,23 +439,22 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `static double vwap_cumV = 0;`,
         `static double vwap_prev = 0;`,
         `static double vwap_prevPrice = 0;`,
-        // Reset al cambiar de día
         `if(vwap_dt.day != vwap_day) {`,
         `   vwap_cumPV = 0; vwap_cumV = 0; vwap_day = vwap_dt.day;`,
         `}`,
-        // Acumular barra que acaba de cerrar (bar 1)
         `double vwap_tp = (iHigh(InpSymbol, InpTimeframe, 1) + iLow(InpSymbol, InpTimeframe, 1) + iClose(InpSymbol, InpTimeframe, 1)) / 3.0;`,
         `long vwap_v = iVolume(InpSymbol, InpTimeframe, 1);`,
         `vwap_cumPV += vwap_tp * vwap_v;`,
         `vwap_cumV  += vwap_v;`,
         `double vwap = (vwap_cumV > 0) ? vwap_cumPV / vwap_cumV : bidPrice;`,
-        // Detección de cruce sobre VWAP
         `bool vwap_crossUp   = (vwap_prev > 0 && vwap_prevPrice <= vwap_prev && bidPrice > vwap);`,
         `bool vwap_crossDown = (vwap_prev > 0 && vwap_prevPrice >= vwap_prev && bidPrice < vwap);`,
         `vwap_prev = vwap; vwap_prevPrice = bidPrice;`,
       ],
-      buy: `vwap_crossUp`,
-      sell: `vwap_crossDown`,
+      triggerBuy:  `vwap_crossUp`,
+      triggerSell: `vwap_crossDown`,
+      filterBuy:   `bidPrice > vwap`,
+      filterSell:  `bidPrice < vwap`,
     }),
   },
   mfi: {
@@ -446,21 +466,16 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [`double mfi[]; ArraySetAsSeries(mfi, true); CopyBuffer(handleMFI, 0, 0, 2, mfi);`],
-        buy: `mfi[0] < ${lo}`,
-        sell: `mfi[0] > ${hi}`,
+        triggerBuy:  `(mfi[0] < ${lo} && mfi[1] >= ${lo})`,
+        triggerSell: `(mfi[0] > ${hi} && mfi[1] <= ${hi})`,
+        filterBuy:   `mfi[0] < 50`,
+        filterSell:  `mfi[0] > 50`,
       };
     },
   },
 
-  // ─── SOPORTE / RESISTENCIA ───
+  // ─── SOPORTE / RESISTENCIA (solo trigger, no continuos) ───
   fib: {
-    // Fibonacci profesional: usa iFractals para detectar swing high y swing
-    // low REALES (puntos de inflexión confirmados), no solo el high/low de
-    // N velas. Computa los niveles 0.236 / 0.382 / 0.5 / 0.618 / 0.786 y
-    // señala cuando el precio retrocede a la zona dorada (0.382-0.618) en
-    // la dirección del swing.
-    //   En swing alcista (low antes que high) → BUY en retracción
-    //   En swing bajista (high antes que low) → SELL en retracción
     globals: 'int handleFib_Fractals;',
     init: '   handleFib_Fractals = iFractals(InpSymbol, InpTimeframe);\n   if(handleFib_Fractals == INVALID_HANDLE) { Print("Error creando Fractals para Fib"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleFib_Fractals);',
@@ -469,7 +484,6 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `double fibUp[], fibDn[]; ArraySetAsSeries(fibUp, true); ArraySetAsSeries(fibDn, true);`,
         `CopyBuffer(handleFib_Fractals, 0, 0, 100, fibUp);`,
         `CopyBuffer(handleFib_Fractals, 1, 0, 100, fibDn);`,
-        // Encontrar los fractales más recientes (no son confirmados hasta 2 barras después)
         `double fib_swingHigh = 0; int fib_swingHighBar = -1;`,
         `for(int fi = 2; fi < 100 && fib_swingHighBar == -1; fi++) {`,
         `   if(fibUp[fi] != EMPTY_VALUE && fibUp[fi] > 0) { fib_swingHigh = fibUp[fi]; fib_swingHighBar = fi; }`,
@@ -478,32 +492,21 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `for(int fj = 2; fj < 100 && fib_swingLowBar == -1; fj++) {`,
         `   if(fibDn[fj] != EMPTY_VALUE && fibDn[fj] > 0) { fib_swingLow = fibDn[fj]; fib_swingLowBar = fj; }`,
         `}`,
-        // ¿La tendencia desde el swing más antiguo va al alza o a la baja?
-        // ArraySetAsSeries(true) → índice mayor = más antiguo.
-        // Si swingLow tiene índice MAYOR que swingHigh, el low fue antes → uptrend.
         `bool fib_uptrend = (fib_swingLowBar > fib_swingHighBar);`,
         `double fib_range = fib_swingHigh - fib_swingLow;`,
-        // Niveles de retracción
-        `double fib_236 = fib_uptrend ? fib_swingHigh - fib_range * 0.236 : fib_swingLow + fib_range * 0.236;`,
         `double fib_382 = fib_uptrend ? fib_swingHigh - fib_range * 0.382 : fib_swingLow + fib_range * 0.382;`,
         `double fib_50  = (fib_swingHigh + fib_swingLow) / 2.0;`,
         `double fib_618 = fib_uptrend ? fib_swingHigh - fib_range * 0.618 : fib_swingLow + fib_range * 0.618;`,
-        `double fib_786 = fib_uptrend ? fib_swingHigh - fib_range * 0.786 : fib_swingLow + fib_range * 0.786;`,
         `double fib_tol = fib_range * 0.04;`,
-        // Buy en uptrend cuando el precio toca la zona dorada (entre 0.382 y 0.618)
-        `bool fib_inGoldenZone = (fib_uptrend ? (bidPrice <= fib_382 && bidPrice >= fib_618) : (bidPrice >= fib_382 && bidPrice <= fib_618));`,
-        // Confirmación: cerca de uno de los niveles principales
         `bool fib_atKeyLevel = (MathAbs(bidPrice - fib_382) < fib_tol || MathAbs(bidPrice - fib_50) < fib_tol || MathAbs(bidPrice - fib_618) < fib_tol);`,
       ],
-      buy: `(fib_range > 0 && fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
-      sell: `(fib_range > 0 && !fib_uptrend && fib_inGoldenZone && fib_atKeyLevel)`,
+      triggerBuy:  `(fib_range > 0 && fib_uptrend && fib_atKeyLevel)`,
+      triggerSell: `(fib_range > 0 && !fib_uptrend && fib_atKeyLevel)`,
+      filterBuy:   `(fib_range > 0 && fib_uptrend)`,   // mientras la tendencia sea alcista
+      filterSell:  `(fib_range > 0 && !fib_uptrend)`,
     }),
   },
   pivots: {
-    // Pivot Points clásicos (Floor): P, R1/R2/R3, S1/S2/S3. Tracking del
-    // precio de la barra anterior para detectar BOUNCE en lugar de simple
-    // proximidad — entrar cuando el precio toca un soporte y empieza a
-    // subir, no cuando solo está cerca.
     logic: () => ({
       setup: [
         `double piv_yH = iHigh(InpSymbol, PERIOD_D1, 1);`,
@@ -518,23 +521,20 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `double piv_R3 = piv_yH + 2.0 * (piv_P - piv_yL);`,
         `double piv_S3 = piv_yL - 2.0 * (piv_yH - piv_P);`,
         `double piv_tol = piv_yRange * 0.08;`,
-        // ¿Está cerca de algún soporte o resistencia?
         `bool piv_nearS = (MathAbs(bidPrice - piv_S1) < piv_tol || MathAbs(bidPrice - piv_S2) < piv_tol || MathAbs(bidPrice - piv_S3) < piv_tol);`,
         `bool piv_nearR = (MathAbs(bidPrice - piv_R1) < piv_tol || MathAbs(bidPrice - piv_R2) < piv_tol || MathAbs(bidPrice - piv_R3) < piv_tol);`,
-        // Detección de bounce: precio actual vs barra anterior cerrada
         `double piv_prevClose = iClose(InpSymbol, InpTimeframe, 1);`,
         `bool piv_bounceUp = (bidPrice > piv_prevClose);`,
         `bool piv_bounceDown = (bidPrice < piv_prevClose);`,
       ],
-      buy: `(piv_yRange > 0 && piv_nearS && piv_bounceUp)`,
-      sell: `(piv_yRange > 0 && piv_nearR && piv_bounceDown)`,
+      triggerBuy:  `(piv_yRange > 0 && piv_nearS && piv_bounceUp)`,
+      triggerSell: `(piv_yRange > 0 && piv_nearR && piv_bounceDown)`,
+      // filter: precio en la mitad inferior (vendedor) o superior (compradora) del rango pivotal
+      filterBuy:  `(piv_yRange > 0 && bidPrice < piv_P)`,
+      filterSell: `(piv_yRange > 0 && bidPrice > piv_P)`,
     }),
   },
   sr: {
-    // S/R Auto profesional: usa iFractals para detectar pivots en las últimas
-    // 200 velas. Agrupa pivots cercanos (dentro de 1.5*ATR) en niveles
-    // significativos. Un nivel con 3+ tocados = soporte/resistencia fuerte.
-    // Usa el más cercano por encima/debajo del precio actual como referencia.
     globals: 'int handleSR_Fractals;\nint handleSR_ATR;',
     init: '   handleSR_Fractals = iFractals(InpSymbol, InpTimeframe);\n   handleSR_ATR = iATR(InpSymbol, InpTimeframe, 14);\n   if(handleSR_Fractals == INVALID_HANDLE || handleSR_ATR == INVALID_HANDLE) { Print("Error creando handles S/R"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleSR_Fractals);\n   IndicatorRelease(handleSR_ATR);',
@@ -545,16 +545,12 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `CopyBuffer(handleSR_Fractals, 0, 0, 200, srUpBuf);`,
         `CopyBuffer(handleSR_Fractals, 1, 0, 200, srDnBuf);`,
         `CopyBuffer(handleSR_ATR, 0, 0, 1, srAtrBuf);`,
-        // Recolectar pivots no vacíos
         `double srLevels[400]; int srLevelCount = 0;`,
         `for(int sri = 2; sri < 200 && srLevelCount < 400; sri++) {`,
         `   if(srUpBuf[sri] != EMPTY_VALUE && srUpBuf[sri] > 0) srLevels[srLevelCount++] = srUpBuf[sri];`,
         `   if(srDnBuf[sri] != EMPTY_VALUE && srDnBuf[sri] > 0) srLevels[srLevelCount++] = srDnBuf[sri];`,
         `}`,
-        // Tolerancia para clustering basada en ATR
         `double srTol = srAtrBuf[0] * 1.5;`,
-        // Encontrar el soporte y resistencia más cercanos al precio actual
-        // que tengan al menos 3 toques (incluyéndose a sí mismos)
         `double srSupport = 0;`,
         `double srResistance = 999999;`,
         `for(int srI = 0; srI < srLevelCount; srI++) {`,
@@ -564,14 +560,13 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
         `   if(srLevels[srI] < bidPrice && srLevels[srI] > srSupport) srSupport = srLevels[srI];`,
         `   if(srLevels[srI] > bidPrice && srLevels[srI] < srResistance) srResistance = srLevels[srI];`,
         `}`,
-        // Bounce detection: precio rebotando del soporte hacia arriba o de la resistencia hacia abajo
         `double srBounceTol = srAtrBuf[0] * 0.5;`,
         `double sr_prevClose = iClose(InpSymbol, InpTimeframe, 1);`,
-        `bool sr_buy_signal = (srSupport > 0 && (bidPrice - srSupport) < srBounceTol && (bidPrice - srSupport) > 0 && bidPrice > sr_prevClose);`,
-        `bool sr_sell_signal = (srResistance < 999999 && (srResistance - bidPrice) < srBounceTol && (srResistance - bidPrice) > 0 && bidPrice < sr_prevClose);`,
       ],
-      buy: `sr_buy_signal`,
-      sell: `sr_sell_signal`,
+      triggerBuy:  `(srSupport > 0 && (bidPrice - srSupport) < srBounceTol && (bidPrice - srSupport) > 0 && bidPrice > sr_prevClose)`,
+      triggerSell: `(srResistance < 999999 && (srResistance - bidPrice) < srBounceTol && (srResistance - bidPrice) > 0 && bidPrice < sr_prevClose)`,
+      filterBuy:   `(srSupport > 0 && bidPrice > srSupport)`,    // por encima de soporte = lado bullish
+      filterSell:  `(srResistance < 999999 && bidPrice < srResistance)`,
     }),
   },
 };
@@ -581,24 +576,39 @@ function buildIndicatorBlocks(indicators: string[], strategy: string) {
   const inits: string[] = [];
   const releases: string[] = [];
   const setupLines: string[] = [];
-  const buyConds: string[] = [];
-  const sellConds: string[] = [];
-
-  const isOnly = indicators.length === 1;
+  const triggerBuys: string[] = [];
+  const triggerSells: string[] = [];
+  const filterBuys: string[] = [];
+  const filterSells: string[] = [];
 
   for (const id of indicators) {
     const def = INDICATOR_DEFS_MQL5[id];
-    if (!def) continue; // ignora indicadores no implementados (no debería pasar con el wizard filtrado)
+    if (!def) continue;
     if (def.globals) globals.push(def.globals);
     if (def.init) inits.push(def.init);
     if (def.release) releases.push(def.release);
-    const { setup, buy, sell } = def.logic(strategy, isOnly);
-    setupLines.push(...setup);
-    buyConds.push(buy);
-    sellConds.push(sell);
+    const r = def.logic(strategy);
+    setupLines.push(...r.setup);
+    if (r.triggerBuy) triggerBuys.push(`(${r.triggerBuy})`);
+    if (r.triggerSell) triggerSells.push(`(${r.triggerSell})`);
+    if (r.filterBuy) filterBuys.push(`(${r.filterBuy})`);
+    if (r.filterSell) filterSells.push(`(${r.filterSell})`);
   }
 
-  return { globals, inits, releases, setupLines, buyConds, sellConds };
+  return { globals, inits, releases, setupLines, triggerBuys, triggerSells, filterBuys, filterSells };
+}
+
+// Combina trigger (OR — al menos uno fire) y filter (AND — todos confirman).
+//   1+ trigger + 0+ filter   → triggerOr && filterAnd
+//   0   trigger + 1+ filter  → filterAnd       (puro filtro de estado)
+//   0   trigger + 0   filter → fallback        (price action 10 velas)
+function combine(triggers: string[], filters: string[], fallback: string): string {
+  const triggerOr = triggers.length > 0 ? `(${triggers.join(' || ')})` : '';
+  const filterAnd = filters.length > 0 ? `(${filters.join(' && ')})` : '';
+  if (triggers.length > 0 && filters.length > 0) return `${triggerOr} && ${filterAnd}`;
+  if (triggers.length > 0) return triggerOr;
+  if (filters.length > 0) return filterAnd;
+  return fallback;
 }
 
 export function generateMQL5(bot: {
@@ -675,20 +685,20 @@ export function generateMQL5(bot: {
 
   const sanitizeName = bot.name.replace(/[^a-zA-Z0-9_]/g, '_');
 
-  // Construye los bloques del indicador-driven
   const ind = buildIndicatorBlocks(indicators, strategy);
 
-  // Si el usuario no eligió indicadores, fallback de 10 velas para que el bot
-  // siempre tenga señal en lugar de quedarse mudo
-  if (ind.buyConds.length === 0 && ind.sellConds.length === 0) {
+  // Fallback si no hay indicadores: ruptura de rango 10 velas
+  let fallbackBuy = `false`;
+  let fallbackSell = `false`;
+  if (ind.triggerBuys.length === 0 && ind.filterBuys.length === 0) {
     ind.setupLines.push(`double recentHigh = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 10, 1));`);
     ind.setupLines.push(`double recentLow  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 10, 1));`);
-    ind.buyConds.push(`bidPrice > recentHigh`);
-    ind.sellConds.push(`bidPrice < recentLow`);
+    fallbackBuy = `bidPrice > recentHigh`;
+    fallbackSell = `bidPrice < recentLow`;
   }
 
-  const buyExpr = ind.buyConds.length > 0 ? ind.buyConds.join(' && ') : 'false';
-  const sellExpr = ind.sellConds.length > 0 ? ind.sellConds.join(' && ') : 'false';
+  const buyExpr = combine(ind.triggerBuys, ind.filterBuys, fallbackBuy);
+  const sellExpr = combine(ind.triggerSells, ind.filterSells, fallbackSell);
 
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq5 |
@@ -896,6 +906,7 @@ void OnTick()
    lastBarTime = currentBarTime;
 
    //--- Estrategia: ${strategy} · indicadores: ${indicators.join(', ') || '(ninguno)'}
+   //--- Lógica: (al menos un trigger fire) AND (todos los filtros confirman)
    double bidPrice = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
    bool buySignal = false;
    bool sellSignal = false;
