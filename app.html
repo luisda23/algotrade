@@ -1990,40 +1990,45 @@ const STRATEGIES = [
   { id: 'reversal',  name: 'Reversal',          desc: 'Detecta agotamiento de tendencia y opera el giro. Alta tasa de fallo, pero ratios R:R muy buenos.',  tf: '15m – 4h', risk: 'Alto',   freq: 'Baja' },
 ];
 
+// Indicadores. `available: true` = el generador MQL5/MQL4 sabe traducirlos a
+// señales de compra/venta reales. Los que están a `false` se muestran como
+// "próximamente" en el wizard pero NO se pueden seleccionar — porque el bot
+// no sabría qué hacer con ellos y operaría con price action por fallback,
+// engañando al usuario sobre lo que su bot realmente analiza.
 const INDICATORS = [
   // Momentum
-  { id: 'rsi',       name: 'RSI',          cat: 'Momentum',    desc: 'Mide sobrecompra/sobreventa (0-100). Clásico para timing de entradas.' },
-  { id: 'stoch',     name: 'Estocástico',  cat: 'Momentum',    desc: 'Compara cierre con rango reciente. Cruces en zonas extremas dan señales.' },
-  { id: 'stochrsi',  name: 'Stoch RSI',    cat: 'Momentum',    desc: 'Aplica el estocástico al RSI. Más sensible que el RSI puro.' },
-  { id: 'cci',       name: 'CCI',          cat: 'Momentum',    desc: 'Commodity Channel Index. Detecta extremos de precio en cualquier mercado.' },
-  { id: 'williams',  name: 'Williams %R',  cat: 'Momentum',    desc: 'Similar al estocástico pero invertido. Bueno para reversiones.' },
-  { id: 'roc',       name: 'ROC',          cat: 'Momentum',    desc: 'Rate of Change. Mide velocidad del movimiento del precio.' },
+  { id: 'rsi',       name: 'RSI',          cat: 'Momentum',    available: true,  desc: 'Mide sobrecompra/sobreventa (0-100). Clásico para timing de entradas.' },
+  { id: 'stoch',     name: 'Estocástico',  cat: 'Momentum',    available: false, desc: 'Compara cierre con rango reciente. Cruces en zonas extremas dan señales.' },
+  { id: 'stochrsi',  name: 'Stoch RSI',    cat: 'Momentum',    available: false, desc: 'Aplica el estocástico al RSI. Más sensible que el RSI puro.' },
+  { id: 'cci',       name: 'CCI',          cat: 'Momentum',    available: false, desc: 'Commodity Channel Index. Detecta extremos de precio en cualquier mercado.' },
+  { id: 'williams',  name: 'Williams %R',  cat: 'Momentum',    available: false, desc: 'Similar al estocástico pero invertido. Bueno para reversiones.' },
+  { id: 'roc',       name: 'ROC',          cat: 'Momentum',    available: false, desc: 'Rate of Change. Mide velocidad del movimiento del precio.' },
 
   // Tendencia
-  { id: 'ema',       name: 'EMA',          cat: 'Tendencia',   desc: 'Media exponencial. Reacciona más rápido que la SMA.' },
-  { id: 'sma',       name: 'SMA',          cat: 'Tendencia',   desc: 'Media simple. Suaviza el precio para ver la tendencia general.' },
-  { id: 'macd',      name: 'MACD',         cat: 'Tendencia',   desc: 'Cruce de medias + histograma. Señal clásica de cambio de tendencia.' },
-  { id: 'adx',       name: 'ADX',          cat: 'Tendencia',   desc: 'Mide la FUERZA de la tendencia (no la dirección). >25 = tendencia fuerte.' },
-  { id: 'ichi',      name: 'Ichimoku',     cat: 'Tendencia',   desc: 'Sistema completo: tendencia, soporte/resistencia y momentum en una vista.' },
-  { id: 'psar',      name: 'Parabolic SAR', cat: 'Tendencia',  desc: 'Puntos sobre/bajo el precio. Stop-loss dinámico que sigue la tendencia.' },
-  { id: 'supertrend', name: 'SuperTrend',  cat: 'Tendencia',   desc: 'Combina ATR con tendencia. Línea visible que indica long o short.' },
+  { id: 'ema',       name: 'EMA',          cat: 'Tendencia',   available: true,  desc: 'Media exponencial. Reacciona más rápido que la SMA.' },
+  { id: 'sma',       name: 'SMA',          cat: 'Tendencia',   available: false, desc: 'Media simple. Suaviza el precio para ver la tendencia general.' },
+  { id: 'macd',      name: 'MACD',         cat: 'Tendencia',   available: true,  desc: 'Cruce de medias + histograma. Señal clásica de cambio de tendencia.' },
+  { id: 'adx',       name: 'ADX',          cat: 'Tendencia',   available: false, desc: 'Mide la FUERZA de la tendencia (no la dirección). >25 = tendencia fuerte.' },
+  { id: 'ichi',      name: 'Ichimoku',     cat: 'Tendencia',   available: false, desc: 'Sistema completo: tendencia, soporte/resistencia y momentum en una vista.' },
+  { id: 'psar',      name: 'Parabolic SAR', cat: 'Tendencia',  available: false, desc: 'Puntos sobre/bajo el precio. Stop-loss dinámico que sigue la tendencia.' },
+  { id: 'supertrend', name: 'SuperTrend',  cat: 'Tendencia',   available: false, desc: 'Combina ATR con tendencia. Línea visible que indica long o short.' },
 
   // Volatilidad
-  { id: 'bb',        name: 'Bollinger',    cat: 'Volatilidad', desc: 'Bandas alrededor de la media. Toques en bandas indican extremos.' },
-  { id: 'atr',       name: 'ATR',          cat: 'Volatilidad', desc: 'Rango medio verdadero. Mide la volatilidad para ajustar SL/TP.' },
-  { id: 'donchian',  name: 'Donchian',     cat: 'Volatilidad', desc: 'Canal con máximos y mínimos de N periodos. Clásico para breakouts.' },
-  { id: 'kc',        name: 'Keltner',      cat: 'Volatilidad', desc: 'Canales tipo Bollinger pero con ATR en lugar de desviación estándar.' },
+  { id: 'bb',        name: 'Bollinger',    cat: 'Volatilidad', available: true,  desc: 'Bandas alrededor de la media. Toques en bandas indican extremos.' },
+  { id: 'atr',       name: 'ATR',          cat: 'Volatilidad', available: false, desc: 'Rango medio verdadero. Mide la volatilidad para ajustar SL/TP.' },
+  { id: 'donchian',  name: 'Donchian',     cat: 'Volatilidad', available: false, desc: 'Canal con máximos y mínimos de N periodos. Clásico para breakouts.' },
+  { id: 'kc',        name: 'Keltner',      cat: 'Volatilidad', available: false, desc: 'Canales tipo Bollinger pero con ATR en lugar de desviación estándar.' },
 
   // Volumen
-  { id: 'vol',       name: 'Volume',       cat: 'Volumen',     desc: 'Volumen por barra. Confirma o desmiente movimientos del precio.' },
-  { id: 'obv',       name: 'OBV',          cat: 'Volumen',     desc: 'On-Balance Volume. Suma volumen acumulado para detectar acumulación.' },
-  { id: 'vwap',      name: 'VWAP',         cat: 'Volumen',     desc: 'Precio medio ponderado por volumen. Referencia institucional.' },
-  { id: 'mfi',       name: 'MFI',          cat: 'Volumen',     desc: 'Money Flow Index. Como el RSI pero ponderado por volumen.' },
+  { id: 'vol',       name: 'Volume',       cat: 'Volumen',     available: false, desc: 'Volumen por barra. Confirma o desmiente movimientos del precio.' },
+  { id: 'obv',       name: 'OBV',          cat: 'Volumen',     available: false, desc: 'On-Balance Volume. Suma volumen acumulado para detectar acumulación.' },
+  { id: 'vwap',      name: 'VWAP',         cat: 'Volumen',     available: false, desc: 'Precio medio ponderado por volumen. Referencia institucional.' },
+  { id: 'mfi',       name: 'MFI',          cat: 'Volumen',     available: false, desc: 'Money Flow Index. Como el RSI pero ponderado por volumen.' },
 
   // Soporte/Resistencia
-  { id: 'fib',       name: 'Fibonacci',    cat: 'S/R',         desc: 'Niveles clave de retroceso (38.2%, 50%, 61.8%) tras un movimiento.' },
-  { id: 'pivots',    name: 'Pivot Points', cat: 'S/R',         desc: 'Niveles diarios de soporte/resistencia calculados desde sesión anterior.' },
-  { id: 'sr',        name: 'S/R Auto',     cat: 'S/R',         desc: 'Detecta automáticamente niveles donde el precio ha rebotado.' },
+  { id: 'fib',       name: 'Fibonacci',    cat: 'S/R',         available: false, desc: 'Niveles clave de retroceso (38.2%, 50%, 61.8%) tras un movimiento.' },
+  { id: 'pivots',    name: 'Pivot Points', cat: 'S/R',         available: false, desc: 'Niveles diarios de soporte/resistencia calculados desde sesión anterior.' },
+  { id: 'sr',        name: 'S/R Auto',     cat: 'S/R',         available: false, desc: 'Detecta automáticamente niveles donde el precio ha rebotado.' },
 ];
 
 // Política sobre EAs/bots:
@@ -2411,7 +2416,7 @@ function renderStepIndicators() {
         <div class="field-label">${cat}</div>
         <div class="chip-row">
           ${INDICATORS.filter(i => i.cat === cat).map(i => `
-            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''}" data-indicator="${i.id}" title="${i.desc || ''}">${i.name}</button>
+            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''} ${i.available === false ? 'disabled' : ''}" data-indicator="${i.id}" data-available="${i.available !== false}" title="${i.available === false ? 'Próximamente disponible. Por ahora elige RSI, EMA, MACD o Bollinger.' : (i.desc || '')}" ${i.available === false ? 'disabled' : ''} style="${i.available === false ? 'opacity:0.4;cursor:not-allowed;text-decoration:line-through' : ''}">${_esc(i.name)}${i.available === false ? ' · próx.' : ''}</button>
           `).join('')}
         </div>
       </div>
@@ -2846,6 +2851,12 @@ function bindWizard() {
   // Step 2: Indicators
   document.querySelectorAll('[data-indicator]').forEach(el => {
     el.addEventListener('click', () => {
+      // Bloqueamos los indicadores marcados como no disponibles para que el
+      // usuario no termine con un bot que no analiza lo que cree analizar.
+      if (el.dataset.available === 'false' || el.disabled) {
+        toast('Este indicador estará disponible próximamente. Por ahora elige RSI, EMA, MACD o Bollinger.', 'info');
+        return;
+      }
       const id = el.dataset.indicator;
       const idx = w.data.indicators.indexOf(id);
       if (idx >= 0) w.data.indicators.splice(idx, 1);

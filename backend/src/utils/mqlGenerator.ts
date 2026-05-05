@@ -540,16 +540,16 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
     sellConds.push(`bidPrice < low20`);
   }
 
-  if (strategy === 'trend') {
-    // Trend following: requiere precio sobre/debajo de EMA50 si está disponible
-    if (has('ema')) {
-      // Ya se añadió la lógica de EMA, no duplicamos
-    } else {
-      // Fallback: usar EMA50 directa
-      setup.push(`double ema50 = iMA(InpSymbol, InpTimeframe, 50, 0, MODE_EMA, PRICE_CLOSE);`);
-      buyConds.push(`bidPrice > ema50`);
-      sellConds.push(`bidPrice < ema50`);
-    }
+  if (strategy === 'trend' && !has('ema')) {
+    // Trend following sin EMA elegida: añadimos EMA50 dinámica.
+    // En MQL5, iMA() devuelve un handle (int), NO un precio. Hay que
+    // crear el handle, sacar el valor con CopyBuffer y comparar contra ese.
+    setup.push(`int handleTrendEMA50 = iMA(InpSymbol, InpTimeframe, 50, 0, MODE_EMA, PRICE_CLOSE);`);
+    setup.push(`double trendEMA50Buf[]; ArraySetAsSeries(trendEMA50Buf, true); CopyBuffer(handleTrendEMA50, 0, 0, 1, trendEMA50Buf);`);
+    setup.push(`double trendEMA50 = (ArraySize(trendEMA50Buf) > 0) ? trendEMA50Buf[0] : bidPrice;`);
+    setup.push(`IndicatorRelease(handleTrendEMA50);`);
+    buyConds.push(`bidPrice > trendEMA50`);
+    sellConds.push(`bidPrice < trendEMA50`);
   }
 
   // Fallback si el usuario no eligió indicadores ni estrategias con lógica propia:
