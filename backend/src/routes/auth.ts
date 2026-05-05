@@ -1,11 +1,60 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../server';
 import { authenticateToken, AuthRequest, JWT_SECRET } from '../middleware/auth';
 import { sendWelcomeEmail, sendLoginCodeEmail, sendEmailChangeCode, sendPasswordResetEmail, generateVerificationCode, generateResetToken } from '../utils/email';
 
 const router = Router();
+
+// ───── Rate limits ─────
+// Cada IP solo puede hacer N intentos dentro de la ventana. Mensajes en JSON
+// para que el frontend pueda mostrarlos.
+const jsonRateMessage = (msg: string) => ({ error: msg });
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8, // 8 intentos / 15 min / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: jsonRateMessage('Demasiados intentos de login. Espera 15 minutos antes de volver a intentarlo.'),
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5, // 5 cuentas/hora/IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: jsonRateMessage('Demasiadas cuentas creadas desde esta IP. Espera una hora.'),
+});
+
+const forgotLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3, // 3 solicitudes de reset/hora/IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: jsonRateMessage('Demasiadas solicitudes. Espera una hora.'),
+});
+
+const codeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 verificaciones de código / 15 min / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: jsonRateMessage('Demasiados intentos de código. Espera unos minutos.'),
+});
+
+// ───── Password policy unificada ─────
+function validatePassword(pw: string): string | null {
+  if (typeof pw !== 'string') return 'Contraseña requerida';
+  if (pw.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+  if (pw.length > 128) return 'La contraseña es demasiado larga';
+  if (!/[A-Z]/.test(pw)) return 'La contraseña necesita al menos una mayúscula';
+  if (!/[a-z]/.test(pw)) return 'La contraseña necesita al menos una minúscula';
+  if (!/\d/.test(pw)) return 'La contraseña necesita al menos un número';
+  return null;
+}
 
 // Oculta el email para mostrarlo en la UI (juan@gmail.com → j***n@gmail.com)
 function maskEmail(email: string): string {
@@ -27,7 +76,14 @@ interface LoginBody {
   password: string;
 }
 
-router.post('/signup', async (req: Request, res: Response) => {
+router.post('/signup', signupLimiter, async (req: Request, res: Response) => {
+  // Respuesta ÚNICA para evitar enumeración de emails: el atacante no puede
+  // distinguir entre "email nuevo creado" y "email ya existe".
+  const SAFE_OK = {
+    message: 'Cuenta creada. Inicia sesión para verificar tu email.',
+    requiresLogin: true,
+  };
+
   try {
     const raw: SignupBody = req.body || {};
     const email = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : '';
@@ -41,21 +97,25 @@ router.post('/signup', async (req: Request, res: Response) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Email no válido' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (email.length > 254) {
+      return res.status(400).json({ error: 'Email demasiado largo' });
     }
-    if (name.length > 80) {
-      return res.status(400).json({ error: 'El nombre es demasiado largo' });
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ error: pwError });
+    if (name.length < 2 || name.length > 80) {
+      return res.status(400).json({ error: 'Nombre inválido (2-80 caracteres)' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ error: 'El usuario ya existe' });
+      // No revelamos al atacante que el email ya existe.
+      // Tampoco enviamos email para no quemar cuota de Resend con spam.
+      return res.status(201).json(SAFE_OK);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -65,25 +125,21 @@ router.post('/signup', async (req: Request, res: Response) => {
       },
     });
 
-    // Email de bienvenida (no es bloqueante — si falla seguimos)
+    // Email de bienvenida (no bloqueante — si falla seguimos)
     try {
       await sendWelcomeEmail(email, name);
     } catch (mailErr: any) {
       console.error('Welcome email send error:', mailErr);
     }
 
-    // No emitimos token de sesión: el usuario debe ir a Iniciar sesión donde se le pedirá verificar el email
-    res.status(201).json({
-      message: 'Cuenta creada. Inicia sesión para verificar tu email.',
-      requiresLogin: true,
-    });
+    return res.status(201).json(SAFE_OK);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const raw: LoginBody = req.body || {};
     const email = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : '';
@@ -325,7 +381,7 @@ router.post('/verify-email-change', authenticateToken, async (req: AuthRequest, 
 });
 
 // Verificar el código del login (MFA) y devolver el token de sesión real
-router.post('/verify-login', async (req: Request, res: Response) => {
+router.post('/verify-login', codeLimiter, async (req: Request, res: Response) => {
   try {
     const pendingToken = typeof req.body?.pendingToken === 'string' ? req.body.pendingToken : '';
     const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
@@ -396,7 +452,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
 });
 
 // Reenviar el código del login
-router.post('/resend-login-code', async (req: Request, res: Response) => {
+router.post('/resend-login-code', codeLimiter, async (req: Request, res: Response) => {
   try {
     const pendingToken = typeof req.body?.pendingToken === 'string' ? req.body.pendingToken : '';
     if (!pendingToken) return res.status(400).json({ error: 'Token de login requerido' });
@@ -451,7 +507,7 @@ router.post('/resend-login-code', async (req: Request, res: Response) => {
 });
 
 // Solicitar reset de contraseña — envía email con enlace
-router.post('/forgot-password', async (req: Request, res: Response) => {
+router.post('/forgot-password', forgotLimiter, async (req: Request, res: Response) => {
   // Respuesta SIEMPRE igual (haya o no usuario) para evitar enumeración de emails
   const SAFE_OK = { message: 'Si ese email está registrado, te llegará un enlace en breve.' };
 

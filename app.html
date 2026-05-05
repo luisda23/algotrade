@@ -1117,13 +1117,28 @@ async function api(path, opts = {}) {
 }
 
 // =====================================================
+//  ESCAPE — defensa XSS para innerHTML con datos de usuario
+// =====================================================
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+const _esc = escapeHtml;
+
+// =====================================================
 //  TOAST
 // =====================================================
 function toast(msg, type = '') {
   const root = document.getElementById('toast-root');
   const wrap = document.createElement('div');
   wrap.className = 'toast-wrap';
-  wrap.innerHTML = `<div class="toast ${type}">${msg}</div>`;
+  // type es una clase (interna, no user-controlled), msg sí puede serlo
+  wrap.innerHTML = `<div class="toast ${type}">${escapeHtml(msg)}</div>`;
   root.appendChild(wrap);
   setTimeout(() => wrap.remove(), 3500);
 }
@@ -1230,8 +1245,8 @@ function renderShell() {
           <div class="user-pill">
             <div class="user-avatar">${initial}</div>
             <div class="user-info">
-              <div class="user-name">${state.user?.name || 'Usuario'}</div>
-              <div class="user-email">${state.user?.email || ''}</div>
+              <div class="user-name">${_esc(state.user?.name || 'Usuario')}</div>
+              <div class="user-email">${_esc(state.user?.email || '')}</div>
             </div>
           </div>
         </div>
@@ -1752,8 +1767,8 @@ function bindAuth() {
       const terms = document.getElementById('terms')?.checked;
       if (name.length < 2) { state.authError = 'Pon tu nombre completo'; render(); return; }
       if (password.length < 8) { state.authError = 'La contraseña debe tener al menos 8 caracteres'; render(); return; }
-      if (!/[A-Z]/.test(password) || !/\d/.test(password)) {
-        state.authError = 'La contraseña necesita al menos una mayúscula y un número'; render(); return;
+      if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+        state.authError = 'La contraseña necesita al menos una mayúscula, una minúscula y un número'; render(); return;
       }
       if (password !== password2) { state.authError = 'Las contraseñas no coinciden'; render(); return; }
       if (!terms) { state.authError = 'Debes aceptar los términos para crear la cuenta'; render(); return; }
@@ -1922,7 +1937,7 @@ function renderBotsGrid() {
             <div class="bot-card-head">
               <div class="bot-card-avatar">${getAvatarSVG(b.parameters?.avatar)}</div>
               <div class="bot-card-info">
-                <div class="bot-card-name">${b.name}</div>
+                <div class="bot-card-name">${_esc(b.name)}</div>
                 <div class="bot-card-pair">${pair} · ${strategy}</div>
               </div>
             </div>
@@ -2325,7 +2340,7 @@ function renderStepName() {
   return `
     <div style="margin-bottom:24px">
       <div class="field-label">Nombre del bot</div>
-      <input class="input" id="bot-name" value="${d.name}" placeholder="Mi Bot Pro"/>
+      <input class="input" id="bot-name" value="${_esc(d.name)}" placeholder="Mi Bot Pro"/>
     </div>
     <div style="margin-bottom:24px">
       <div class="field-label">Avatar</div>
@@ -2655,7 +2670,7 @@ function renderStepGenerate() {
         </div>
         <div>
           <div class="h3">Construyendo tu bot</div>
-          <div class="text-dim" style="font-size:12px;margin-top:2px">${state.wizard.data.name}</div>
+          <div class="text-dim" style="font-size:12px;margin-top:2px">${_esc(state.wizard.data.name)}</div>
         </div>
       </div>
       <div class="flex flex-col gap-3">
@@ -3075,8 +3090,8 @@ function loadAccount(root) {
       <div class="card card-pad-lg fade-up" style="margin-top:28px;display:flex;align-items:center;gap:18px;">
         <div class="user-avatar" style="width:64px;height:64px;font-size:24px;">${initial}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Inter Tight';font-size:22px;font-weight:800;letter-spacing:-0.02em;">${u.name || 'Usuario'}</div>
-          <div class="text-dim mt-2" style="font-size:14px;overflow:hidden;text-overflow:ellipsis">${u.email || ''}</div>
+          <div style="font-family:'Inter Tight';font-size:22px;font-weight:800;letter-spacing:-0.02em;">${_esc(u.name || 'Usuario')}</div>
+          <div class="text-dim mt-2" style="font-size:14px;overflow:hidden;text-overflow:ellipsis">${_esc(u.email || '')}</div>
         </div>
       </div>
 
@@ -3086,7 +3101,7 @@ function loadAccount(root) {
         <form class="card account-form" id="account-name-form">
           <label class="field-label" for="acc-name">Nombre completo</label>
           <div style="display:flex;gap:10px">
-            <input class="input" id="acc-name" name="name" type="text" required maxlength="80" value="${(u.name || '').replace(/"/g, '&quot;')}" autocomplete="name" style="flex:1"/>
+            <input class="input" id="acc-name" name="name" type="text" required maxlength="80" value="${_esc(u.name || '')}" autocomplete="name" style="flex:1"/>
             <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
           </div>
         </form>
@@ -3094,7 +3109,7 @@ function loadAccount(root) {
         <form class="card account-form" id="account-email-form" style="margin-top:12px">
           <label class="field-label" for="acc-email">Email</label>
           <div style="display:flex;gap:10px">
-            <input class="input" id="acc-email" name="email" type="email" required value="${(u.email || '').replace(/"/g, '&quot;')}" autocomplete="email" style="flex:1"/>
+            <input class="input" id="acc-email" name="email" type="email" required value="${_esc(u.email || '')}" autocomplete="email" style="flex:1"/>
             <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
           </div>
           <div class="text-dim" style="font-size:12px;margin-top:8px">Te enviaremos un código al nuevo email para confirmar el cambio.</div>
@@ -3606,7 +3621,7 @@ function loadBotDetail(root) {
           ${getAvatarSVG(bot.parameters?.avatar)}
         </div>
         <div style="min-width:0;flex:1">
-          <h1 class="h1" style="margin:0">${bot.name}</h1>
+          <h1 class="h1" style="margin:0">${_esc(bot.name)}</h1>
           <p class="text-dim mt-2" style="margin-top:4px">${pair} · ${bot.strategy || 'scalping'}</p>
         </div>
       </div>
@@ -3708,6 +3723,7 @@ async function verifyPendingPayment() {
     localStorage.removeItem('pendingBotConfig');
     cleanUrl();
     state.currentScreen = 'dashboard';
+    // toast() ya escapa msg internamente, pero lo dejo limpio para que sea obvio
     toast(`Bot "${res.bot?.name || 'creado'}" añadido a tu cuenta`, 'success');
   } catch (e) {
     cleanUrl();

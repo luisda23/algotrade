@@ -26,6 +26,17 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     if (err) {
       return res.status(403).json({ error: 'Token inválido' });
     }
+
+    // Rechaza tokens pre-MFA: el pendingToken solo sirve para /verify-login
+    // y /resend-login-code, no para autenticarse en el resto de la API.
+    if (decoded?.type === 'pending-login') {
+      return res.status(403).json({ error: 'Token de login pendiente. Completa la verificación primero.' });
+    }
+
+    if (!decoded?.userId) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+
     req.userId = decoded.userId;
     next();
   });

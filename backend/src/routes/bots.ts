@@ -41,30 +41,14 @@ router.get('/:botId/download', authenticateToken, async (req: AuthRequest, res: 
   }
 });
 
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, description, strategy, parameters, brokerConnectionId } = req.body;
-
-    if (!name || !strategy) {
-      return res.status(400).json({ error: 'Nombre y estrategia requeridos' });
-    }
-
-    const bot = await prisma.bot.create({
-      data: {
-        userId: req.userId!,
-        name,
-        description,
-        strategy,
-        parameters: parameters || {},
-        brokerConnectionId,
-      },
-    });
-
-    res.status(201).json({ message: 'Bot creado exitosamente', bot });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al crear el bot' });
-  }
+// POST /api/bots fue eliminado: bypaseaba el sistema de pago. La creación
+// de bots SOLO debe hacerse vía POST /api/payments/verify tras una orden
+// pagada de Lemon Squeezy. Devolvemos 410 Gone para señalizar claramente
+// que esta ruta ya no existe (vs 404 que parece error temporal).
+router.post('/', authenticateToken, async (_req: AuthRequest, res: Response) => {
+  return res.status(410).json({
+    error: 'Bot creation requires a paid Lemon Squeezy order. Use POST /api/payments/verify.',
+  });
 });
 
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -108,6 +92,30 @@ router.get('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
   }
 });
 
+// Campos del JSON `parameters` que el usuario puede actualizar libremente.
+// `lemonOrderId` y `lemonOrderNumber` se omiten para que NO se puedan
+// reescribir desde el cliente (preservan el audit trail del pago).
+const ALLOWED_PARAM_KEYS = [
+  'avatar', 'market', 'pair', 'leverage',
+  'indicators', 'risk', 'news', 'funded',
+];
+
+function sanitizeUpdateParameters(raw: any, existing: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  // Mantener intactos los campos protegidos
+  if (existing && typeof existing === 'object') {
+    if (existing.lemonOrderId) out.lemonOrderId = existing.lemonOrderId;
+    if (existing.lemonOrderNumber) out.lemonOrderNumber = existing.lemonOrderNumber;
+    if (existing.stripeSessionId) out.stripeSessionId = existing.stripeSessionId;
+  }
+  if (raw && typeof raw === 'object') {
+    for (const k of ALLOWED_PARAM_KEYS) {
+      if (k in raw) out[k] = raw[k];
+    }
+  }
+  return out;
+}
+
 router.put('/:botId', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { botId } = req.params;
@@ -118,15 +126,18 @@ router.put('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
       return res.status(404).json({ error: 'Bot no encontrado' });
     }
 
-    const updatedBot = await prisma.bot.update({
-      where: { id: botId },
-      data: {
-        ...(typeof name === 'string' && name.trim() && { name: name.trim().slice(0, 60) }),
-        ...(typeof description === 'string' && { description: description.slice(0, 200) }),
-        ...(parameters && typeof parameters === 'object' && { parameters }),
-      },
-    });
+    const data: any = {};
+    if (typeof name === 'string' && name.trim()) {
+      data.name = name.trim().slice(0, 60);
+    }
+    if (typeof description === 'string') {
+      data.description = description.slice(0, 200);
+    }
+    if (parameters && typeof parameters === 'object') {
+      data.parameters = sanitizeUpdateParameters(parameters, bot.parameters);
+    }
 
+    const updatedBot = await prisma.bot.update({ where: { id: botId }, data });
     res.json({ message: 'Bot actualizado', bot: updatedBot });
   } catch (error) {
     console.error(error);
