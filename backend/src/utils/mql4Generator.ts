@@ -5,6 +5,11 @@ interface BotParams {
   pair?: string;
   leverage?: number;
   indicators?: string[];
+  timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
+  lot?: {
+    mode?: 'auto' | 'fixed';
+    fixedLot?: number;
+  };
   risk?: {
     stopLoss?: number;
     takeProfit?: number;
@@ -13,6 +18,23 @@ interface BotParams {
   };
   funded?: { enabled?: boolean; firm?: string };
 }
+
+// MQL4 acepta los mismos identificadores de timeframe que MQL5 (PERIOD_M1, etc.)
+const TIMEFRAME_TO_MQL4: Record<string, string> = {
+  M1: 'PERIOD_M1',
+  M5: 'PERIOD_M5',
+  M15: 'PERIOD_M15',
+  M30: 'PERIOD_M30',
+  H1: 'PERIOD_H1',
+  H4: 'PERIOD_H4',
+  D1: 'PERIOD_D1',
+};
+
+const STRATEGY_DEFAULT_TF_MQL4: Record<string, string> = {
+  scalping: 'M5', momentum: 'M15', mean: 'M15', breakout: 'H1',
+  swing: 'H4', trend: 'H1', reversal: 'M30', grid: 'M15',
+  dca: 'H4', hedge: 'H1',
+};
 
 export function generateMQL4(bot: {
   id?: string;
@@ -34,6 +56,18 @@ export function generateMQL4(bot: {
   const strategy = bot.strategy || 'momentum';
   const generatedDate = new Date().toISOString().split('T')[0];
   const magicNumber = Math.floor(Math.random() * 900000) + 100000;
+
+  // Timeframe del wizard o default por estrategia
+  const tfKey = (p.timeframe && TIMEFRAME_TO_MQL4[p.timeframe])
+    ? p.timeframe
+    : (STRATEGY_DEFAULT_TF_MQL4[strategy] || 'M15');
+  const timeframeMQL = TIMEFRAME_TO_MQL4[tfKey];
+
+  // Lot mode + sanity bound
+  const lotConf = p.lot || {};
+  const lotMode = lotConf.mode === 'fixed' ? 'fixed' : 'auto';
+  const fixedLotRaw = typeof lotConf.fixedLot === 'number' ? lotConf.fixedLot : 0.10;
+  const fixedLot = Math.min(100, Math.max(0.01, fixedLotRaw));
 
   const strategyDescriptions: Record<string, string> = {
     scalping: 'Scalping rápido (M1-M5)',
@@ -64,14 +98,18 @@ export function generateMQL4(bot: {
 
 //--- Configuración del bot
 extern string  _GENERAL              = "═══ CONFIGURACIÓN GENERAL ═══";
-extern double  InpLotSize            = 0.10;          // Tamaño de lote inicial
+extern int     InpTimeframe          = ${timeframeMQL};   // Timeframe del análisis
 extern int     InpMagicNumber        = ${magicNumber};        // Número mágico (identificador único)
 extern int     InpSlippage           = 10;             // Slippage máximo (puntos)
+
+extern string  _LOT                  = "═══ TAMAÑO DE LOTE ═══";
+extern bool    InpUseFixedLot        = ${lotMode === 'fixed' ? 'true' : 'false'};            // true = lote fijo · false = auto por riesgo %
+extern double  InpFixedLot           = ${fixedLot.toFixed(2)};             // Lote a usar si InpUseFixedLot = true
 
 extern string  _RISK                 = "═══ GESTIÓN DE RIESGO ═══";
 extern double  InpStopLoss           = ${stopLoss};        // Stop Loss (%)
 extern double  InpTakeProfit         = ${takeProfit};      // Take Profit (%)
-extern double  InpRiskPerTrade       = ${posSize};         // Riesgo por operación (% capital)
+extern double  InpRiskPerTrade       = ${posSize};         // Riesgo por operación (% capital, modo auto)
 extern double  InpMaxDailyLoss       = ${dailyLoss};       // Pérdida diaria máxima (%)
 extern int     InpLeverage           = ${leverage};        // Apalancamiento (1:X)
 
@@ -148,21 +186,40 @@ bool IsTradingHours()
 }
 
 //+------------------------------------------------------------------+
-//| Calcular tamaño de lote según riesgo                             |
+//| Acota un lote a los límites del símbolo (min/max/step)           |
+//+------------------------------------------------------------------+
+double ClampLotToSymbol(double lot)
+{
+   double minLot  = MarketInfo(Symbol(), MODE_MINLOT);
+   double maxLot  = MarketInfo(Symbol(), MODE_MAXLOT);
+   double stepLot = MarketInfo(Symbol(), MODE_LOTSTEP);
+   if(stepLot <= 0) stepLot = 0.01;
+   lot = MathFloor(lot / stepLot) * stepLot;
+   if(lot < minLot) lot = minLot;
+   if(lot > maxLot) lot = maxLot;
+   return NormalizeDouble(lot, 2);
+}
+
+//+------------------------------------------------------------------+
+//| Lote por % de riesgo                                             |
 //+------------------------------------------------------------------+
 double CalculateLotSize(double stopLossPips)
 {
    double balance = AccountBalance();
    double riskAmount = balance * (InpRiskPerTrade / 100.0);
    double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
-   double lot = NormalizeDouble(riskAmount / (stopLossPips * tickValue), 2);
+   if(tickValue <= 0 || stopLossPips <= 0) return ClampLotToSymbol(InpFixedLot);
+   double lot = riskAmount / (stopLossPips * tickValue);
+   return ClampLotToSymbol(lot);
+}
 
-   double minLot = MarketInfo(Symbol(), MODE_MINLOT);
-   double maxLot = MarketInfo(Symbol(), MODE_MAXLOT);
-   if(lot < minLot) lot = minLot;
-   if(lot > maxLot) lot = maxLot;
-
-   return lot;
+//+------------------------------------------------------------------+
+//| Lote final: respeta el modo (fijo o auto) elegido por el usuario |
+//+------------------------------------------------------------------+
+double GetTradeLot(double stopLossPips)
+{
+   if(InpUseFixedLot) return ClampLotToSymbol(InpFixedLot);
+   return CalculateLotSize(stopLossPips);
 }
 
 //+------------------------------------------------------------------+
@@ -203,7 +260,7 @@ ${generateStrategyLogic(strategy, indicators)}
    {
       double sl = Ask * (1 - InpStopLoss/100.0);
       double tp = Ask * (1 + InpTakeProfit/100.0);
-      double lot = CalculateLotSize(MathAbs(Ask - sl) / Point);
+      double lot = GetTradeLot(MathAbs(Ask - sl) / Point);
       int ticket = OrderSend(Symbol(), OP_BUY, lot, Ask, InpSlippage, sl, tp, "${bot.name} BUY", InpMagicNumber, 0, clrGreen);
       if(ticket < 0) Print("Error al abrir BUY: ", GetLastError());
       else Print("BUY abierta · Ticket: ", ticket, " · Lote: ", lot);
@@ -212,7 +269,7 @@ ${generateStrategyLogic(strategy, indicators)}
    {
       double sl = Bid * (1 + InpStopLoss/100.0);
       double tp = Bid * (1 - InpTakeProfit/100.0);
-      double lot = CalculateLotSize(MathAbs(sl - Bid) / Point);
+      double lot = GetTradeLot(MathAbs(sl - Bid) / Point);
       int ticket = OrderSend(Symbol(), OP_SELL, lot, Bid, InpSlippage, sl, tp, "${bot.name} SELL", InpMagicNumber, 0, clrRed);
       if(ticket < 0) Print("Error al abrir SELL: ", GetLastError());
       else Print("SELL abierta · Ticket: ", ticket, " · Lote: ", lot);
@@ -235,9 +292,9 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
   if (strategy === 'scalping' || strategy === 'momentum') {
     if (hasRSI && hasEMA) {
       return `   // Estrategia: ${strategy} con RSI + EMA
-   double rsi = iRSI(Symbol(), PERIOD_CURRENT, 14, PRICE_CLOSE, 0);
-   double emaFast = iMA(Symbol(), PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, 0);
-   double emaSlow = iMA(Symbol(), PERIOD_CURRENT, 21, 0, MODE_EMA, PRICE_CLOSE, 0);
+   double rsi = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);
+   double emaFast = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 0);
+   double emaSlow = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 0);
 
    // Buy: RSI < 30 (sobrevendido) y EMA rápida > EMA lenta (tendencia alcista)
    if(rsi < 30 && emaFast > emaSlow) buySignal = true;
@@ -246,16 +303,16 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
     }
     if (hasRSI) {
       return `   // Estrategia: ${strategy} con RSI
-   double rsi = iRSI(Symbol(), PERIOD_CURRENT, 14, PRICE_CLOSE, 0);
+   double rsi = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);
    if(rsi < 30) buySignal = true;
    if(rsi > 70) sellSignal = true;`;
     }
     if (hasEMA) {
       return `   // Estrategia: ${strategy} con cruce de EMAs
-   double emaFast0 = iMA(Symbol(), PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, 0);
-   double emaSlow0 = iMA(Symbol(), PERIOD_CURRENT, 21, 0, MODE_EMA, PRICE_CLOSE, 0);
-   double emaFast1 = iMA(Symbol(), PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, 1);
-   double emaSlow1 = iMA(Symbol(), PERIOD_CURRENT, 21, 0, MODE_EMA, PRICE_CLOSE, 1);
+   double emaFast0 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 0);
+   double emaSlow0 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 0);
+   double emaFast1 = iMA(Symbol(), InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE, 1);
+   double emaSlow1 = iMA(Symbol(), InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE, 1);
 
    if(emaFast0 > emaSlow0 && emaFast1 <= emaSlow1) buySignal = true;
    if(emaFast0 < emaSlow0 && emaFast1 >= emaSlow1) sellSignal = true;`;
@@ -267,8 +324,8 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
 
   if (strategy === 'mean') {
     return `   // Estrategia: Mean Reversion con Bollinger Bands
-   double bb_upper = iBands(Symbol(), PERIOD_CURRENT, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 0);
-   double bb_lower = iBands(Symbol(), PERIOD_CURRENT, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 0);
+   double bb_upper = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 0);
+   double bb_lower = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 0);
 
    // Buy: precio toca banda inferior
    if(Bid <= bb_lower) buySignal = true;
@@ -278,8 +335,8 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
 
   if (strategy === 'breakout') {
     return `   // Estrategia: Breakout de máximos/mínimos de 20 velas
-   double high20 = iHigh(Symbol(), PERIOD_CURRENT, iHighest(Symbol(), PERIOD_CURRENT, MODE_HIGH, 20, 1));
-   double low20  = iLow(Symbol(), PERIOD_CURRENT, iLowest(Symbol(), PERIOD_CURRENT, MODE_LOW, 20, 1));
+   double high20 = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 20, 1));
+   double low20  = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 20, 1));
 
    // Buy: ruptura de máximo
    if(Bid > high20) buySignal = true;
@@ -289,7 +346,7 @@ function generateStrategyLogic(strategy: string, indicators: string[]): string {
 
   // Default
   return `   // Lógica genérica
-   double rsi = iRSI(Symbol(), PERIOD_CURRENT, 14, PRICE_CLOSE, 0);
+   double rsi = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, 0);
    if(rsi < 30) buySignal = true;
    if(rsi > 70) sellSignal = true;`;
 }

@@ -98,6 +98,7 @@ router.get('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
 const ALLOWED_PARAM_KEYS = [
   'avatar', 'market', 'pair', 'leverage',
   'indicators', 'risk', 'news', 'funded',
+  'timeframe', 'lot',
 ];
 
 function sanitizeUpdateParameters(raw: any, existing: any): Record<string, any> {

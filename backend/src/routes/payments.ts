@@ -73,9 +73,26 @@ function sanitizeBotConfig(raw: any): { error: string; data: null } | { error: n
   const description = typeof raw.description === 'string' ? raw.description.slice(0, 200) : '';
   const params = (raw.parameters && typeof raw.parameters === 'object') ? raw.parameters : {};
 
-  const allowedKeys = ['avatar','market','pair','leverage','indicators','risk','news','funded'];
+  const allowedKeys = ['avatar','market','pair','leverage','indicators','risk','news','funded','timeframe','lot'];
   const cleanParams: Record<string, any> = {};
   for (const k of allowedKeys) if (k in params) cleanParams[k] = params[k];
+
+  // Sanity bounds en timeframe
+  const ALLOWED_TF = ['M1','M5','M15','M30','H1','H4','D1'];
+  if (cleanParams.timeframe && !ALLOWED_TF.includes(cleanParams.timeframe)) {
+    delete cleanParams.timeframe;
+  }
+  // Sanity bounds en lot
+  if (cleanParams.lot && typeof cleanParams.lot === 'object') {
+    const lot: any = {};
+    if (cleanParams.lot.mode === 'auto' || cleanParams.lot.mode === 'fixed') {
+      lot.mode = cleanParams.lot.mode;
+    }
+    if (typeof cleanParams.lot.fixedLot === 'number' && isFinite(cleanParams.lot.fixedLot)) {
+      lot.fixedLot = Math.min(100, Math.max(0.01, cleanParams.lot.fixedLot));
+    }
+    cleanParams.lot = lot;
+  }
 
   return { error: null, data: { name, strategy, description, parameters: cleanParams } };
 }

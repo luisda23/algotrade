@@ -1049,6 +1049,8 @@ const state = {
       strategy: 'scalping',
       leverage: 30,
       indicators: ['rsi', 'ema'],
+      timeframe: 'M15', // M1 / M5 / M15 / M30 / H1 / H4 / D1
+      lot: { mode: 'auto', fixedLot: 0.10 }, // mode: 'auto' (riesgo %) o 'fixed' (lote fijo)
       risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
       news: {
         enabled: true,
@@ -2435,7 +2437,73 @@ function renderStepIndicators() {
 function renderStepRisk() {
   const d = state.wizard.data;
   const presets = [1, 10, 30, 100, 200, 500];
+  const TIMEFRAMES = [
+    { id: 'M1',  label: 'M1',  hint: '1 min' },
+    { id: 'M5',  label: 'M5',  hint: '5 min' },
+    { id: 'M15', label: 'M15', hint: '15 min' },
+    { id: 'M30', label: 'M30', hint: '30 min' },
+    { id: 'H1',  label: 'H1',  hint: '1 hora' },
+    { id: 'H4',  label: 'H4',  hint: '4 horas' },
+    { id: 'D1',  label: 'D1',  hint: '1 día' },
+  ];
+  const TF_HINT_BY_STRATEGY = {
+    scalping: 'Recomendado: M1 o M5',
+    momentum: 'Recomendado: M15',
+    mean: 'Recomendado: M5 o M15',
+    breakout: 'Recomendado: M15 o H1',
+    swing: 'Recomendado: H4 o D1',
+    trend: 'Recomendado: H1 o H4',
+    reversal: 'Recomendado: M30 o H1',
+    grid: 'Recomendado: M15 o H1',
+    dca: 'Recomendado: H4 o D1',
+    hedge: 'Recomendado: H1 o H4',
+  };
+  const tfHint = TF_HINT_BY_STRATEGY[d.strategy] || '';
+  const lotMode = d.lot?.mode || 'auto';
+  const fixedLot = d.lot?.fixedLot ?? 0.10;
+  const fixedPresets = [0.01, 0.10, 1.0];
   return `
+    <div style="margin-bottom:24px">
+      <div class="field-label">Timeframe del análisis</div>
+      <div class="text-dim mt-2" style="font-size:12px;margin-top:0;margin-bottom:10px">${tfHint ? `${tfHint} · puedes cambiarlo en MetaTrader luego` : 'El bot usará este timeframe para sus indicadores'}</div>
+      <div class="option-grid" style="grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px">
+        ${TIMEFRAMES.map(t => `
+          <button class="option-card mono ${d.timeframe === t.id ? 'selected' : ''}" data-timeframe="${t.id}" style="font-size:14px;padding:14px 6px;flex-direction:column;gap:2px">
+            <div style="font-weight:800">${t.label}</div>
+            <div class="text-dim" style="font-size:10px;font-weight:500">${t.hint}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px">
+      <div class="field-label">Tamaño de lote</div>
+      <div class="text-dim" style="font-size:12px;margin-bottom:10px">Cuánto arriesga el bot por operación</div>
+      <div class="option-grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button class="option-card ${lotMode === 'auto' ? 'selected' : ''}" data-lotmode="auto" style="flex-direction:column;align-items:flex-start;text-align:left;padding:14px">
+          <div style="font-weight:800;font-size:14px">Auto · por riesgo %</div>
+          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">El bot calcula el lote a partir del riesgo % y tu balance. Recomendado.</div>
+        </button>
+        <button class="option-card ${lotMode === 'fixed' ? 'selected' : ''}" data-lotmode="fixed" style="flex-direction:column;align-items:flex-start;text-align:left;padding:14px">
+          <div style="font-weight:800;font-size:14px">Lote fijo</div>
+          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">Siempre el mismo tamaño en cada operación. Tú decides cuánto.</div>
+        </button>
+      </div>
+      ${lotMode === 'fixed' ? `
+        <div class="card" style="padding:14px">
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            ${fixedPresets.map(v => `
+              <button class="chip ${Math.abs(fixedLot - v) < 0.001 ? 'selected' : ''}" data-fixedlot="${v}" style="flex:1">${v.toFixed(2)}</button>
+            `).join('')}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="text-dim" style="font-size:12px">Personalizado:</span>
+            <input type="number" class="input" id="lot-custom" value="${fixedLot}" min="0.01" max="100" step="0.01" style="text-align:center;font-family:'JetBrains Mono';font-weight:700;flex:1"/>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+
     <div style="margin-bottom:24px">
       <div class="field-label">Apalancamiento</div>
       <div class="option-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
@@ -2787,6 +2855,34 @@ function bindWizard() {
   });
 
   // Step 3: Risk
+  // Timeframe selection
+  document.querySelectorAll('[data-timeframe]').forEach(el => {
+    el.addEventListener('click', () => { w.data.timeframe = el.dataset.timeframe; render(); });
+  });
+  // Lot mode (auto / fixed)
+  document.querySelectorAll('[data-lotmode]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (!w.data.lot) w.data.lot = { mode: 'auto', fixedLot: 0.10 };
+      w.data.lot.mode = el.dataset.lotmode;
+      render();
+    });
+  });
+  // Fixed lot presets
+  document.querySelectorAll('[data-fixedlot]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (!w.data.lot) w.data.lot = { mode: 'fixed', fixedLot: 0.10 };
+      w.data.lot.fixedLot = parseFloat(el.dataset.fixedlot);
+      render();
+    });
+  });
+  // Custom lot input
+  document.getElementById('lot-custom')?.addEventListener('input', (e) => {
+    if (!w.data.lot) w.data.lot = { mode: 'fixed', fixedLot: 0.10 };
+    const v = parseFloat(e.target.value);
+    if (isFinite(v)) w.data.lot.fixedLot = Math.max(0.01, Math.min(100, v));
+  });
+  document.getElementById('lot-custom')?.addEventListener('change', () => render());
+
   document.querySelectorAll('[data-leverage]').forEach(el => {
     el.addEventListener('click', () => { w.data.leverage = parseInt(el.dataset.leverage); render(); });
   });
@@ -2945,7 +3041,9 @@ async function startCheckout() {
     strategy: w.data.strategy,
     parameters: {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
-      avatar: w.data.avatar, indicators: w.data.indicators, risk: w.data.risk, news: w.data.news, funded: w.data.funded,
+      avatar: w.data.avatar, indicators: w.data.indicators,
+      timeframe: w.data.timeframe, lot: w.data.lot,
+      risk: w.data.risk, news: w.data.news, funded: w.data.funded,
     },
     _ts: Date.now(),
   };

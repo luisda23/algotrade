@@ -5,6 +5,13 @@ interface BotParams {
   pair?: string;
   leverage?: number;
   indicators?: string[];
+  // Timeframe del gráfico que el bot va a analizar
+  timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
+  // Cómo calcular el tamaño de lote por operación
+  lot?: {
+    mode?: 'auto' | 'fixed'; // auto = % de riesgo · fixed = lote fijo
+    fixedLot?: number;       // ej. 0.01, 0.10, 1.0 (solo si mode === 'fixed')
+  };
   risk?: {
     stopLoss?: number;
     takeProfit?: number;
@@ -20,6 +27,31 @@ interface BotParams {
   };
   funded?: { enabled?: boolean; firm?: string };
 }
+
+// Mapa de timeframe del wizard al enum de MQL5/MQL4
+const TIMEFRAME_TO_MQL: Record<string, string> = {
+  M1: 'PERIOD_M1',
+  M5: 'PERIOD_M5',
+  M15: 'PERIOD_M15',
+  M30: 'PERIOD_M30',
+  H1: 'PERIOD_H1',
+  H4: 'PERIOD_H4',
+  D1: 'PERIOD_D1',
+};
+
+// Default sugerido por estrategia si el usuario no eligió ninguno
+const STRATEGY_DEFAULT_TIMEFRAME: Record<string, string> = {
+  scalping:  'M5',
+  momentum:  'M15',
+  mean:      'M15',
+  breakout:  'H1',
+  swing:     'H4',
+  trend:     'H1',
+  reversal:  'M30',
+  grid:      'M15',
+  dca:       'H4',
+  hedge:     'H1',
+};
 
 export function generateMQL5(bot: {
   id?: string;
@@ -39,6 +71,19 @@ export function generateMQL5(bot: {
   const symbol = pair.replace('/', '');
   const indicators = p.indicators || [];
   const strategy = bot.strategy || 'momentum';
+
+  // Timeframe: usa el del wizard o el default sugerido para la estrategia
+  const tfKey = (p.timeframe && TIMEFRAME_TO_MQL[p.timeframe])
+    ? p.timeframe
+    : (STRATEGY_DEFAULT_TIMEFRAME[strategy] || 'M15');
+  const timeframeMQL = TIMEFRAME_TO_MQL[tfKey];
+
+  // Lot sizing: auto (riesgo %) por defecto, fixed si el usuario lo pide
+  const lotConf = p.lot || {};
+  const lotMode = lotConf.mode === 'fixed' ? 'fixed' : 'auto';
+  const fixedLotRaw = typeof lotConf.fixedLot === 'number' ? lotConf.fixedLot : 0.10;
+  // Sanity bound: nunca > 100 lotes ni < 0.01
+  const fixedLot = Math.min(100, Math.max(0.01, fixedLotRaw));
   const news = p.news || {};
   const newsEnabled = news.enabled !== false;
   const newsBefore = news.beforeMin ?? 30;
@@ -114,14 +159,18 @@ export function generateMQL5(bot: {
 
 //--- Configuración del bot (parámetros editables)
 input group    "═══ CONFIGURACIÓN GENERAL ═══"
-input string   InpSymbol           = "${symbol}";        // Símbolo a operar
-input double   InpLotSize          = 0.10;               // Tamaño de lote inicial
-input int      InpMagicNumber      = ${Math.floor(Math.random() * 900000) + 100000};            // Número mágico (identificador único)
+input string         InpSymbol      = "${symbol}";       // Símbolo a operar
+input ENUM_TIMEFRAMES InpTimeframe  = ${timeframeMQL};   // Timeframe del análisis
+input int            InpMagicNumber = ${Math.floor(Math.random() * 900000) + 100000};           // Número mágico (identificador único)
+
+input group    "═══ TAMAÑO DE LOTE ═══"
+input bool     InpUseFixedLot      = ${lotMode === 'fixed' ? 'true' : 'false'};              // true = lote fijo · false = auto por riesgo %
+input double   InpFixedLot         = ${fixedLot.toFixed(2)};               // Lote a usar si InpUseFixedLot = true
 
 input group    "═══ GESTIÓN DE RIESGO ═══"
 input double   InpStopLoss         = ${stopLoss};        // Stop Loss (%)
 input double   InpTakeProfit       = ${takeProfit};      // Take Profit (%)
-input double   InpRiskPerTrade     = ${posSize};         // Riesgo por operación (% capital)
+input double   InpRiskPerTrade     = ${posSize};         // Riesgo por operación (% capital, modo auto)
 input double   InpMaxDailyLoss     = ${dailyLoss};       // Pérdida diaria máxima (%)
 input int      InpLeverage         = ${leverage};        // Apalancamiento (1:X)
 
@@ -173,16 +222,16 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-${indicators.includes('rsi') ? `   handleRSI = iRSI(InpSymbol, PERIOD_CURRENT, 14, PRICE_CLOSE);
+${indicators.includes('rsi') ? `   handleRSI = iRSI(InpSymbol, InpTimeframe, 14, PRICE_CLOSE);
    if(handleRSI == INVALID_HANDLE) { Print("Error creando RSI"); return INIT_FAILED; }` : ''}
-${indicators.includes('ema') ? `   handleEMA_fast = iMA(InpSymbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE);
-   handleEMA_slow = iMA(InpSymbol, PERIOD_CURRENT, 21, 0, MODE_EMA, PRICE_CLOSE);
+${indicators.includes('ema') ? `   handleEMA_fast = iMA(InpSymbol, InpTimeframe, 9, 0, MODE_EMA, PRICE_CLOSE);
+   handleEMA_slow = iMA(InpSymbol, InpTimeframe, 21, 0, MODE_EMA, PRICE_CLOSE);
    if(handleEMA_fast == INVALID_HANDLE || handleEMA_slow == INVALID_HANDLE) { Print("Error creando EMA"); return INIT_FAILED; }` : ''}
-${indicators.includes('macd') ? `   handleMACD = iMACD(InpSymbol, PERIOD_CURRENT, 12, 26, 9, PRICE_CLOSE);
+${indicators.includes('macd') ? `   handleMACD = iMACD(InpSymbol, InpTimeframe, 12, 26, 9, PRICE_CLOSE);
    if(handleMACD == INVALID_HANDLE) { Print("Error creando MACD"); return INIT_FAILED; }` : ''}
-${indicators.includes('bb') ? `   handleBB = iBands(InpSymbol, PERIOD_CURRENT, 20, 0, 2.0, PRICE_CLOSE);
+${indicators.includes('bb') ? `   handleBB = iBands(InpSymbol, InpTimeframe, 20, 0, 2.0, PRICE_CLOSE);
    if(handleBB == INVALID_HANDLE) { Print("Error creando Bollinger"); return INIT_FAILED; }` : ''}
-${indicators.includes('atr') ? `   handleATR = iATR(InpSymbol, PERIOD_CURRENT, 14);
+${indicators.includes('atr') ? `   handleATR = iATR(InpSymbol, InpTimeframe, 14);
    if(handleATR == INVALID_HANDLE) { Print("Error creando ATR"); return INIT_FAILED; }` : ''}
 
    initialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -313,22 +362,40 @@ bool IsTradingHours()
 }
 
 //+------------------------------------------------------------------+
-//| Calcular tamaño de lote según riesgo                             |
+//| Acota un lote a los límites del símbolo (min/max/step)           |
+//+------------------------------------------------------------------+
+double ClampLotToSymbol(double lot)
+{
+   double minLot  = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MIN);
+   double maxLot  = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MAX);
+   double stepLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_STEP);
+   if(stepLot <= 0) stepLot = 0.01;
+   lot = MathFloor(lot / stepLot) * stepLot;
+   if(lot < minLot) lot = minLot;
+   if(lot > maxLot) lot = maxLot;
+   return NormalizeDouble(lot, 2);
+}
+
+//+------------------------------------------------------------------+
+//| Lote calculado por % de riesgo y distancia al SL                 |
 //+------------------------------------------------------------------+
 double CalculateLotSize(double stopLossPips)
 {
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double riskAmount = balance * (InpRiskPerTrade / 100.0);
    double tickValue = SymbolInfoDouble(InpSymbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize = SymbolInfoDouble(InpSymbol, SYMBOL_TRADE_TICK_SIZE);
-   double lot = NormalizeDouble(riskAmount / (stopLossPips * tickValue), 2);
+   if(tickValue <= 0 || stopLossPips <= 0) return ClampLotToSymbol(InpFixedLot);
+   double lot = riskAmount / (stopLossPips * tickValue);
+   return ClampLotToSymbol(lot);
+}
 
-   double minLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MIN);
-   double maxLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MAX);
-   if(lot < minLot) lot = minLot;
-   if(lot > maxLot) lot = maxLot;
-
-   return lot;
+//+------------------------------------------------------------------+
+//| Lote final: respeta el modo (fijo o auto) elegido por el usuario |
+//+------------------------------------------------------------------+
+double GetTradeLot(double stopLossPips)
+{
+   if(InpUseFixedLot) return ClampLotToSymbol(InpFixedLot);
+   return CalculateLotSize(stopLossPips);
 }
 
 //+------------------------------------------------------------------+
@@ -343,7 +410,7 @@ void OnTick()
 
    // Verificar si hay nuevas barras
    static datetime lastBarTime = 0;
-   datetime currentBarTime = (datetime)SeriesInfoInteger(InpSymbol, PERIOD_CURRENT, SERIES_LASTBAR_DATE);
+   datetime currentBarTime = (datetime)SeriesInfoInteger(InpSymbol, InpTimeframe, SERIES_LASTBAR_DATE);
    if(currentBarTime == lastBarTime) return;
    lastBarTime = currentBarTime;
 
@@ -359,7 +426,7 @@ ${generateStrategyLogic(strategy, indicators)}
       double ask = SymbolInfoDouble(InpSymbol, SYMBOL_ASK);
       double sl = ask * (1 - InpStopLoss/100.0);
       double tp = ask * (1 + InpTakeProfit/100.0);
-      double lot = CalculateLotSize(MathAbs(ask - sl) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
+      double lot = GetTradeLot(MathAbs(ask - sl) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
       trade.Buy(lot, InpSymbol, ask, sl, tp, "${bot.name} BUY");
    }
    else if(sellSignal)
@@ -367,7 +434,7 @@ ${generateStrategyLogic(strategy, indicators)}
       double bid = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
       double sl = bid * (1 + InpStopLoss/100.0);
       double tp = bid * (1 - InpTakeProfit/100.0);
-      double lot = CalculateLotSize(MathAbs(sl - bid) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
+      double lot = GetTradeLot(MathAbs(sl - bid) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
       trade.Sell(lot, InpSymbol, bid, sl, tp, "${bot.name} SELL");
    }
 }
@@ -422,8 +489,8 @@ ${hasBB ? `   // Buy: precio toca banda inferior
 
   if (strategy === 'breakout') {
     return `   // Estrategia: Breakout
-   double high20 = iHigh(InpSymbol, PERIOD_CURRENT, iHighest(InpSymbol, PERIOD_CURRENT, MODE_HIGH, 20, 1));
-   double low20  = iLow(InpSymbol, PERIOD_CURRENT, iLowest(InpSymbol, PERIOD_CURRENT, MODE_LOW, 20, 1));
+   double high20 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 20, 1));
+   double low20  = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 20, 1));
    double price  = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
 
    // Buy: ruptura de máximo de 20 velas
