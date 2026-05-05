@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Términos de Servicio · YudBot</title>
+<meta name="description" content="Términos de servicio de YudBot — Generador de bots de trading para MetaTrader 4 y 5."/>
+<meta name="robots" content="index, follow"/>
+<meta name="theme-color" content="#000000"/>
+<link rel="icon" type="image/png" href="/icon-192.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<script>
+(() => {
+  const stored = localStorage.getItem('theme');
+  if (stored !== 'dark') document.documentElement.setAttribute('data-theme', 'light');
+})();
+</script>
+
+<style>
+:root {
+  --bg: #000000;
+  --bg-card: #0A0A0A;
+  --bg-soft: #050505;
+  --border: rgba(255,255,255,0.10);
+  --text: #FFFFFF;
+  --text-dim: rgba(255,255,255,0.70);
+  --text-mute: rgba(255,255,255,0.45);
+  --warn-bg: rgba(255,200,0,0.08);
+  --warn-border: rgba(255,200,0,0.30);
+  --warn-text: #ffd76a;
+}
+[data-theme="light"] {
+  --bg: #FFFFFF;
+  --bg-card: #F7F7F7;
+  --bg-soft: #FAFAFA;
+  --border: rgba(0,0,0,0.10);
+  --text: #000000;
+  --text-dim: rgba(0,0,0,0.72);
+  --text-mute: rgba(0,0,0,0.50);
+  --warn-bg: rgba(180,120,0,0.08);
+  --warn-border: rgba(180,120,0,0.30);
+  --warn-text: #8a5a00;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { transition: background-color 0.3s ease, color 0.3s ease; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.logo-on-dark { display: none; }
+[data-theme="light"] .logo-on-light { display: inline-block; vertical-align: middle; }
+:root:not([data-theme="light"]) .logo-on-light { display: none; }
+:root:not([data-theme="light"]) .logo-on-dark { display: inline-block; vertical-align: middle; }
+
+.nav {
+  border-bottom: 1px solid var(--border);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-soft);
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.nav-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Inter Tight';
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+.nav-back {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-weight: 500;
+}
+.nav-back:hover { color: var(--text); }
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 60px 24px 80px;
+}
+
+h1 {
+  font-family: 'Inter Tight';
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+  line-height: 1.1;
+}
+.updated {
+  color: var(--text-mute);
+  font-size: 13px;
+  margin-bottom: 40px;
+}
+
+h2 {
+  font-family: 'Inter Tight';
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 48px 0 14px;
+  scroll-margin-top: 80px;
+}
+h3 {
+  font-family: 'Inter Tight';
+  font-size: 17px;
+  font-weight: 700;
+  margin: 24px 0 8px;
+}
+p { margin-bottom: 14px; color: var(--text-dim); }
+ul, ol { margin: 8px 0 18px 22px; color: var(--text-dim); }
+li { margin-bottom: 6px; }
+strong { color: var(--text); font-weight: 600; }
+a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { opacity: 0.7; }
+
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 26px;
+  margin-bottom: 40px;
+}
+.toc-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-mute);
+  margin-bottom: 12px;
+}
+.toc ol { margin: 0 0 0 20px; column-count: 2; column-gap: 30px; }
+.toc li { margin-bottom: 4px; break-inside: avoid; }
+.toc a { color: var(--text-dim); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--text); }
+@media (max-width: 600px) {
+  .toc ol { column-count: 1; }
+}
+
+.warn {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+  color: var(--warn-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 30px 24px;
+  text-align: center;
+  color: var(--text-mute);
+  font-size: 13px;
+}
+footer a { color: var(--text-dim); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="/">
+    <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="24" height="24"/>
+    <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="24" height="24"/>
+    YudBot
+  </a>
+  <a class="nav-back" href="/">← Volver al inicio</a>
+</nav>
+
+<main>
+  <h1>Términos de Servicio</h1>
+  <div class="updated">Última actualización: 5 de mayo de 2026</div>
+
+  <div class="toc">
+    <div class="toc-title">Contenido</div>
+    <ol>
+      <li><a href="#aceptacion">Aceptación</a></li>
+      <li><a href="#servicio">Descripción del servicio</a></li>
+      <li><a href="#riesgo">Aviso de riesgo</a></li>
+      <li><a href="#cuenta">Cuenta de usuario</a></li>
+      <li><a href="#precios">Precios y pago</a></li>
+      <li><a href="#reembolsos">Reembolsos</a></li>
+      <li><a href="#uso">Uso aceptable</a></li>
+      <li><a href="#propiedad">Propiedad intelectual</a></li>
+      <li><a href="#responsabilidad">Limitación de responsabilidad</a></li>
+      <li><a href="#disponibilidad">Disponibilidad</a></li>
+      <li><a href="#terminacion">Terminación</a></li>
+      <li><a href="#cambios">Cambios en los términos</a></li>
+      <li><a href="#ley">Ley aplicable</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ol>
+  </div>
+
+  <h2 id="aceptacion">1. Aceptación</h2>
+  <p>Estos Términos de Servicio (en adelante, los <strong>"Términos"</strong>) regulan el uso de la plataforma <strong>YudBot</strong>, accesible en <a href="https://yudbot.com">yudbot.com</a> (en adelante, el <strong>"Servicio"</strong>), operada por su propietario (en adelante, <strong>"YudBot"</strong>, <strong>"nosotros"</strong>).</p>
+  <p>Al crear una cuenta, comprar un bot o usar el Servicio, declaras tener al menos 18 años, capacidad legal para contratar y aceptar estos Términos en su totalidad. Si no aceptas alguna cláusula, no uses el Servicio.</p>
+
+  <h2 id="servicio">2. Descripción del servicio</h2>
+  <p>YudBot es una plataforma que <strong>genera archivos de Expert Advisor (EA) para MetaTrader 4 (.mq4) y MetaTrader 5 (.mq5)</strong> a partir de la configuración que el usuario introduce en un asistente guiado. Los archivos generados son código fuente que el usuario puede instalar voluntariamente en su plataforma MetaTrader.</p>
+  <p>YudBot <strong>no ejecuta operaciones de trading</strong>, <strong>no se conecta a tu broker</strong>, <strong>no gestiona dinero</strong> y <strong>no tiene acceso a tu cuenta de trading</strong>. Es un generador de código que tú instalas y operas bajo tu propia responsabilidad.</p>
+
+  <h2 id="riesgo">3. Aviso de riesgo</h2>
+  <div class="warn">
+    ⚠️ El trading con instrumentos financieros apalancados (Forex, CFDs, futuros, criptomonedas) conlleva un <strong>alto riesgo de pérdida total del capital invertido</strong> y puede no ser adecuado para todos los inversores. Antes de operar con dinero real, asegúrate de comprender por completo los riesgos.
+  </div>
+  <p>Reconoces y aceptas expresamente lo siguiente:</p>
+  <ul>
+    <li>YudBot <strong>no es un asesor financiero, broker, gestor de carteras ni entidad regulada</strong>. No prestamos servicios de inversión ni asesoramiento financiero conforme a la normativa MiFID II ni a ninguna regulación equivalente.</li>
+    <li>Los bots generados son <strong>herramientas técnicas</strong> que ejecutan reglas mecánicas. <strong>No garantizan beneficios</strong>. Los resultados pasados o simulados (backtests) <strong>no son indicativos de resultados futuros</strong>.</li>
+    <li>Las pérdidas derivadas del uso de los bots, incluida la pérdida total del capital, son <strong>de tu exclusiva responsabilidad</strong>.</li>
+    <li>Te recomendamos probar todo bot durante un mínimo de 1-2 semanas en cuenta demo antes de operar con dinero real, y nunca operar con capital que no puedas permitirte perder.</li>
+  </ul>
+
+  <h2 id="cuenta">4. Cuenta de usuario</h2>
+  <p>Para usar el Servicio debes crear una cuenta proporcionando un email válido, un nombre y una contraseña. Te comprometes a:</p>
+  <ul>
+    <li>Proporcionar información veraz y mantenerla actualizada.</li>
+    <li>Mantener la confidencialidad de tu contraseña.</li>
+    <li>Ser responsable de toda actividad que ocurra desde tu cuenta.</li>
+    <li>Notificarnos de inmediato a <a href="mailto:support@yudbot.com">support@yudbot.com</a> ante cualquier acceso no autorizado.</li>
+  </ul>
+  <p>Una persona puede tener una sola cuenta. La creación de cuentas duplicadas o fraudulentas puede ser causa de suspensión.</p>
+
+  <h2 id="precios">5. Precios y pago</h2>
+  <p>El precio actual por cada bot generado es de <strong>9,99 € (IVA incluido)</strong>, en modalidad de <strong>pago único</strong>. No hay suscripciones recurrentes.</p>
+  <p>Los pagos se procesan a través de <strong>Lemon Squeezy</strong>, que actúa como <em>Merchant of Record</em>. Lemon Squeezy se encarga del cobro, la emisión de facturas, la retención del IVA según tu país y el cumplimiento de la normativa fiscal aplicable. Sus condiciones se aplican adicionalmente al checkout.</p>
+  <p>Nos reservamos el derecho a modificar los precios. Los cambios solo afectan a futuras compras y nunca a bots ya adquiridos.</p>
+
+  <h2 id="reembolsos">6. Reembolsos</h2>
+  <p>Por la naturaleza digital del producto y conforme al artículo 103.m del Real Decreto Legislativo 1/2007 (TRLGDCU), <strong>renuncias al derecho de desistimiento</strong> de 14 días al ejecutar la generación y descarga del archivo .mq4/.mq5.</p>
+  <p>No obstante, ofrecemos reembolso completo en los siguientes casos:</p>
+  <ul>
+    <li>El archivo no se descarga o está corrupto.</li>
+    <li>Problemas técnicos imputables a YudBot que no se resuelven en 7 días desde tu notificación.</li>
+    <li>Cargo duplicado o erróneo.</li>
+  </ul>
+  <p>El descontento con el rendimiento del bot en mercado real <strong>no</strong> es causa de reembolso, dado el aviso de riesgo de la sección 3. Las solicitudes se gestionan en <a href="mailto:support@yudbot.com">support@yudbot.com</a> indicando el ID del bot y el motivo.</p>
+
+  <h2 id="uso">7. Uso aceptable</h2>
+  <p>Al usar el Servicio te comprometes a NO:</p>
+  <ul>
+    <li>Revender, redistribuir, sublicenciar, alquilar o ceder el código fuente de los bots a terceros.</li>
+    <li>Utilizar el Servicio para actividades ilícitas, fraudulentas o que violen las normas de tu broker o prop firm.</li>
+    <li>Realizar ingeniería inversa de la plataforma, automatizar peticiones masivas, ni intentar comprometer su seguridad.</li>
+    <li>Crear cuentas múltiples para abusar de promociones, reembolsos u ofertas.</li>
+    <li>Usar el Servicio en jurisdicciones donde el trading algorítmico esté prohibido.</li>
+  </ul>
+
+  <h2 id="propiedad">8. Propiedad intelectual</h2>
+  <p>La plataforma YudBot, su código, marca, logos, diseño y materiales son propiedad de YudBot. Te concedemos una <strong>licencia personal, no exclusiva, no transferible</strong> para usar los archivos .mq4/.mq5 generados con tu cuenta, exclusivamente en cuentas de trading bajo tu titularidad o autorización.</p>
+  <p>El código fuente generado puede ser modificado por ti para uso personal. <strong>No puedes</strong> publicarlo, distribuirlo, ofrecerlo como producto propio, ni compartirlo en repositorios públicos.</p>
+
+  <h2 id="responsabilidad">9. Limitación de responsabilidad</h2>
+  <p>En la máxima medida permitida por la ley, YudBot <strong>no será responsable</strong> por:</p>
+  <ul>
+    <li>Pérdidas económicas, daños directos o indirectos derivados del uso de los bots o del Servicio.</li>
+    <li>Pérdida de cuenta de fondeo (FTMO, FundedNext y similares) por incumplimiento de las reglas de la prop firm.</li>
+    <li>Decisiones de inversión tomadas en base a parámetros, configuraciones o ejemplos mostrados en la plataforma.</li>
+    <li>Indisponibilidad temporal del Servicio, fallos de terceros (broker, MetaTrader, prop firm, hosting), errores en el calendario económico de MetaTrader, o cambios en la normativa.</li>
+    <li>Pérdida de datos por causas no imputables a nosotros.</li>
+  </ul>
+  <p>En cualquier caso, nuestra responsabilidad agregada por reclamaciones derivadas del Servicio se limita al importe que has pagado a YudBot en los últimos 12 meses.</p>
+
+  <h2 id="disponibilidad">10. Disponibilidad y mantenimiento</h2>
+  <p>Procuramos mantener el Servicio disponible 24/7, pero <strong>no garantizamos disponibilidad ininterrumpida</strong>. Podemos realizar paradas programadas para mantenimiento o actualizaciones, así como cambios técnicos sin previo aviso.</p>
+  <p>Los bots ya descargados a tu equipo seguirán funcionando sin necesidad de conexión a YudBot.</p>
+
+  <h2 id="terminacion">11. Terminación</h2>
+  <p>Puedes <strong>eliminar tu cuenta</strong> en cualquier momento escribiendo a <a href="mailto:support@yudbot.com">support@yudbot.com</a> desde el email registrado. Procesaremos la eliminación en un plazo máximo de 30 días.</p>
+  <p>Podemos <strong>suspender o cerrar tu cuenta</strong> si infringes estos Términos, sin derecho a reembolso de bots ya generados, previa notificación cuando sea razonable.</p>
+  <p>Los archivos .mq4/.mq5 que ya descargaste antes de la terminación siguen siendo tuyos y conservas la licencia personal de la sección 8.</p>
+
+  <h2 id="cambios">12. Cambios en los términos</h2>
+  <p>Podemos actualizar estos Términos. Cuando lo hagamos, modificaremos la fecha de "Última actualización" en la parte superior y, si los cambios son sustanciales, te avisaremos por email. El uso continuado del Servicio tras la actualización implica aceptación de la nueva versión.</p>
+
+  <h2 id="ley">13. Ley aplicable y jurisdicción</h2>
+  <p>Estos Términos se rigen por la <strong>legislación española</strong>. Cualquier disputa se someterá a los <strong>juzgados y tribunales de Madrid (España)</strong>, salvo que la normativa de consumidores aplicable a tu país de residencia indique lo contrario.</p>
+  <p>Si eres consumidor residente en la Unión Europea, también puedes recurrir a la plataforma de Resolución de Litigios en Línea de la Comisión Europea: <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
+
+  <h2 id="contacto">14. Contacto</h2>
+  <p>Para cualquier duda relacionada con estos Términos:</p>
+  <ul>
+    <li>Email: <a href="mailto:support@yudbot.com">support@yudbot.com</a></li>
+    <li>Web: <a href="https://yudbot.com">yudbot.com</a></li>
+  </ul>
+</main>
+
+<footer>
+  © 2026 YudBot ·
+  <a href="/terms">Términos</a> ·
+  <a href="/privacy">Privacidad</a> ·
+  <a href="mailto:support@yudbot.com">support@yudbot.com</a>
+</footer>
+
+</body>
+</html>

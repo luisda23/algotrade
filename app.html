@@ -1546,7 +1546,7 @@ function renderAuth() {
             </div>
             <label class="terms-row">
               <input type="checkbox" id="terms" required/>
-              <span>Acepto los <a href="#" id="terms-link">Términos</a> y la <a href="#" id="privacy-link">Política de privacidad</a></span>
+              <span>Acepto los <a href="/terms" target="_blank" rel="noopener">Términos</a> y la <a href="/privacy" target="_blank" rel="noopener">Política de privacidad</a></span>
             </label>
           ` : `
             <div style="display:flex;justify-content:flex-end;margin-top:-6px">
@@ -1727,8 +1727,6 @@ function bindAuth() {
     };
     pwInput?.addEventListener('input', updateStrength);
 
-    document.getElementById('terms-link')?.addEventListener('click', (e) => { e.preventDefault(); toast('Términos próximamente', 'info'); });
-    document.getElementById('privacy-link')?.addEventListener('click', (e) => { e.preventDefault(); toast('Política de privacidad próximamente', 'info'); });
   } else {
     document.getElementById('forgot-pw')?.addEventListener('click', () => {
       state.authMode = 'forgot';
