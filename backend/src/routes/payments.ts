@@ -106,12 +106,20 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
       order = Array.isArray(list?.data) ? list.data[0] : null;
       if (order) foundOrderNumber = String(orderNumber);
     } else {
-      // Sin orderNumber: buscar las órdenes pagadas más recientes del store
-      // y elegir la primera del email del usuario que aún no tenga bot creado.
+      // Sin orderNumber: traemos órdenes del store y filtramos por email
+      // y status='paid' en código (la API de Lemon no acepta filter[status]
+      // ni sort=-created_at en /orders).
       const list = await lemonApi(
-        `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&filter[status]=paid&sort=-created_at&page[size]=25`
+        `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&page[size]=50`
       );
-      const candidates = Array.isArray(list?.data) ? list.data : [];
+      const all = Array.isArray(list?.data) ? list.data : [];
+      const candidates = all
+        .filter((o: any) => o?.attributes?.status === 'paid')
+        .sort((a: any, b: any) => {
+          const at = new Date(a?.attributes?.created_at || 0).getTime();
+          const bt = new Date(b?.attributes?.created_at || 0).getTime();
+          return bt - at;
+        });
 
       for (const c of candidates) {
         const cAttrs = c.attributes || {};
