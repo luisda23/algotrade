@@ -102,16 +102,18 @@ app.get('/health', async (_req: Request, res: Response) => {
   const checks = await Promise.all([
     // 1. Postgres vía Prisma — query trivial.
     timed(() => prisma.$queryRaw`SELECT 1`, 'db'),
-    // 2. Resend API. /domains exige autenticación: si responde 200 las
-    //    credenciales son válidas y la API está arriba; si 401 → key mala;
-    //    si 5xx / timeout → caído.
+    // 2. Resend API. Solo chequeamos conectividad: las API keys de Resend
+    //    pueden ser "sending-only" (sin permiso para listar dominios), así
+    //    que un 401 en /domains NO es síntoma de outage real. Nos basta
+    //    con saber que el host responde algo (DNS + network OK). Los 5xx
+    //    o timeout sí indican caída de Resend.
     timed(async () => {
-      if (!process.env.RESEND_API_KEY) return; // dev local sin email — OK
+      if (!process.env.RESEND_API_KEY) return;
       const r = await fetch('https://api.resend.com/domains', {
         headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
         signal: AbortSignal.timeout(3000),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (r.status >= 500) throw new Error(`HTTP ${r.status}`);
     }, 'resend'),
     // 3. Lemon Squeezy API. /v1/stores requiere auth; mismo razonamiento.
     timed(async () => {
