@@ -741,4 +741,21 @@ router.post('/lang', authenticateToken, async (req: AuthRequest, res: Response) 
   }
 });
 
+// Cerrar sesión en TODOS los dispositivos. Bump al tokenVersion del User
+// invalida todos los JWT en circulación (el middleware compara tv del JWT
+// vs tv del User en BD; cualquier desajuste → 403). El cliente que llama
+// también pierde su sesión pero ya está expulsando intencionalmente.
+router.post('/logout-everywhere', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    res.json(okResp(RC.AUTH_LOGOUT_EVERYWHERE_OK, 'Signed out from all devices'));
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json(errResp(RC.SERVER_ERROR, 'Server error'));
+  }
+});
+
 export default router;

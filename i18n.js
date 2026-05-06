@@ -78,6 +78,7 @@
     'auth.code_sent':                   { es: 'Código enviado',                                                 en: 'Code sent' },
     'auth.lang_updated':                { es: 'Idioma actualizado',                                             en: 'Language updated' },
     'auth.nothing_to_update':           { es: 'Nada que actualizar',                                            en: 'Nothing to update' },
+    'auth.logout_everywhere_ok':        { es: 'Sesión cerrada en todos los dispositivos',                       en: 'Signed out from all devices' },
 
     // ───── Bots ─────
     'bot.not_found':                    { es: 'Bot no encontrado',                                              en: 'Bot not found' },

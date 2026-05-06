@@ -3314,6 +3314,13 @@ function loadAccount(root) {
 
           <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center">Cambiar contraseña</button>
         </form>
+
+        <button class="btn btn-soft" id="logout-everywhere-btn" style="margin-top:14px;width:100%;justify-content:center">
+          ${I.logout} Cerrar sesión en todos los dispositivos
+        </button>
+        <div class="text-dim" style="font-size:12px;margin-top:8px;line-height:1.5">
+          Invalida tu sesión en este y cualquier otro navegador o móvil donde estuvieras logueado. Útil si pierdes un dispositivo.
+        </div>
       </div>
 
       <div class="account-section">
@@ -3375,6 +3382,21 @@ function loadAccount(root) {
     try { localStorage.setItem('lang', 'en'); } catch(e) {}
     try { await api('/auth/lang', { method: 'POST', body: JSON.stringify({ lang: 'en' }) }); } catch (e) {}
     if (!window.location.pathname.startsWith('/en/')) window.location.href = '/en/app';
+  });
+  document.getElementById('logout-everywhere-btn')?.addEventListener('click', async () => {
+    if (!confirm('¿Cerrar sesión en todos los dispositivos? Tendrás que volver a iniciar sesión en cada navegador o móvil donde la usabas.')) return;
+    try {
+      await api('/auth/logout-everywhere', { method: 'POST' });
+      toast('Sesión cerrada en todos los dispositivos', 'success');
+      // Limpiamos también este cliente: el JWT actual quedó invalidado por
+      // el bump de tokenVersion, así que cualquier siguiente llamada al
+      // backend nos echaría con 403. Mejor caer al login de inmediato.
+      clearAuth();
+      state.currentScreen = 'auth';
+      render();
+    } catch (e) {
+      toast(e.message || 'Error', 'error');
+    }
   });
   document.getElementById('recover-bots-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('recover-bots-btn');

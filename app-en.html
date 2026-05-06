@@ -3312,6 +3312,13 @@ function loadAccount(root) {
 
           <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center">Change password</button>
         </form>
+
+        <button class="btn btn-soft" id="logout-everywhere-btn" style="margin-top:14px;width:100%;justify-content:center">
+          ${I.logout} Sign out from all devices
+        </button>
+        <div class="text-dim" style="font-size:12px;margin-top:8px;line-height:1.5">
+          Invalidates your session on this and every other browser or mobile where you were signed in. Useful if a device is lost.
+        </div>
       </div>
 
       <div class="account-section">
@@ -3373,6 +3380,20 @@ function loadAccount(root) {
     try { localStorage.setItem('lang', 'en'); } catch(e) {}
     try { await api('/auth/lang', { method: 'POST', body: JSON.stringify({ lang: 'en' }) }); } catch (e) {}
     if (!window.location.pathname.startsWith('/en/')) window.location.href = '/en/app';
+  });
+  document.getElementById('logout-everywhere-btn')?.addEventListener('click', async () => {
+    if (!confirm('Sign out from all devices? You will have to log in again on every browser or phone where you were using YudBot.')) return;
+    try {
+      await api('/auth/logout-everywhere', { method: 'POST' });
+      toast('Signed out from all devices', 'success');
+      // Our own JWT just got invalidated by the tokenVersion bump, so the
+      // next backend call would 403 us anyway. Drop straight to the login.
+      clearAuth();
+      state.currentScreen = 'auth';
+      render();
+    } catch (e) {
+      toast(e.message || 'Error', 'error');
+    }
   });
   document.getElementById('recover-bots-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('recover-bots-btn');

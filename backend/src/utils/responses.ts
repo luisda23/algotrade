@@ -119,6 +119,7 @@ export const RC = {
   AUTH_CODE_SENT: 'auth.code_sent',
   AUTH_LANG_UPDATED: 'auth.lang_updated',
   AUTH_NOTHING_TO_UPDATE: 'auth.nothing_to_update',
+  AUTH_LOGOUT_EVERYWHERE_OK: 'auth.logout_everywhere_ok',
 
   // Bots
   BOT_NOT_FOUND: 'bot.not_found',
