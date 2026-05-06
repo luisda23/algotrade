@@ -2584,6 +2584,39 @@ function renderStepRisk() {
       <div id="lbl-rr-hint" class="text-dim mt-2" style="font-size:12px"></div>
     </div>
 
+    <div class="field-label" style="margin-top:32px;margin-bottom:10px">Advanced position management</div>
+    <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-be">
+      <div style="width:48px;height:28px;border-radius:14px;background:${d.risk.breakEven?.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
+        <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.risk.breakEven?.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
+      </div>
+      <div style="flex:1">
+        <div class="h3">Auto break-even</div>
+        <div class="text-dim mt-2" style="font-size:12px">Move SL to entry price when the trade is up by a chosen amount. Worst case = breakeven.</div>
+      </div>
+    </div>
+    ${d.risk.breakEven?.enabled ? `
+      <div class="card" style="margin-bottom:14px">
+        <div class="field-label" id="lbl-be">Trigger when profit ≥ ${d.risk.breakEven?.triggerDistance ?? (d.risk.unit === 'pips' ? 10 : 1.0)}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}</div>
+        <input type="range" id="r-be" class="slider-modern" min="${d.risk.unit === 'pips' ? '1' : '0.1'}" max="${d.risk.unit === 'pips' ? '100' : '5'}" step="${d.risk.unit === 'pips' ? '1' : '0.1'}" value="${d.risk.breakEven?.triggerDistance ?? (d.risk.unit === 'pips' ? 10 : 1.0)}"/>
+      </div>
+    ` : ''}
+
+    <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-trail">
+      <div style="width:48px;height:28px;border-radius:14px;background:${d.risk.trailing?.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
+        <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.risk.trailing?.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
+      </div>
+      <div style="flex:1">
+        <div class="h3">Trailing stop</div>
+        <div class="text-dim mt-2" style="font-size:12px">Drag the SL behind price as it moves in your favor. Locks in profit progressively.</div>
+      </div>
+    </div>
+    ${d.risk.trailing?.enabled ? `
+      <div class="card" style="margin-bottom:14px">
+        <div class="field-label" id="lbl-trail">Distance · ${d.risk.trailing?.distance ?? (d.risk.unit === 'pips' ? 10 : 1.0)}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}</div>
+        <input type="range" id="r-trail" class="slider-modern" min="${d.risk.unit === 'pips' ? '1' : '0.1'}" max="${d.risk.unit === 'pips' ? '100' : '5'}" step="${d.risk.unit === 'pips' ? '1' : '0.1'}" value="${d.risk.trailing?.distance ?? (d.risk.unit === 'pips' ? 10 : 1.0)}"/>
+      </div>
+    ` : ''}
+
     <div class="field-label" style="margin-top:32px;margin-bottom:10px">News filter</div>
     <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-news">
       <div style="width:48px;height:28px;border-radius:14px;background:${d.news.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
@@ -2982,6 +3015,35 @@ function bindWizard() {
   document.getElementById('toggle-news')?.addEventListener('click', () => {
     w.data.news.enabled = !w.data.news.enabled;
     render();
+  });
+  document.getElementById('toggle-be')?.addEventListener('click', () => {
+    w.data.risk.breakEven = w.data.risk.breakEven || { enabled: false };
+    w.data.risk.breakEven.enabled = !w.data.risk.breakEven.enabled;
+    if (w.data.risk.breakEven.enabled && w.data.risk.breakEven.triggerDistance == null) {
+      w.data.risk.breakEven.triggerDistance = w.data.risk.unit === 'pips' ? 10 : 1.0;
+    }
+    render();
+  });
+  document.getElementById('toggle-trail')?.addEventListener('click', () => {
+    w.data.risk.trailing = w.data.risk.trailing || { enabled: false };
+    w.data.risk.trailing.enabled = !w.data.risk.trailing.enabled;
+    if (w.data.risk.trailing.enabled && w.data.risk.trailing.distance == null) {
+      w.data.risk.trailing.distance = w.data.risk.unit === 'pips' ? 10 : 1.0;
+    }
+    render();
+  });
+  ['be','trail'].forEach(k => {
+    const el = document.getElementById('r-' + k);
+    if (!el) return;
+    const min = parseFloat(el.min), max = parseFloat(el.max);
+    el.style.setProperty('--val', ((parseFloat(el.value) - min) / (max - min)) * 100 + '%');
+    el.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      const suf = w.data.risk.unit === 'percent' ? '%' : w.data.risk.unit === 'pips' ? ' pips' : '× ATR';
+      if (k === 'be') { w.data.risk.breakEven.triggerDistance = v; document.getElementById('lbl-be').textContent = `Trigger when profit ≥ ${v}${suf}`; }
+      if (k === 'trail') { w.data.risk.trailing.distance = v; document.getElementById('lbl-trail').textContent = `Distance · ${v}${suf}`; }
+      el.style.setProperty('--val', ((v - min) / (max - min)) * 100 + '%');
+    });
   });
   document.querySelectorAll('[data-news-impact]').forEach(el => {
     el.addEventListener('click', () => { w.data.news.impactMin = el.dataset.newsImpact; render(); });

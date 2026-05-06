@@ -127,6 +127,29 @@ function sanitizeBotConfig(raw: any): { error: SanitizeError; data: null } | { e
     numField('takeProfit', tpMin, tpMax);
     numField('posSize', 0.1, 50);
     numField('dailyLoss', 0.5, 50);
+
+    // Break-even: cuando profit ≥ triggerDistance (mismo unit que SL/TP),
+    // mueve SL a entry. Default off — usuarios viejos no se ven afectados.
+    if (cleanParams.risk.breakEven && typeof cleanParams.risk.breakEven === 'object') {
+      const be: any = { enabled: cleanParams.risk.breakEven.enabled === true };
+      const t = cleanParams.risk.breakEven.triggerDistance;
+      if (typeof t === 'number' && isFinite(t)) {
+        be.triggerDistance = Math.min(slMax, Math.max(slMin, t));
+      }
+      r.breakEven = be;
+    }
+
+    // Trailing: tras entrar en beneficio, arrastra el SL a `distance` por
+    // detrás del precio. Misma unit que SL/TP.
+    if (cleanParams.risk.trailing && typeof cleanParams.risk.trailing === 'object') {
+      const tr: any = { enabled: cleanParams.risk.trailing.enabled === true };
+      const d = cleanParams.risk.trailing.distance;
+      if (typeof d === 'number' && isFinite(d)) {
+        tr.distance = Math.min(slMax, Math.max(slMin, d));
+      }
+      r.trailing = tr;
+    }
+
     cleanParams.risk = r;
   }
 

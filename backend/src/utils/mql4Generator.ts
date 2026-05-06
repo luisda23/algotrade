@@ -14,7 +14,15 @@ interface BotParams {
   indicators?: string[];
   timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
   lot?: { mode?: 'auto' | 'fixed'; fixedLot?: number };
-  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number; unit?: 'percent' | 'pips' | 'atr' };
+  risk?: {
+    stopLoss?: number;
+    takeProfit?: number;
+    posSize?: number;
+    dailyLoss?: number;
+    unit?: 'percent' | 'pips' | 'atr';
+    breakEven?: { enabled?: boolean; triggerDistance?: number };
+    trailing?:  { enabled?: boolean; distance?: number };
+  };
   funded?: { enabled?: boolean; firm?: string };
 }
 
@@ -594,6 +602,10 @@ export function generateMQL4(bot: {
   const takeProfit = risk.takeProfit || (riskUnit === 'percent' ? 3.0 : riskUnit === 'pips' ? 30 : 3.0);
   const posSize = risk.posSize || 2.0;
   const dailyLoss = risk.dailyLoss || 4.0;
+  const beEnabled = risk.breakEven?.enabled === true;
+  const beTrigger = risk.breakEven?.triggerDistance ?? (riskUnit === 'pips' ? 10 : 1.0);
+  const trailEnabled = risk.trailing?.enabled === true;
+  const trailDistance = risk.trailing?.distance ?? (riskUnit === 'pips' ? 10 : 1.0);
   const slTpExpr = (entry: 'Ask' | 'Bid', sign: 1 | -1, inputName: 'InpStopLoss' | 'InpTakeProfit'): string => {
     if (riskUnit === 'percent') return `${entry} * (1 ${sign === 1 ? '+' : '-'} ${inputName}/100.0)`;
     if (riskUnit === 'pips')    return `${entry} ${sign === 1 ? '+' : '-'} ${inputName} * RiskPip()`;
@@ -669,6 +681,10 @@ extern double  InpStopLoss           = ${stopLoss};   ${riskUnit === 'percent' ?
 extern double  InpTakeProfit         = ${takeProfit}; ${riskUnit === 'percent' ? '// %' : riskUnit === 'pips' ? '// pips' : '// x ATR(14)'}
 extern double  InpRiskPerTrade       = ${posSize};
 extern double  InpMaxDailyLoss       = ${dailyLoss};
+extern bool    InpBreakEvenEnabled   = ${beEnabled};
+extern double  InpBreakEvenTrigger   = ${beTrigger};
+extern bool    InpTrailingEnabled    = ${trailEnabled};
+extern double  InpTrailingDistance   = ${trailDistance};
 extern int     InpLeverage           = ${leverage};
 
 extern string  _TIME                 = "${T.groupTime}";
@@ -777,8 +793,57 @@ bool HasOpenPosition()
    return false;
 }
 
+// Convierte un valor en la unit activa a distancia absoluta en precio.
+double RiskUnitDistance(double val, double entry)
+{
+   ${riskUnit === 'percent' ? `return entry * (val / 100.0);` : ''}
+   ${riskUnit === 'pips' ? `double pip = (Digits == 3 || Digits == 5) ? Point * 10.0 : Point;\n   return val * pip;` : ''}
+   ${riskUnit === 'atr' ? `return val * iATR(Symbol(), InpTimeframe, 14, 1);` : ''}
+}
+
+// Gestión de posiciones abiertas: break-even + trailing stop. Cada tick.
+void ManagePositions()
+{
+   if(!InpBreakEvenEnabled && !InpTrailingEnabled) return;
+   for(int i = OrdersTotal() - 1; i >= 0; i--) {
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      if(OrderMagicNumber() != InpMagicNumber) continue;
+      if(OrderSymbol() != Symbol()) continue;
+
+      double entry = OrderOpenPrice();
+      double currSL = OrderStopLoss();
+      double currTP = OrderTakeProfit();
+      bool isBuy = OrderType() == OP_BUY;
+      double price = isBuy ? Bid : Ask;
+      double newSL = currSL;
+
+      if(InpBreakEvenEnabled) {
+         double profit = isBuy ? (price - entry) : (entry - price);
+         double triggerDist = RiskUnitDistance(InpBreakEvenTrigger, entry);
+         if(triggerDist > 0 && profit >= triggerDist) {
+            if(isBuy && (currSL == 0 || entry > currSL)) newSL = entry;
+            if(!isBuy && (currSL == 0 || entry < currSL)) newSL = entry;
+         }
+      }
+
+      if(InpTrailingEnabled) {
+         double dist = RiskUnitDistance(InpTrailingDistance, entry);
+         if(dist > 0) {
+            double trailSL = isBuy ? (price - dist) : (price + dist);
+            if(isBuy && trailSL > newSL) newSL = trailSL;
+            if(!isBuy && (newSL == 0 || trailSL < newSL)) newSL = trailSL;
+         }
+      }
+
+      if(newSL != currSL && newSL > 0) {
+         OrderModify(OrderTicket(), entry, newSL, currTP, 0, clrYellow);
+      }
+   }
+}
+
 void OnTick()
 {
+   ManagePositions();
    if(Time[0] == lastBarTime) return;
    lastBarTime = Time[0];
 

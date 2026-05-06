@@ -27,7 +27,15 @@ interface BotParams {
   indicators?: string[];
   timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
   lot?: { mode?: 'auto' | 'fixed'; fixedLot?: number };
-  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number; unit?: 'percent' | 'pips' | 'atr' };
+  risk?: {
+    stopLoss?: number;
+    takeProfit?: number;
+    posSize?: number;
+    dailyLoss?: number;
+    unit?: 'percent' | 'pips' | 'atr';
+    breakEven?: { enabled?: boolean; triggerDistance?: number };
+    trailing?:  { enabled?: boolean; distance?: number };
+  };
   news?: {
     enabled?: boolean;
     beforeMin?: number;
@@ -691,6 +699,12 @@ export function generateMQL5(bot: {
   const takeProfit = risk.takeProfit || (riskUnit === 'percent' ? 3.0 : riskUnit === 'pips' ? 30 : 3.0);
   const posSize = risk.posSize || 2.0;
   const dailyLoss = risk.dailyLoss || 4.0;
+  // Break-even y trailing: defaults off para no afectar bots existentes.
+  const beEnabled = risk.breakEven?.enabled === true;
+  const beTrigger = risk.breakEven?.triggerDistance ?? (riskUnit === 'pips' ? 10 : 1.0);
+  const trailEnabled = risk.trailing?.enabled === true;
+  const trailDistance = risk.trailing?.distance ?? (riskUnit === 'pips' ? 10 : 1.0);
+  // ATR helper hace falta si el unit es atr O si BE/trailing usan atr.
   const riskUsesAtr = riskUnit === 'atr';
   const leverage = p.leverage || 30;
   const pair = p.pair || 'EURUSD';
@@ -813,6 +827,10 @@ input double   InpTakeProfit       = ${takeProfit}; ${riskUnit === 'percent' ? '
 input double   InpRiskPerTrade     = ${posSize};
 input double   InpMaxDailyLoss     = ${dailyLoss};
 input int      InpLeverage         = ${leverage};
+input bool     InpBreakEvenEnabled = ${beEnabled};
+input double   InpBreakEvenTrigger = ${beTrigger}; // SL → entry cuando profit ≥ esto
+input bool     InpTrailingEnabled  = ${trailEnabled};
+input double   InpTrailingDistance = ${trailDistance}; // SL trailing detrás del precio
 
 input group    "${T.groupTime}"
 input bool     InpUseTimeFilter    = true;
@@ -978,6 +996,63 @@ double GetTradeLot(double stopLossPips)
    return CalculateLotSize(stopLossPips);
 }
 
+// Convierte un valor en la unidad de riesgo activa (percent/pips/atr) a
+// distancia absoluta en precio. Lo usan break-even y trailing.
+double RiskUnitDistance(double val, double entry)
+{
+   ${riskUnit === 'percent' ? `return entry * (val / 100.0);` : ''}
+   ${riskUnit === 'pips' ? `int d = (int)SymbolInfoInteger(InpSymbol, SYMBOL_DIGITS);\n   double pt = SymbolInfoDouble(InpSymbol, SYMBOL_POINT);\n   double pip = (d == 3 || d == 5) ? pt * 10.0 : pt;\n   return val * pip;` : ''}
+   ${riskUnit === 'atr' ? `double buf[]; ArraySetAsSeries(buf, true);\n   if(CopyBuffer(handleRisk_ATR, 0, 1, 1, buf) != 1) return 0;\n   return val * buf[0];` : ''}
+}
+
+// Gestión de posiciones abiertas: break-even + trailing stop. Se ejecuta
+// CADA tick (no solo en barra nueva) porque el trailing tiene que seguir
+// el precio en tiempo real para reducir el riesgo de retroceso brusco.
+void ManagePositions()
+{
+   if(!InpBreakEvenEnabled && !InpTrailingEnabled) return;
+   for(int i = PositionsTotal() - 1; i >= 0; i--) {
+      if(!position.SelectByIndex(i)) continue;
+      if(position.Magic() != InpMagicNumber) continue;
+      if(position.Symbol() != InpSymbol) continue;
+
+      double entry = position.PriceOpen();
+      double currSL = position.StopLoss();
+      double currTP = position.TakeProfit();
+      bool isBuy = position.PositionType() == POSITION_TYPE_BUY;
+      double price = isBuy
+         ? SymbolInfoDouble(InpSymbol, SYMBOL_BID)
+         : SymbolInfoDouble(InpSymbol, SYMBOL_ASK);
+      double newSL = currSL;
+
+      // Break-even: si profit ≥ trigger, mover SL a entry. Una sola vez.
+      if(InpBreakEvenEnabled) {
+         double profit = isBuy ? (price - entry) : (entry - price);
+         double triggerDist = RiskUnitDistance(InpBreakEvenTrigger, entry);
+         if(triggerDist > 0 && profit >= triggerDist) {
+            // Solo mover si supone una mejora real (más cerca del precio
+            // que el SL actual). Para BUY, mejora = mayor; para SELL, menor.
+            if(isBuy && (currSL == 0 || entry > currSL)) newSL = entry;
+            if(!isBuy && (currSL == 0 || entry < currSL)) newSL = entry;
+         }
+      }
+
+      // Trailing: SL = price ± distance. Solo si va contra el SL actual.
+      if(InpTrailingEnabled) {
+         double dist = RiskUnitDistance(InpTrailingDistance, entry);
+         if(dist > 0) {
+            double trailSL = isBuy ? (price - dist) : (price + dist);
+            if(isBuy && trailSL > newSL) newSL = trailSL;
+            if(!isBuy && (newSL == 0 || trailSL < newSL)) newSL = trailSL;
+         }
+      }
+
+      if(newSL != currSL && newSL > 0) {
+         trade.PositionModify(position.Ticket(), newSL, currTP);
+      }
+   }
+}
+
 // Cuenta solo posiciones abiertas POR ESTE bot (mismo magic + símbolo). Sin
 // este filtro, PositionsTotal() incluye posiciones de otros EAs o trades
 // manuales y bloquearía al bot mientras existan.
@@ -996,6 +1071,10 @@ bool HasOwnPosition()
 
 void OnTick()
 {
+   // Gestión de posiciones EN VIVO: el trailing tiene que seguir el precio
+   // tick a tick, no esperar al cierre de barra. No-op si BE/trailing off.
+   ManagePositions();
+
    static datetime lastBarTime = 0;
    datetime currentBarTime = (datetime)SeriesInfoInteger(InpSymbol, InpTimeframe, SERIES_LASTBAR_DATE);
    if(currentBarTime == lastBarTime) return;
