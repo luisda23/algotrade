@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>YudBot · App</title>
-<meta name="description" content="Crea, gestiona y descarga tus bots de trading"/>
+<meta name="description" content="Create, manage and download your trading bots"/>
 <meta name="robots" content="noindex,nofollow"/>
 <meta name="theme-color" content="#000000"/>
 <link rel="icon" type="image/png" href="/icon-192.png"/>
@@ -1015,17 +1015,15 @@ svg { display: block; }
 
 <script>
 // =====================================================
-//  LANGUAGE REDIRECT (Spanish app)
+//  LANGUAGE REDIRECT (English app)
 // =====================================================
-// Si el usuario eligió inglés explícitamente desde el landing o desde el
-// toggle del propio app, le mandamos a la versión inglesa /en/app. Solo
-// redirigimos UNA vez al cargar para no entrar en loop con app-en.html.
+// If the user has explicitly chosen Spanish (via the in-app toggle or the
+// landing's ES button), redirect to /app. Otherwise stay on the English app.
 (() => {
   try {
     const chosen = localStorage.getItem('lang');
-    if (chosen === 'en' && !window.location.pathname.startsWith('/en/')) {
-      // Preserva query y hash al saltar al app inglés
-      window.location.replace('/en/app' + window.location.search + window.location.hash);
+    if (chosen === 'es' && window.location.pathname.startsWith('/en/')) {
+      window.location.replace('/app' + window.location.search + window.location.hash);
     }
   } catch (e) {}
 })();
@@ -1037,7 +1035,7 @@ const BACKEND_URL = (window.location.hostname === 'localhost' || window.location
   ? 'http://localhost:5000'
   : 'https://algotrade-backend-production-5f1f.up.railway.app';
 const API = BACKEND_URL + '/api';
-const APP_LANG = 'es';
+const APP_LANG = 'en';
 
 const state = {
   user: null,
@@ -1059,7 +1057,7 @@ const state = {
     generationDone: false,
     checkoutTriggered: false,
     data: {
-      name: 'Mi Bot Pro',
+      name: 'My Pro Bot',
       avatar: 'classic',
       market: 'forex',
       pair: 'EUR/USD',
@@ -1126,10 +1124,10 @@ async function api(path, opts = {}) {
     if (state.token) {
       clearAuth();
       state.currentScreen = 'auth';
-      toast('Tu sesión ha caducado. Inicia sesión de nuevo.', 'error');
+      toast('Your session has expired. Log in again.', 'error');
       render();
     }
-    throw new Error(data.error || 'Sesión expirada');
+    throw new Error(data.error || 'Session expired');
   }
   if (!res.ok) throw new Error(data.error || 'Error');
   return data;
@@ -1233,9 +1231,9 @@ function renderShell() {
   const initial = (state.user?.name || 'U')[0].toUpperCase();
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: I.home },
-    { id: 'wizard', label: 'Crear bot', icon: I.plus },
-    { id: 'guide', label: 'Guía MT4/MT5', icon: I.book },
-    { id: 'account', label: 'Cuenta', icon: I.user },
+    { id: 'wizard', label: 'Create bot', icon: I.plus },
+    { id: 'guide', label: 'MT4/MT5 Guide', icon: I.book },
+    { id: 'account', label: 'Account', icon: I.user },
   ];
   return `
     <div class="app-shell">
@@ -1256,15 +1254,15 @@ function renderShell() {
           `).join('')}
         </div>
         <div class="sidebar-footer">
-          <button id="theme-toggle-app" class="theme-toggle-app theme-toggle-trigger" aria-label="Cambiar tema">
+          <button id="theme-toggle-app" class="theme-toggle-app theme-toggle-trigger" aria-label="Toggle theme">
             <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
             <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <span class="theme-toggle-label">Tema</span>
+            <span class="theme-toggle-label">Theme</span>
           </button>
           <div class="user-pill">
             <div class="user-avatar">${initial}</div>
             <div class="user-info">
-              <div class="user-name">${_esc(state.user?.name || 'Usuario')}</div>
+              <div class="user-name">${_esc(state.user?.name || 'User')}</div>
               <div class="user-email">${_esc(state.user?.email || '')}</div>
             </div>
           </div>
@@ -1279,7 +1277,7 @@ function renderShell() {
             </span>
             YudBot
           </div>
-          <button class="theme-toggle-mobile theme-toggle-trigger" aria-label="Cambiar tema">
+          <button class="theme-toggle-mobile theme-toggle-trigger" aria-label="Toggle theme">
             <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
             <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
@@ -1345,8 +1343,8 @@ function renderForgot() {
       <div class="auth-grid"></div>
       <div class="auth-card fade-up">
         <div class="auth-logo">${I.lock}</div>
-        <h1>¿Olvidaste tu contraseña?</h1>
-        <p class="sub">Introduce el email vinculado a tu cuenta y te enviaremos un enlace para crear una nueva.</p>
+        <h1>Forgot your password?</h1>
+        <p class="sub">Enter the email linked to your account and we'll send you a link to create a new one.</p>
 
         <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
           ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
@@ -1357,17 +1355,17 @@ function renderForgot() {
           <div class="input-wrap">
             <label for="forgot-email" class="visually-hidden">Email</label>
             <span class="input-icon" aria-hidden="true">${I.mail}</span>
-            <input class="input input-with-icon" id="forgot-email" name="email" type="email" placeholder="tu@email.com" required autocomplete="email" inputmode="email"/>
+            <input class="input input-with-icon" id="forgot-email" name="email" type="email" placeholder="you@email.com" required autocomplete="email" inputmode="email"/>
           </div>
           <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:6px" id="forgot-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
-            <span>Enviar enlace</span>
+            <span>Send link</span>
             ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
           </button>
         </form>
 
         <div class="auth-toggle" style="margin-top:18px;text-align:center">
-          <button type="button" class="auth-link-sub" id="back-to-login">← Volver al inicio de sesión</button>
+          <button type="button" class="auth-link-sub" id="back-to-login">← Back to log in</button>
         </div>
       </div>
     </div>
@@ -1385,7 +1383,7 @@ function bindForgot() {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      state.authError = 'Email no válido';
+      state.authError = 'Invalid email';
       render();
       return;
     }
@@ -1398,12 +1396,12 @@ function bindForgot() {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
-      state.authInfo = data.message || 'Si ese email está registrado, te llegará un enlace en breve.';
+      state.authInfo = data.message || 'If that email is registered, a link will arrive shortly.';
       state.authLoading = false;
       render();
     } catch (err) {
       // El backend siempre responde 200 con SAFE_OK, pero por si acaso
-      state.authError = err.message || 'Error al enviar el enlace';
+      state.authError = err.message || 'Error sending the link';
       state.authLoading = false;
       render();
     }
@@ -1418,8 +1416,8 @@ function renderResetPassword() {
       <div class="auth-grid"></div>
       <div class="auth-card fade-up">
         <div class="auth-logo">${I.lock}</div>
-        <h1>Crea una nueva contraseña</h1>
-        <p class="sub">Elige una contraseña nueva para tu cuenta. Después podrás iniciar sesión con ella.</p>
+        <h1>Create a new password</h1>
+        <p class="sub">Choose a new password for your account. Afterwards you can log in with it.</p>
 
         <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
           ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
@@ -1427,27 +1425,27 @@ function renderResetPassword() {
 
         <form class="auth-form" id="reset-form">
           <div class="input-wrap">
-            <label for="reset-pw" class="visually-hidden">Nueva contraseña</label>
+            <label for="reset-pw" class="visually-hidden">New password</label>
             <span class="input-icon" aria-hidden="true">${I.lock}</span>
-            <input class="input input-with-icon input-with-action" id="reset-pw" type="password" placeholder="Nueva contraseña" required minlength="8" autocomplete="new-password"/>
-            <button type="button" class="input-action" id="reset-toggle-pw" aria-label="Mostrar contraseña">${I.eye}</button>
+            <input class="input input-with-icon input-with-action" id="reset-pw" type="password" placeholder="New password" required minlength="8" autocomplete="new-password"/>
+            <button type="button" class="input-action" id="reset-toggle-pw" aria-label="Show password">${I.eye}</button>
           </div>
           <div id="reset-pw-strength" style="display:none">
             <div class="pw-bar"><div class="pw-bar-fill" id="reset-pw-bar-fill"></div></div>
             <div class="pw-rules">
-              <span class="pw-rule" id="reset-r-len">${I.dot} 8+ caracteres</span>
-              <span class="pw-rule" id="reset-r-upper">${I.dot} Una mayúscula</span>
-              <span class="pw-rule" id="reset-r-num">${I.dot} Un número</span>
+              <span class="pw-rule" id="reset-r-len">${I.dot} 8+ characters</span>
+              <span class="pw-rule" id="reset-r-upper">${I.dot} One uppercase</span>
+              <span class="pw-rule" id="reset-r-num">${I.dot} One number</span>
             </div>
           </div>
           <div class="input-wrap">
-            <label for="reset-pw2" class="visually-hidden">Repetir contraseña</label>
+            <label for="reset-pw2" class="visually-hidden">Repeat password</label>
             <span class="input-icon" aria-hidden="true">${I.lock}</span>
-            <input class="input input-with-icon" id="reset-pw2" type="password" placeholder="Repite la contraseña" required minlength="8" autocomplete="new-password"/>
+            <input class="input input-with-icon" id="reset-pw2" type="password" placeholder="Repeat the password" required minlength="8" autocomplete="new-password"/>
           </div>
           <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:6px" id="reset-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
-            <span>Guardar contraseña</span>
+            <span>Save password</span>
             ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
           </button>
         </form>
@@ -1492,9 +1490,9 @@ function bindResetPassword() {
     e.preventDefault();
     const newPassword = pwInput.value;
     const confirm = document.getElementById('reset-pw2').value;
-    if (newPassword !== confirm) { state.authError = 'Las contraseñas no coinciden'; render(); return; }
+    if (newPassword !== confirm) { state.authError = 'Passwords do not match'; render(); return; }
     if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      state.authError = 'La contraseña necesita 8+ chars, mayúscula y número';
+      state.authError = 'Password needs 8+ chars, uppercase and number';
       render();
       return;
     }
@@ -1517,10 +1515,10 @@ function bindResetPassword() {
       state.authMode = 'login';
       state.authError = null;
       state.authLoading = false;
-      toast('Contraseña restablecida. Inicia sesión con la nueva.', 'success');
+      toast('Password reset. Log in with the new one.', 'success');
       render();
     } catch (err) {
-      state.authError = err.message || 'No se pudo restablecer';
+      state.authError = err.message || 'Could not reset';
       state.authLoading = false;
       render();
     }
@@ -1538,8 +1536,8 @@ function renderAuth() {
           <img class="logo-on-light" src="/logo-black.svg" alt="YudBot" width="56" height="56"/>
           <img class="logo-on-dark" src="/logo-white.svg" alt="YudBot" width="56" height="56"/>
         </span>
-        <h1>${isLogin ? 'Bienvenido de vuelta' : 'Crea tu cuenta'}</h1>
-        <p class="sub">${isLogin ? 'Accede a tus bots de trading' : 'Empieza gratis. Solo pagas al crear un bot'}</p>
+        <h1>${isLogin ? 'Welcome back' : 'Create your account'}</h1>
+        <p class="sub">${isLogin ? 'Access your trading bots' : 'Start free. You only pay when creating a bot'}</p>
 
         <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
           ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
@@ -1548,55 +1546,55 @@ function renderAuth() {
         <form class="auth-form" id="auth-form">
           ${!isLogin ? `
             <div class="input-wrap">
-              <label for="name" class="visually-hidden">Nombre completo</label>
+              <label for="name" class="visually-hidden">Full name</label>
               <span class="input-icon" aria-hidden="true">${I.user}</span>
-              <input class="input input-with-icon" id="name" name="name" type="text" placeholder="Nombre completo" required autocomplete="name" aria-label="Nombre completo" maxlength="80"/>
+              <input class="input input-with-icon" id="name" name="name" type="text" placeholder="Full name" required autocomplete="name" aria-label="Full name" maxlength="80"/>
             </div>
           ` : ''}
           <div class="input-wrap">
             <label for="email" class="visually-hidden">Email</label>
             <span class="input-icon" aria-hidden="true">${I.mail}</span>
-            <input class="input input-with-icon" id="email" name="email" type="email" placeholder="tu@email.com" required autocomplete="email" aria-label="Email" inputmode="email"/>
+            <input class="input input-with-icon" id="email" name="email" type="email" placeholder="you@email.com" required autocomplete="email" aria-label="Email" inputmode="email"/>
           </div>
           <div class="input-wrap">
-            <label for="password" class="visually-hidden">Contraseña</label>
+            <label for="password" class="visually-hidden">Password</label>
             <span class="input-icon" aria-hidden="true">${I.lock}</span>
-            <input class="input input-with-icon input-with-action" id="password" name="password" type="password" placeholder="Contraseña" required minlength="${isLogin ? 6 : 8}" autocomplete="${isLogin ? 'current-password' : 'new-password'}" aria-label="Contraseña"/>
-            <button type="button" class="input-action" id="toggle-pw" aria-label="Mostrar contraseña">${I.eye}</button>
+            <input class="input input-with-icon input-with-action" id="password" name="password" type="password" placeholder="Password" required minlength="${isLogin ? 6 : 8}" autocomplete="${isLogin ? 'current-password' : 'new-password'}" aria-label="Password"/>
+            <button type="button" class="input-action" id="toggle-pw" aria-label="Show password">${I.eye}</button>
           </div>
           ${!isLogin ? `
             <div id="pw-strength" style="display:none">
               <div class="pw-bar"><div class="pw-bar-fill" id="pw-bar-fill"></div></div>
               <div class="pw-rules">
-                <span class="pw-rule" id="pw-r-len">${I.dot} 8+ caracteres</span>
-                <span class="pw-rule" id="pw-r-upper">${I.dot} Una mayúscula</span>
-                <span class="pw-rule" id="pw-r-num">${I.dot} Un número</span>
+                <span class="pw-rule" id="pw-r-len">${I.dot} 8+ characters</span>
+                <span class="pw-rule" id="pw-r-upper">${I.dot} One uppercase</span>
+                <span class="pw-rule" id="pw-r-num">${I.dot} One number</span>
               </div>
             </div>
             <div class="input-wrap">
-              <label for="password2" class="visually-hidden">Repetir contraseña</label>
+              <label for="password2" class="visually-hidden">Repeat password</label>
               <span class="input-icon" aria-hidden="true">${I.lock}</span>
-              <input class="input input-with-icon" id="password2" name="password2" type="password" placeholder="Repite la contraseña" required minlength="8" autocomplete="new-password" aria-label="Repetir contraseña"/>
+              <input class="input input-with-icon" id="password2" name="password2" type="password" placeholder="Repeat the password" required minlength="8" autocomplete="new-password" aria-label="Repeat password"/>
             </div>
             <label class="terms-row">
               <input type="checkbox" id="terms" required/>
-              <span>Acepto los <a href="/terms" target="_blank" rel="noopener">Términos</a> y la <a href="/privacy" target="_blank" rel="noopener">Política de privacidad</a></span>
+              <span>I accept the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
             </label>
           ` : `
             <div style="display:flex;justify-content:flex-end;margin-top:-6px">
-              <button type="button" class="auth-link-sub" id="forgot-pw">¿Olvidaste tu contraseña?</button>
+              <button type="button" class="auth-link-sub" id="forgot-pw">Forgot your password?</button>
             </div>
           `}
           <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:6px" id="auth-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
-            <span>${isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</span>
+            <span>${isLogin ? 'Log in' : 'Create account'}</span>
             ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
           </button>
         </form>
 
         <div class="auth-toggle">
-          ${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
-          <button id="toggle-mode">${isLogin ? 'Crear cuenta' : 'Iniciar sesión'}</button>
+          ${isLogin ? "Don't have an account?" : 'Already have an account?'}
+          <button id="toggle-mode">${isLogin ? 'Create account' : 'Log in'}</button>
         </div>
       </div>
     </div>
@@ -1611,8 +1609,8 @@ function renderLoginMFA() {
       <div class="auth-grid"></div>
       <div class="auth-card fade-up">
         <div class="auth-logo">${I.mail}</div>
-        <h1>Verifica que eres tú</h1>
-        <p class="sub">Hemos enviado un código de 6 dígitos a<br/><strong style="color:var(--text)">${hint}</strong></p>
+        <h1>Verify it's you</h1>
+        <p class="sub">We've sent a 6-digit code to<br/><strong style="color:var(--text)">${hint}</strong></p>
 
         <div role="alert" aria-live="polite" style="${state.authError ? '' : 'display:none'}">
           ${state.authError ? `<div class="auth-error mb-4" style="margin-bottom:14px">${I.alert}<span>${state.authError}</span></div>` : ''}
@@ -1624,17 +1622,17 @@ function renderLoginMFA() {
           </div>
           <button type="submit" class="btn btn-primary btn-large" style="width:100%;justify-content:center;margin-top:16px" id="mfa-submit">
             ${state.authLoading ? '<span class="spinner"></span>' : ''}
-            <span>Acceder</span>
+            <span>Sign in</span>
             ${!state.authLoading ? '<span class="btn-arrow">→</span>' : ''}
           </button>
         </form>
 
         <div class="auth-toggle" style="margin-top:18px;text-align:center">
-          <span class="text-dim" style="font-size:13px">¿No te llegó? </span>
-          <button type="button" class="auth-link-sub" id="resend-code">Reenviar código</button>
+          <span class="text-dim" style="font-size:13px">Didn't get it? </span>
+          <button type="button" class="auth-link-sub" id="resend-code">Resend code</button>
         </div>
         <div style="text-align:center;margin-top:12px">
-          <button type="button" class="auth-link-sub" id="back-to-login" style="font-size:12px">Cancelar y volver</button>
+          <button type="button" class="auth-link-sub" id="back-to-login" style="font-size:12px">Cancel and go back</button>
         </div>
       </div>
     </div>
@@ -1667,7 +1665,7 @@ function bindLoginMFA() {
     e.preventDefault();
     const code = [...inputs].map(x => x.value).join('');
     if (!/^\d{6}$/.test(code)) {
-      state.authError = 'Introduce los 6 dígitos del código';
+      state.authError = 'Enter the 6 digits of the code';
       render();
       return;
     }
@@ -1687,11 +1685,11 @@ function bindLoginMFA() {
         state.loginPending = null;
         state.currentScreen = 'dashboard';
         state.authLoading = false;
-        toast(`¡Hola ${data.user?.name?.split(' ')[0] || ''}!`, 'success');
+        toast(`Hi ${data.user?.name?.split(' ')[0] || ''}!`, 'success');
         render();
       }
     } catch (err) {
-      state.authError = err.message || 'Código incorrecto';
+      state.authError = err.message || 'Incorrect code';
       state.authLoading = false;
       render();
     }
@@ -1703,9 +1701,9 @@ function bindLoginMFA() {
         method: 'POST',
         body: JSON.stringify({ pendingToken: state.loginPending.pendingToken }),
       });
-      toast('Código reenviado. Revisa tu email.', 'success');
+      toast('Code resent. Check your email.', 'success');
     } catch (err) {
-      toast(err.message || 'No se pudo reenviar', 'error');
+      toast(err.message || 'Could not resend', 'error');
     }
   });
 
@@ -1733,7 +1731,7 @@ function bindAuth() {
     const isHidden = pwInput.type === 'password';
     pwInput.type = isHidden ? 'text' : 'password';
     togglePw.innerHTML = isHidden ? I.eyeOff : I.eye;
-    togglePw.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    togglePw.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
   });
 
   // Medidor de fuerza de contraseña (solo en signup)
@@ -1778,19 +1776,19 @@ function bindAuth() {
 
     // Validación cliente
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      state.authError = 'Email no válido'; render(); return;
+      state.authError = 'Invalid email'; render(); return;
     }
     if (isSignup) {
       const name = document.getElementById('name')?.value.trim() || '';
       const password2 = document.getElementById('password2')?.value || '';
       const terms = document.getElementById('terms')?.checked;
-      if (name.length < 2) { state.authError = 'Pon tu nombre completo'; render(); return; }
-      if (password.length < 8) { state.authError = 'La contraseña debe tener al menos 8 caracteres'; render(); return; }
+      if (name.length < 2) { state.authError = 'Enter your full name'; render(); return; }
+      if (password.length < 8) { state.authError = 'Password must be at least 8 characters'; render(); return; }
       if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-        state.authError = 'La contraseña necesita al menos una mayúscula, una minúscula y un número'; render(); return;
+        state.authError = 'Password needs at least one uppercase, one lowercase and one number'; render(); return;
       }
-      if (password !== password2) { state.authError = 'Las contraseñas no coinciden'; render(); return; }
-      if (!terms) { state.authError = 'Debes aceptar los términos para crear la cuenta'; render(); return; }
+      if (password !== password2) { state.authError = 'Passwords do not match'; render(); return; }
+      if (!terms) { state.authError = 'You must accept the terms to create an account'; render(); return; }
 
       state.authError = null;
       state.authLoading = true;
@@ -1801,10 +1799,10 @@ function bindAuth() {
         state.authMode = 'login';
         state.authError = null;
         state.authLoading = false;
-        toast('Cuenta creada. Te hemos enviado un email de bienvenida. Inicia sesión para verificar tu email.', 'success');
+        toast('Account created. We sent you a welcome email. Log in to verify your email.', 'success');
         render();
       } catch (err) {
-        state.authError = err.message || 'Error de autenticación';
+        state.authError = err.message || 'Authentication error';
         state.authLoading = false;
         render();
       }
@@ -1812,7 +1810,7 @@ function bindAuth() {
     }
 
     // Login
-    if (password.length < 6) { state.authError = 'Contraseña requerida'; render(); return; }
+    if (password.length < 6) { state.authError = 'Password required'; render(); return; }
     state.authError = null;
     state.authLoading = true;
     render();
@@ -1834,7 +1832,7 @@ function bindAuth() {
         render();
       }
     } catch (err) {
-      state.authError = err.message || 'Error de autenticación';
+      state.authError = err.message || 'Authentication error';
       state.authLoading = false;
       render();
     }
@@ -1856,7 +1854,7 @@ async function loadDashboard(root) {
 
 function renderDashboard(root) {
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const greeting = hour < 12 ? 'Good morning' : hour < 19 ? 'Good afternoon' : 'Good evening';
   const userName = state.user?.name || 'Trader';
   const total = state.bots.length;
   const uniquePairs = new Set(state.bots.map(b => b.parameters?.pair).filter(Boolean)).size;
@@ -1868,43 +1866,43 @@ function renderDashboard(root) {
       <div class="dash-hero fade-up">
         <div class="greeting">${greeting}</div>
         <h1 class="h1">${userName}</h1>
-        <p class="text-dim mt-2" style="max-width:540px">Tu colección de bots de trading. Crea, configura y descárgalos para MetaTrader.</p>
+        <p class="text-dim mt-2" style="max-width:540px">Your collection of trading bots. Create, configure and download them for MetaTrader.</p>
       </div>
 
       <div class="stats-grid">
         <div class="card stat-card">
-          <div class="label">Bots creados</div>
+          <div class="label">Bots created</div>
           <div class="value">${total}</div>
-          <div class="sub">${total === 0 ? 'Empieza con el wizard' : total === 1 ? '1 bot generado' : total + ' bots generados'}</div>
+          <div class="sub">${total === 0 ? 'Start with the wizard' : total === 1 ? '1 bot generated' : total + ' bots generated'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Pares únicos</div>
+          <div class="label">Unique pairs</div>
           <div class="value">${uniquePairs}</div>
-          <div class="sub">${uniquePairs === 0 ? '—' : uniquePairs === 1 ? '1 par cubierto' : uniquePairs + ' pares cubiertos'}</div>
+          <div class="sub">${uniquePairs === 0 ? '—' : uniquePairs === 1 ? '1 pair covered' : uniquePairs + ' pairs covered'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Estrategias</div>
+          <div class="label">Strategies</div>
           <div class="value">${uniqueStrats}</div>
-          <div class="sub">${uniqueStrats === 0 ? '—' : uniqueStrats === 1 ? '1 enfoque' : uniqueStrats + ' enfoques'}</div>
+          <div class="sub">${uniqueStrats === 0 ? '—' : uniqueStrats === 1 ? '1 approach' : uniqueStrats + ' approaches'}</div>
         </div>
         <div class="card stat-card">
-          <div class="label">Indicadores</div>
+          <div class="label">Indicators</div>
           <div class="value">${totalIndicators}</div>
-          <div class="sub">${totalIndicators === 0 ? '—' : 'configurados en total'}</div>
+          <div class="sub">${totalIndicators === 0 ? '—' : 'configured in total'}</div>
         </div>
       </div>
 
       <div class="create-cta" id="goto-wizard">
         <div class="create-cta-icon">${I.plus}</div>
         <div class="create-cta-text">
-          <div class="create-cta-title">Crear nuevo bot</div>
-          <div class="create-cta-sub">Wizard guiado · 8 pasos · €9.99 pago único</div>
+          <div class="create-cta-title">Create new bot</div>
+          <div class="create-cta-sub">Guided wizard · 8 steps · €9.99 one-time payment</div>
         </div>
-        <div class="create-cta-btn">Empezar <span class="btn-arrow">→</span></div>
+        <div class="create-cta-btn">Start <span class="btn-arrow">→</span></div>
       </div>
 
       <div class="section-header">
-        <h2 class="h2">Mis bots</h2>
+        <h2 class="h2">My bots</h2>
         <span class="text-dim" style="font-size:13px">${state.bots.length} ${state.bots.length === 1 ? 'bot' : 'bots'}</span>
       </div>
 
@@ -1934,10 +1932,10 @@ function renderEmptyBots() {
   return `
     <div class="empty-state">
       <div class="empty-state-icon">${I.bot}</div>
-      <h3 class="h3">Aún no tienes bots</h3>
-      <p class="text-dim mt-2" style="max-width:360px;margin-left:auto;margin-right:auto">Crea tu primer bot en 5 minutos con el wizard guiado.</p>
+      <h3 class="h3">No bots yet</h3>
+      <p class="text-dim mt-2" style="max-width:360px;margin-left:auto;margin-right:auto">Create your first bot in 5 minutes with the guided wizard.</p>
       <button class="btn btn-primary mt-4" id="empty-cta" style="margin-top:18px">
-        Crear mi primer bot <span class="btn-arrow">→</span>
+        Create my first bot <span class="btn-arrow">→</span>
       </button>
     </div>
   `;
@@ -1950,7 +1948,7 @@ function renderBotsGrid() {
         const pair = b.parameters?.pair || 'EUR/USD';
         const strategy = b.strategy || 'scalping';
         const indicators = (b.parameters?.indicators || []).length;
-        const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+        const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
         return `
           <div class="card card-hover bot-card" data-bot="${b.id}">
             <div class="bot-card-head">
@@ -1962,9 +1960,9 @@ function renderBotsGrid() {
             </div>
             <div class="bot-card-foot">
               <div>
-                <div style="font-size:12px;color:var(--text-dim)">${indicators} indicador${indicators === 1 ? '' : 'es'}${created ? ' · ' + created : ''}</div>
+                <div style="font-size:12px;color:var(--text-dim)">${indicators} indicator${indicators === 1 ? '' : 's'}${created ? ' · ' + created : ''}</div>
               </div>
-              <div style="font-size:12px;color:var(--text-dim);">Ver detalle →</div>
+              <div style="font-size:12px;color:var(--text-dim);">View details →</div>
             </div>
           </div>
         `;
@@ -1977,34 +1975,34 @@ function renderBotsGrid() {
 //  WIZARD DATA
 // =====================================================
 const WIZARD_STEPS = [
-  { id: 'name', title: 'Nombre y mercado', subtitle: '¿Cómo se llama tu bot y dónde opera?' },
-  { id: 'strategy', title: 'Estrategia', subtitle: 'Elige cómo opera tu bot' },
-  { id: 'indicators', title: 'Indicadores técnicos', subtitle: 'Las señales para entrar y salir' },
-  { id: 'risk', title: 'Gestión de riesgo', subtitle: 'Apalancamiento y límites de pérdida' },
-  { id: 'funded', title: 'Cuenta de fondeo', subtitle: 'Reglas de prop firm (opcional)' },
-  { id: 'generate', title: 'Generando tu bot', subtitle: 'Construyendo el archivo MQL...' },
-  { id: 'review', title: 'Revisar', subtitle: 'Repasa la configuración antes del pago' },
-  { id: 'pay', title: 'Pago', subtitle: 'Pago único de €9.99 vía Lemon Squeezy' },
+  { id: 'name', title: 'Name and market', subtitle: 'What is your bot called and where does it trade?' },
+  { id: 'strategy', title: 'Strategy', subtitle: 'Choose how your bot trades' },
+  { id: 'indicators', title: 'Technical indicators', subtitle: 'The signals to enter and exit' },
+  { id: 'risk', title: 'Risk management', subtitle: 'Leverage and loss limits' },
+  { id: 'funded', title: 'Funded account', subtitle: 'Prop firm rules (optional)' },
+  { id: 'generate', title: 'Generating your bot', subtitle: 'Building the MQL file...' },
+  { id: 'review', title: 'Review', subtitle: 'Check the configuration before payment' },
+  { id: 'pay', title: 'Payment', subtitle: 'One-time payment of €9.99 via Lemon Squeezy' },
 ];
 
 const MARKETS = [
   { id: 'forex', name: 'Forex', icon: I.forex, pairs: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CAD','EUR/GBP','EUR/JPY','GBP/JPY','USD/CHF','NZD/USD','AUD/JPY','EUR/AUD'] },
-  { id: 'indices', name: 'Índices', icon: I.trend, pairs: ['NAS100','US30','SPX500','GER40','UK100','JP225','FRA40','AUS200','HK50'] },
-  { id: 'commodities', name: 'Materias primas', icon: I.diamond, pairs: ['XAU/USD','XAG/USD','WTI','BRENT','NATGAS','COPPER'] },
+  { id: 'indices', name: 'Indices', icon: I.trend, pairs: ['NAS100','US30','SPX500','GER40','UK100','JP225','FRA40','AUS200','HK50'] },
+  { id: 'commodities', name: 'Commodities', icon: I.diamond, pairs: ['XAU/USD','XAG/USD','WTI','BRENT','NATGAS','COPPER'] },
   { id: 'crypto', name: 'Crypto CFDs', icon: I.flame, pairs: ['BTC/USD','ETH/USD','LTC/USD','XRP/USD'] },
 ];
 
 const STRATEGIES = [
-  { id: 'scalping',  name: 'Scalping',          desc: 'Operaciones rápidas (segundos a minutos). Muchos trades pequeños buscando ganancias frecuentes.', tf: '1m – 5m',   risk: 'Medio',  freq: 'Muy alta' },
-  { id: 'swing',     name: 'Swing trading',     desc: 'Posiciones de días a semanas. Captura movimientos grandes con menos operaciones.',                  tf: '4h – 1d',   risk: 'Bajo',   freq: 'Baja' },
-  { id: 'momentum',  name: 'Momentum',          desc: 'Sigue la fuerza del movimiento. Entra cuando hay tendencia clara y la cierra al primer signo de debilidad.', tf: '5m – 1h',  risk: 'Medio',  freq: 'Alta' },
-  { id: 'mean',      name: 'Mean reversion',    desc: 'Apuesta a la reversión a la media. Compra en sobreventa y vende en sobrecompra.',                   tf: '15m – 4h', risk: 'Medio',  freq: 'Media' },
-  { id: 'breakout',  name: 'Breakout',          desc: 'Entra en rupturas de rango. Espera consolidaciones y opera la salida con volumen.',                  tf: '15m – 4h', risk: 'Alto',   freq: 'Media' },
-  { id: 'grid',      name: 'Grid trading',      desc: 'Compra y vende en niveles equidistantes. Ideal en rangos laterales.',                                tf: 'Continuo', risk: 'Alto',   freq: 'Continua' },
-  { id: 'trend',     name: 'Trend following',   desc: 'Identifica tendencias largas y mantiene la posición hasta que se invierta. Pocas operaciones, pero grandes.', tf: '1h – 1d',  risk: 'Bajo',   freq: 'Muy baja' },
-  { id: 'dca',       name: 'DCA (Dollar Cost Averaging)', desc: 'Promedia entradas a precios decrecientes para reducir el coste medio. Requiere capital y disciplina.', tf: 'Continuo', risk: 'Alto',   freq: 'Media' },
-  { id: 'hedge',     name: 'Hedging',           desc: 'Abre posiciones opuestas para cubrir riesgo. Limita pérdidas máximas pero también ganancias.',       tf: 'Continuo', risk: 'Bajo',   freq: 'Baja' },
-  { id: 'reversal',  name: 'Reversal',          desc: 'Detecta agotamiento de tendencia y opera el giro. Alta tasa de fallo, pero ratios R:R muy buenos.',  tf: '15m – 4h', risk: 'Alto',   freq: 'Baja' },
+  { id: 'scalping',  name: 'Scalping',          desc: 'Quick trades (seconds to minutes). Many small trades looking for frequent gains.', tf: '1m – 5m',   risk: 'Medium',  freq: 'Very high' },
+  { id: 'swing',     name: 'Swing trading',     desc: 'Positions held for days to weeks. Captures large moves with fewer trades.',                  tf: '4h – 1d',   risk: 'Low',   freq: 'Low' },
+  { id: 'momentum',  name: 'Momentum',          desc: 'Follows the strength of the move. Enters when there is a clear trend and closes at the first sign of weakness.', tf: '5m – 1h',  risk: 'Medium',  freq: 'High' },
+  { id: 'mean',      name: 'Mean reversion',    desc: 'Bets on reversion to the mean. Buys in oversold and sells in overbought.',                   tf: '15m – 4h', risk: 'Medium',  freq: 'Medium' },
+  { id: 'breakout',  name: 'Breakout',          desc: 'Enters on range breakouts. Waits for consolidations and trades the breakout with volume.',                  tf: '15m – 4h', risk: 'High',   freq: 'Medium' },
+  { id: 'grid',      name: 'Grid trading',      desc: 'Buys and sells at equidistant levels. Ideal in sideways ranges.',                                tf: 'Continuous', risk: 'High',   freq: 'Continuous' },
+  { id: 'trend',     name: 'Trend following',   desc: 'Identifies long trends and holds the position until it reverses. Few trades, but large.', tf: '1h – 1d',  risk: 'Low',   freq: 'Very low' },
+  { id: 'dca',       name: 'DCA (Dollar Cost Averaging)', desc: 'Averages entries at decreasing prices to reduce the average cost. Requires capital and discipline.', tf: 'Continuous', risk: 'High',   freq: 'Medium' },
+  { id: 'hedge',     name: 'Hedging',           desc: 'Opens opposite positions to cover risk. Limits maximum losses but also gains.',       tf: 'Continuous', risk: 'Low',   freq: 'Low' },
+  { id: 'reversal',  name: 'Reversal',          desc: 'Detects trend exhaustion and trades the turn. High failure rate, but very good R:R ratios.',  tf: '15m – 4h', risk: 'High',   freq: 'Low' },
 ];
 
 // Indicadores. `available: true` = el generador MQL5/MQL4 sabe traducirlos a
@@ -2014,38 +2012,38 @@ const STRATEGIES = [
 // engañando al usuario sobre lo que su bot realmente analiza.
 const INDICATORS = [
   // Momentum
-  { id: 'rsi',       name: 'RSI',          cat: 'Momentum',    available: true,  desc: 'Mide sobrecompra/sobreventa (0-100). Clásico para timing de entradas.' },
-  { id: 'stoch',     name: 'Estocástico',  cat: 'Momentum',    available: true, desc: 'Compara cierre con rango reciente. Cruces en zonas extremas dan señales.' },
-  { id: 'stochrsi',  name: 'Stoch RSI',    cat: 'Momentum',    available: true, desc: 'Aplica el estocástico al RSI. Más sensible que el RSI puro.' },
-  { id: 'cci',       name: 'CCI',          cat: 'Momentum',    available: true, desc: 'Commodity Channel Index. Detecta extremos de precio en cualquier mercado.' },
-  { id: 'williams',  name: 'Williams %R',  cat: 'Momentum',    available: true, desc: 'Similar al estocástico pero invertido. Bueno para reversiones.' },
-  { id: 'roc',       name: 'ROC',          cat: 'Momentum',    available: true, desc: 'Rate of Change. Mide velocidad del movimiento del precio.' },
+  { id: 'rsi',       name: 'RSI',          cat: 'Momentum',    available: true,  desc: 'Measures overbought/oversold (0-100). Classic for entry timing.' },
+  { id: 'stoch',     name: 'Stochastic',   cat: 'Momentum',    available: true, desc: 'Compares close with recent range. Crosses in extreme zones give signals.' },
+  { id: 'stochrsi',  name: 'Stoch RSI',    cat: 'Momentum',    available: true, desc: 'Applies stochastic to the RSI. More sensitive than pure RSI.' },
+  { id: 'cci',       name: 'CCI',          cat: 'Momentum',    available: true, desc: 'Commodity Channel Index. Detects price extremes in any market.' },
+  { id: 'williams',  name: 'Williams %R',  cat: 'Momentum',    available: true, desc: 'Similar to stochastic but inverted. Good for reversals.' },
+  { id: 'roc',       name: 'ROC',          cat: 'Momentum',    available: true, desc: 'Rate of Change. Measures speed of price movement.' },
 
-  // Tendencia
-  { id: 'ema',       name: 'EMA',          cat: 'Tendencia',   available: true,  desc: 'Media exponencial. Reacciona más rápido que la SMA.' },
-  { id: 'sma',       name: 'SMA',          cat: 'Tendencia',   available: true, desc: 'Media simple. Suaviza el precio para ver la tendencia general.' },
-  { id: 'macd',      name: 'MACD',         cat: 'Tendencia',   available: true,  desc: 'Cruce de medias + histograma. Señal clásica de cambio de tendencia.' },
-  { id: 'adx',       name: 'ADX',          cat: 'Tendencia',   available: true, desc: 'Mide la FUERZA de la tendencia (no la dirección). >25 = tendencia fuerte.' },
-  { id: 'ichi',      name: 'Ichimoku',     cat: 'Tendencia',   available: true, desc: 'Sistema completo: tendencia, soporte/resistencia y momentum en una vista.' },
-  { id: 'psar',      name: 'Parabolic SAR', cat: 'Tendencia',  available: true, desc: 'Puntos sobre/bajo el precio. Stop-loss dinámico que sigue la tendencia.' },
-  { id: 'supertrend', name: 'SuperTrend',  cat: 'Tendencia',   available: true, desc: 'Combina ATR con tendencia. Línea visible que indica long o short.' },
+  // Trend
+  { id: 'ema',       name: 'EMA',          cat: 'Trend',   available: true,  desc: 'Exponential moving average. Reacts faster than the SMA.' },
+  { id: 'sma',       name: 'SMA',          cat: 'Trend',   available: true, desc: 'Simple moving average. Smooths price to see the overall trend.' },
+  { id: 'macd',      name: 'MACD',         cat: 'Trend',   available: true,  desc: 'Moving average cross + histogram. Classic trend change signal.' },
+  { id: 'adx',       name: 'ADX',          cat: 'Trend',   available: true, desc: 'Measures the STRENGTH of the trend (not the direction). >25 = strong trend.' },
+  { id: 'ichi',      name: 'Ichimoku',     cat: 'Trend',   available: true, desc: 'Complete system: trend, support/resistance and momentum in one view.' },
+  { id: 'psar',      name: 'Parabolic SAR', cat: 'Trend',  available: true, desc: 'Points above/below the price. Dynamic stop-loss that follows the trend.' },
+  { id: 'supertrend', name: 'SuperTrend',  cat: 'Trend',   available: true, desc: 'Combines ATR with trend. Visible line indicating long or short.' },
 
-  // Volatilidad
-  { id: 'bb',        name: 'Bollinger',    cat: 'Volatilidad', available: true,  desc: 'Bandas alrededor de la media. Toques en bandas indican extremos.' },
-  { id: 'atr',       name: 'ATR',          cat: 'Volatilidad', available: true, desc: 'Rango medio verdadero. Mide la volatilidad para ajustar SL/TP.' },
-  { id: 'donchian',  name: 'Donchian',     cat: 'Volatilidad', available: true, desc: 'Canal con máximos y mínimos de N periodos. Clásico para breakouts.' },
-  { id: 'kc',        name: 'Keltner',      cat: 'Volatilidad', available: true, desc: 'Canales tipo Bollinger pero con ATR en lugar de desviación estándar.' },
+  // Volatility
+  { id: 'bb',        name: 'Bollinger',    cat: 'Volatility', available: true,  desc: 'Bands around the mean. Touches on bands indicate extremes.' },
+  { id: 'atr',       name: 'ATR',          cat: 'Volatility', available: true, desc: 'Average True Range. Measures volatility to adjust SL/TP.' },
+  { id: 'donchian',  name: 'Donchian',     cat: 'Volatility', available: true, desc: 'Channel with highs and lows of N periods. Classic for breakouts.' },
+  { id: 'kc',        name: 'Keltner',      cat: 'Volatility', available: true, desc: 'Bollinger-type channels but with ATR instead of standard deviation.' },
 
-  // Volumen
-  { id: 'vol',       name: 'Volume',       cat: 'Volumen',     available: true, desc: 'Volumen por barra. Confirma o desmiente movimientos del precio.' },
-  { id: 'obv',       name: 'OBV',          cat: 'Volumen',     available: true, desc: 'On-Balance Volume. Suma volumen acumulado para detectar acumulación.' },
-  { id: 'vwap',      name: 'VWAP',         cat: 'Volumen',     available: true, desc: 'Precio medio ponderado por volumen. Referencia institucional.' },
-  { id: 'mfi',       name: 'MFI',          cat: 'Volumen',     available: true, desc: 'Money Flow Index. Como el RSI pero ponderado por volumen.' },
+  // Volume
+  { id: 'vol',       name: 'Volume',       cat: 'Volume',     available: true, desc: 'Volume per bar. Confirms or contradicts price movements.' },
+  { id: 'obv',       name: 'OBV',          cat: 'Volume',     available: true, desc: 'On-Balance Volume. Sums accumulated volume to detect accumulation.' },
+  { id: 'vwap',      name: 'VWAP',         cat: 'Volume',     available: true, desc: 'Volume-weighted average price. Institutional reference.' },
+  { id: 'mfi',       name: 'MFI',          cat: 'Volume',     available: true, desc: 'Money Flow Index. Like the RSI but weighted by volume.' },
 
-  // Soporte/Resistencia
-  { id: 'fib',       name: 'Fibonacci',    cat: 'S/R',         available: true, desc: 'Niveles clave de retroceso (38.2%, 50%, 61.8%) tras un movimiento.' },
-  { id: 'pivots',    name: 'Pivot Points', cat: 'S/R',         available: true, desc: 'Niveles diarios de soporte/resistencia calculados desde sesión anterior.' },
-  { id: 'sr',        name: 'S/R Auto',     cat: 'S/R',         available: true, desc: 'Detecta automáticamente niveles donde el precio ha rebotado.' },
+  // Support/Resistance
+  { id: 'fib',       name: 'Fibonacci',    cat: 'S/R',         available: true, desc: 'Key retracement levels (38.2%, 50%, 61.8%) after a move.' },
+  { id: 'pivots',    name: 'Pivot Points', cat: 'S/R',         available: true, desc: 'Daily support/resistance levels calculated from the previous session.' },
+  { id: 'sr',        name: 'S/R Auto',     cat: 'S/R',         available: true, desc: 'Automatically detects levels where price has bounced.' },
 ];
 
 // Política sobre EAs/bots:
@@ -2067,10 +2065,10 @@ function getAvatarSVG(id) {
 
 const NEWS_EVENTS = [
   // USD
-  { id: 'nfp',        name: 'NFP (Empleo USA)',        cur: 'USD' },
+  { id: 'nfp',        name: 'NFP (US Employment)',      cur: 'USD' },
   { id: 'fomc',       name: 'FOMC / Fed Rate',          cur: 'USD' },
-  { id: 'cpi-us',     name: 'CPI USA (Inflación)',      cur: 'USD' },
-  { id: 'powell',     name: 'Discurso Powell',          cur: 'USD' },
+  { id: 'cpi-us',     name: 'CPI US (Inflation)',       cur: 'USD' },
+  { id: 'powell',     name: 'Powell speech',            cur: 'USD' },
   { id: 'gdp-us',     name: 'GDP USA',                  cur: 'USD' },
   { id: 'retail-us',  name: 'Retail Sales USA',         cur: 'USD' },
   { id: 'unemp-us',   name: 'Unemployment USA',         cur: 'USD' },
@@ -2078,9 +2076,9 @@ const NEWS_EVENTS = [
   // EUR
   { id: 'ecb-rate',   name: 'ECB Rate Decision',        cur: 'EUR' },
   { id: 'ecb-press',  name: 'ECB Press / Lagarde',      cur: 'EUR' },
-  { id: 'cpi-eu',     name: 'CPI Eurozona',             cur: 'EUR' },
-  { id: 'gdp-eu',     name: 'GDP Eurozona',             cur: 'EUR' },
-  { id: 'pmi-eu',     name: 'PMI Eurozona',             cur: 'EUR' },
+  { id: 'cpi-eu',     name: 'CPI Eurozone',             cur: 'EUR' },
+  { id: 'gdp-eu',     name: 'GDP Eurozone',             cur: 'EUR' },
+  { id: 'pmi-eu',     name: 'PMI Eurozone',             cur: 'EUR' },
   // GBP
   { id: 'boe-rate',   name: 'BoE Rate Decision',        cur: 'GBP' },
   { id: 'cpi-uk',     name: 'CPI UK',                   cur: 'GBP' },
@@ -2093,16 +2091,16 @@ const FUNDED_FIRMS = [
   {
     id: 'ftmo', name: 'FTMO',
     bots: 'conditional',
-    profitSplit: 'Hasta 90%',
-    maxAccount: '$200k (escalable hasta $2M)',
-    eval: '2 fases (8% + 5%)',
+    profitSplit: 'Up to 90%',
+    maxAccount: '$200k (scalable up to $2M)',
+    eval: '2 phases (8% + 5%)',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días (sin mínimo desde 2023)',
-    consistency: 'No (recomendado <50% de un día)',
-    weekend: 'No (cierra posiciones)',
-    news: 'Permitido en cuenta funded',
-    notes: 'EAs permitidos. Prohibido: HFT, latency arb, copy trading entre cuentas, hedging entre cuentas, tick scalping. Tu bot debe tener lógica propia.',
+    minDays: '0 days (no minimum since 2023)',
+    consistency: 'No (recommended <50% from a single day)',
+    weekend: 'No (closes positions)',
+    news: 'Allowed on funded account',
+    notes: 'EAs allowed. Prohibited: HFT, latency arb, copy trading between accounts, hedging between accounts, tick scalping. Your bot must have its own logic.',
     warning: ''
   },
   {
@@ -2110,14 +2108,14 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '80%-95%',
     maxAccount: '$300k',
-    eval: '1 fase, 2 fases o Express',
+    eval: '1 phase, 2 phases or Express',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días',
-    consistency: 'Sí en algunos planes (40-50%)',
-    weekend: 'Permitido (planes con holding)',
-    news: 'Permitido',
-    notes: 'Permite EAs y copy trading. Buena opción para automatizar. Revisa que el plan elegido permita holding overnight si tu bot opera fuera de horario.',
+    minDays: '0 days',
+    consistency: 'Yes in some plans (40-50%)',
+    weekend: 'Allowed (plans with holding)',
+    news: 'Allowed',
+    notes: 'Allows EAs and copy trading. Good option for automation. Make sure the chosen plan allows overnight holding if your bot trades outside hours.',
     warning: ''
   },
   {
@@ -2125,59 +2123,59 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '80%-90%',
     maxAccount: '$400k',
-    eval: '1 o 2 fases',
+    eval: '1 or 2 phases',
     maxDailyLoss: '5%',
     maxLoss: '8%',
-    minDays: '0 días',
-    consistency: 'Sí (consistencia 30%)',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'Permite EAs sin restricciones explícitas. Cuidado con la regla de consistencia: si un día representa >30% del beneficio total, no se cobra esa parte.',
-    warning: 'Regla de consistencia 30% — bots con días explosivos pueden tener problemas para cobrar.'
+    minDays: '0 days',
+    consistency: 'Yes (30% consistency)',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'Allows EAs without explicit restrictions. Watch the consistency rule: if one day represents >30% of total profit, that portion is not paid out.',
+    warning: '30% consistency rule — bots with explosive days may have trouble getting paid.'
   },
   {
     id: 'the5', name: 'The5ers',
     bots: 'allowed',
     profitSplit: '50%-100%',
-    maxAccount: '$4M (programa High Stakes)',
-    eval: 'Programas variados (Bootcamp / Hyper Growth / Instant)',
-    maxDailyLoss: '4-5% (varía)',
+    maxAccount: '$4M (High Stakes program)',
+    eval: 'Various programs (Bootcamp / Hyper Growth / Instant)',
+    maxDailyLoss: '4-5% (varies)',
     maxLoss: '8-10%',
-    minDays: 'Varía por programa',
-    consistency: 'Depende del programa',
-    weekend: 'Permitido en la mayoría',
-    news: 'Permitido',
-    notes: 'EAs y copy trading permitidos. The5ers es bot-friendly y tiene programas de fondeo instantáneo (sin challenge).',
+    minDays: 'Varies by program',
+    consistency: 'Depends on program',
+    weekend: 'Allowed on most',
+    news: 'Allowed',
+    notes: 'EAs and copy trading allowed. The5ers is bot-friendly and has instant funding programs (no challenge).',
     warning: ''
   },
   {
     id: 'fundingpips', name: 'Funding Pips',
     bots: 'allowed',
-    profitSplit: 'Hasta 100% (con bonus)',
+    profitSplit: 'Up to 100% (with bonus)',
     maxAccount: '$200k',
-    eval: '1, 2 o 3 fases',
+    eval: '1, 2 or 3 phases',
     maxDailyLoss: '4%',
     maxLoss: '8%',
-    minDays: '0 días',
-    consistency: 'No (en planes estándar)',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'Una de las prop firms más jóvenes y agresivas en condiciones. Permite EAs. Profit split puede llegar al 100% con bonificaciones.',
+    minDays: '0 days',
+    consistency: 'No (on standard plans)',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'One of the youngest and most aggressive prop firms in conditions. Allows EAs. Profit split can reach 100% with bonuses.',
     warning: ''
   },
   {
     id: 'ftp', name: 'Funded Trading Plus',
     bots: 'allowed',
     profitSplit: '80%-90%',
-    maxAccount: '$2.5M (con escalado)',
-    eval: '1 fase, 2 fases o Direct Funding',
+    maxAccount: '$2.5M (with scaling)',
+    eval: '1 phase, 2 phases or Direct Funding',
     maxDailyLoss: '4-5%',
     maxLoss: '8%',
-    minDays: '0-3 días',
-    consistency: 'No estricta',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'EAs permitidos. Tienen Direct Funding (sin challenge, pago directo). Buen split y escalado.',
+    minDays: '0-3 days',
+    consistency: 'Not strict',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'EAs allowed. They have Direct Funding (no challenge, direct payment). Good split and scaling.',
     warning: ''
   },
   {
@@ -2185,29 +2183,29 @@ const FUNDED_FIRMS = [
     bots: 'conditional',
     profitSplit: '70%-100%',
     maxAccount: '$200k',
-    eval: 'Direct Funding o evaluación',
-    maxDailyLoss: 'No (modelo distinto)',
-    maxLoss: '5-10% según plan',
-    minDays: 'Mínimo 30 días en muchos planes',
-    consistency: 'Sí (riguroso)',
-    weekend: 'Permitido',
-    news: 'Permitido con cautela',
-    notes: 'Modelo enfocado en gestión de riesgo a largo plazo. Permite EAs pero auditan estrategia. No es ideal para scalpers ni grid agresivo.',
-    warning: 'Plazos largos y reglas de consistencia: bots agresivos pueden no cumplir.'
+    eval: 'Direct Funding or evaluation',
+    maxDailyLoss: 'No (different model)',
+    maxLoss: '5-10% depending on plan',
+    minDays: 'Minimum 30 days in many plans',
+    consistency: 'Yes (rigorous)',
+    weekend: 'Allowed',
+    news: 'Allowed with caution',
+    notes: 'Model focused on long-term risk management. Allows EAs but audits strategy. Not ideal for scalpers or aggressive grid.',
+    warning: 'Long timeframes and consistency rules: aggressive bots may not comply.'
   },
   {
     id: 'smartprop', name: 'Smart Prop Trader',
     bots: 'allowed',
     profitSplit: '80%-90%',
     maxAccount: '$200k',
-    eval: '2 fases',
+    eval: '2 phases',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '5 días en evaluación',
-    consistency: 'Sí (50%)',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'EAs permitidos. Reglas estándar. Buena opción intermedia.',
+    minDays: '5 days in evaluation',
+    consistency: 'Yes (50%)',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'EAs allowed. Standard rules. Good intermediate option.',
     warning: ''
   },
   {
@@ -2215,14 +2213,14 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '80%-90%',
     maxAccount: '$400k',
-    eval: '1 o 2 fases',
+    eval: '1 or 2 phases',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días',
+    minDays: '0 days',
     consistency: 'No',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'EAs permitidos sin restricciones especiales. Spreads competitivos.',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'EAs allowed without special restrictions. Competitive spreads.',
     warning: ''
   },
   {
@@ -2230,14 +2228,14 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '80%-95%',
     maxAccount: '$200k',
-    eval: '1 fase o 2 fases',
+    eval: '1 phase or 2 phases',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días',
-    consistency: 'No estricta',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'Prop firm reciente y bot-friendly. Condiciones competitivas.',
+    minDays: '0 days',
+    consistency: 'Not strict',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'Recent and bot-friendly prop firm. Competitive conditions.',
     warning: ''
   },
   {
@@ -2245,14 +2243,14 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '80%-90%',
     maxAccount: '$600k',
-    eval: '1 o 2 fases',
+    eval: '1 or 2 phases',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días',
+    minDays: '0 days',
     consistency: 'No',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'EAs permitidos. Cuentas escalables hasta $600k.',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'EAs allowed. Scalable accounts up to $600k.',
     warning: ''
   },
   {
@@ -2260,14 +2258,14 @@ const FUNDED_FIRMS = [
     bots: 'allowed',
     profitSplit: '85%-95%',
     maxAccount: '$200k',
-    eval: '1 o 2 fases',
+    eval: '1 or 2 phases',
     maxDailyLoss: '5%',
     maxLoss: '10%',
-    minDays: '0 días',
+    minDays: '0 days',
     consistency: 'No',
-    weekend: 'Permitido',
-    news: 'Permitido',
-    notes: 'Bot-friendly. Profit split generoso.',
+    weekend: 'Allowed',
+    news: 'Allowed',
+    notes: 'Bot-friendly. Generous profit split.',
     warning: ''
   },
 ];
@@ -2293,7 +2291,7 @@ function renderWizard() {
           <div class="wizard-top-row">
             <button class="wizard-back" id="wizard-prev" ${w.generating ? 'disabled' : ''}>
               ${w.step === 0 ? I.close : I.arrowLeft}
-              <span>${w.step === 0 ? 'Cerrar' : 'Atrás'}</span>
+              <span>${w.step === 0 ? 'Close' : 'Back'}</span>
             </button>
             <div class="wizard-counter">${String(w.step + 1).padStart(2, '0')} / ${String(WIZARD_STEPS.length).padStart(2, '0')}</div>
           </div>
@@ -2321,10 +2319,10 @@ function renderWizard() {
 function renderWizardCTA(isLast) {
   return `
     <button class="btn btn-primary wizard-cta" id="wizard-next">
-      <span>${isLast ? `Pagar €9.99` : 'Continuar'}</span>
+      <span>${isLast ? `Pay €9.99` : 'Continue'}</span>
       <span class="btn-arrow">→</span>
     </button>
-    ${isLast ? '<div class="text-center text-mute mt-2" style="font-size:11px;margin-top:10px">✓ Pago único · Sin suscripciones · El bot es tuyo para siempre</div>' : ''}
+    ${isLast ? '<div class="text-center text-mute mt-2" style="font-size:11px;margin-top:10px">✓ One-time payment · No subscriptions · The bot is yours forever</div>' : ''}
   `;
 }
 
@@ -2333,7 +2331,7 @@ function renderGenerateCTA() {
   if (w.generationDone) {
     return `
       <button class="btn btn-primary wizard-cta" id="wizard-next">
-        <span>Ver resumen</span>
+        <span>View summary</span>
         <span class="btn-arrow">→</span>
       </button>
     `;
@@ -2341,7 +2339,7 @@ function renderGenerateCTA() {
   return `
     <button class="btn wizard-cta" disabled>
       <span class="spinner"></span>
-      <span>Generando bot...</span>
+      <span>Generating bot...</span>
     </button>
   `;
 }
@@ -2363,8 +2361,8 @@ function renderStepName() {
   const market = MARKETS.find(m => m.id === d.market);
   return `
     <div style="margin-bottom:24px">
-      <div class="field-label">Nombre del bot</div>
-      <input class="input" id="bot-name" value="${_esc(d.name)}" placeholder="Mi Bot Pro"/>
+      <div class="field-label">Bot name</div>
+      <input class="input" id="bot-name" value="${_esc(d.name)}" placeholder="My Pro Bot"/>
     </div>
     <div style="margin-bottom:24px">
       <div class="field-label">Avatar</div>
@@ -2375,7 +2373,7 @@ function renderStepName() {
       </div>
     </div>
     <div style="margin-bottom:24px">
-      <div class="field-label">Mercado</div>
+      <div class="field-label">Market</div>
       <div class="option-grid">
         ${MARKETS.map(m => `
           <button class="option-card ${d.market === m.id ? 'selected' : ''}" data-market="${m.id}">
@@ -2386,7 +2384,7 @@ function renderStepName() {
       </div>
     </div>
     <div>
-      <div class="field-label">Par / símbolo</div>
+      <div class="field-label">Pair / symbol</div>
       <div class="chip-row">
         ${(market?.pairs || []).map(p => `
           <button class="chip ${d.pair === p ? 'selected' : ''}" data-pair="${p}">${p}</button>
@@ -2398,7 +2396,7 @@ function renderStepName() {
 
 function renderStepStrategy() {
   const d = state.wizard.data;
-  const riskColor = (r) => r === 'Bajo' ? 'var(--pos)' : r === 'Alto' ? 'var(--neg)' : '#FFB020';
+  const riskColor = (r) => r === 'Low' ? 'var(--pos)' : r === 'High' ? 'var(--neg)' : '#FFB020';
   return `
     <div class="flex flex-col gap-3">
       ${STRATEGIES.map(s => `
@@ -2409,7 +2407,7 @@ function renderStepStrategy() {
               <div class="text-dim mt-2" style="font-size:13px;line-height:1.5">${s.desc}</div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
                 <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--bg-elev);color:var(--text-dim)">${s.tf}</span>
-                <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:${riskColor(s.risk)}22;color:${riskColor(s.risk)}">Riesgo ${s.risk}</span>
+                <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:${riskColor(s.risk)}22;color:${riskColor(s.risk)}">${s.risk} risk</span>
                 <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--bg-elev);color:var(--text-dim)">Freq. ${s.freq}</span>
               </div>
             </div>
@@ -2427,20 +2425,20 @@ function renderStepIndicators() {
     .map(id => INDICATORS.find(i => i.id === id))
     .filter(Boolean);
   return `
-    <p class="text-dim mb-4" style="margin-bottom:20px">Selecciona los indicadores que tu bot usará para tomar decisiones. Recomendamos <strong style="color:var(--text)">2-4</strong>. Más de 5 puede generar señales contradictorias.</p>
+    <p class="text-dim mb-4" style="margin-bottom:20px">Select the indicators your bot will use to make decisions. We recommend <strong style="color:var(--text)">2-4</strong>. More than 5 can generate contradictory signals.</p>
     ${cats.map(cat => `
       <div style="margin-bottom:20px">
         <div class="field-label">${cat}</div>
         <div class="chip-row">
           ${INDICATORS.filter(i => i.cat === cat).map(i => `
-            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''} ${i.available === false ? 'disabled' : ''}" data-indicator="${i.id}" data-available="${i.available !== false}" title="${i.available === false ? 'Próximamente disponible. Por ahora elige RSI, EMA, MACD o Bollinger.' : (i.desc || '')}" ${i.available === false ? 'disabled' : ''} style="${i.available === false ? 'opacity:0.4;cursor:not-allowed;text-decoration:line-through' : ''}">${_esc(i.name)}${i.available === false ? ' · próx.' : ''}</button>
+            <button class="chip ${d.indicators.includes(i.id) ? 'selected' : ''} ${i.available === false ? 'disabled' : ''}" data-indicator="${i.id}" data-available="${i.available !== false}" title="${i.available === false ? 'Coming soon. For now choose RSI, EMA, MACD or Bollinger.' : (i.desc || '')}" ${i.available === false ? 'disabled' : ''} style="${i.available === false ? 'opacity:0.4;cursor:not-allowed;text-decoration:line-through' : ''}">${_esc(i.name)}${i.available === false ? ' · soon' : ''}</button>
           `).join('')}
         </div>
       </div>
     `).join('')}
     <div class="card" style="background:var(--bg-soft);border-style:dashed;margin-top:14px">
       <div class="text-dim" style="font-size:13px;margin-bottom:${selectedDetails.length ? '10px' : '0'}">
-        <strong style="color:var(--text)">Seleccionados:</strong> ${d.indicators.length} indicador${d.indicators.length === 1 ? '' : 'es'}
+        <strong style="color:var(--text)">Selected:</strong> ${d.indicators.length} indicator${d.indicators.length === 1 ? '' : 's'}
       </div>
       ${selectedDetails.length ? `
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
@@ -2464,21 +2462,21 @@ function renderStepRisk() {
     { id: 'M5',  label: 'M5',  hint: '5 min' },
     { id: 'M15', label: 'M15', hint: '15 min' },
     { id: 'M30', label: 'M30', hint: '30 min' },
-    { id: 'H1',  label: 'H1',  hint: '1 hora' },
-    { id: 'H4',  label: 'H4',  hint: '4 horas' },
-    { id: 'D1',  label: 'D1',  hint: '1 día' },
+    { id: 'H1',  label: 'H1',  hint: '1 hour' },
+    { id: 'H4',  label: 'H4',  hint: '4 hours' },
+    { id: 'D1',  label: 'D1',  hint: '1 day' },
   ];
   const TF_HINT_BY_STRATEGY = {
-    scalping: 'Recomendado: M1 o M5',
-    momentum: 'Recomendado: M15',
-    mean: 'Recomendado: M5 o M15',
-    breakout: 'Recomendado: M15 o H1',
-    swing: 'Recomendado: H4 o D1',
-    trend: 'Recomendado: H1 o H4',
-    reversal: 'Recomendado: M30 o H1',
-    grid: 'Recomendado: M15 o H1',
-    dca: 'Recomendado: H4 o D1',
-    hedge: 'Recomendado: H1 o H4',
+    scalping: 'Recommended: M1 or M5',
+    momentum: 'Recommended: M15',
+    mean: 'Recommended: M5 or M15',
+    breakout: 'Recommended: M15 or H1',
+    swing: 'Recommended: H4 or D1',
+    trend: 'Recommended: H1 or H4',
+    reversal: 'Recommended: M30 or H1',
+    grid: 'Recommended: M15 or H1',
+    dca: 'Recommended: H4 or D1',
+    hedge: 'Recommended: H1 or H4',
   };
   const tfHint = TF_HINT_BY_STRATEGY[d.strategy] || '';
   const lotMode = d.lot?.mode || 'auto';
@@ -2486,8 +2484,8 @@ function renderStepRisk() {
   const fixedPresets = [0.01, 0.10, 1.0];
   return `
     <div style="margin-bottom:24px">
-      <div class="field-label">Timeframe del análisis</div>
-      <div class="text-dim mt-2" style="font-size:12px;margin-top:0;margin-bottom:10px">${tfHint ? `${tfHint} · puedes cambiarlo en MetaTrader luego` : 'El bot usará este timeframe para sus indicadores'}</div>
+      <div class="field-label">Analysis timeframe</div>
+      <div class="text-dim mt-2" style="font-size:12px;margin-top:0;margin-bottom:10px">${tfHint ? `${tfHint} · you can change it later in MetaTrader` : 'The bot will use this timeframe for its indicators'}</div>
       <div class="option-grid" style="grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px">
         ${TIMEFRAMES.map(t => `
           <button class="option-card mono ${d.timeframe === t.id ? 'selected' : ''}" data-timeframe="${t.id}" style="font-size:14px;padding:14px 6px;flex-direction:column;gap:2px">
@@ -2499,16 +2497,16 @@ function renderStepRisk() {
     </div>
 
     <div style="margin-bottom:24px">
-      <div class="field-label">Tamaño de lote</div>
-      <div class="text-dim" style="font-size:12px;margin-bottom:10px">Cuánto arriesga el bot por operación</div>
+      <div class="field-label">Lot size</div>
+      <div class="text-dim" style="font-size:12px;margin-bottom:10px">How much the bot risks per trade</div>
       <div class="option-grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
         <button class="option-card ${lotMode === 'auto' ? 'selected' : ''}" data-lotmode="auto" style="flex-direction:column;align-items:flex-start;text-align:left;padding:14px">
-          <div style="font-weight:800;font-size:14px">Auto · por riesgo %</div>
-          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">El bot calcula el lote a partir del riesgo % y tu balance. Recomendado.</div>
+          <div style="font-weight:800;font-size:14px">Auto · by risk %</div>
+          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">The bot calculates the lot from risk % and your balance. Recommended.</div>
         </button>
         <button class="option-card ${lotMode === 'fixed' ? 'selected' : ''}" data-lotmode="fixed" style="flex-direction:column;align-items:flex-start;text-align:left;padding:14px">
-          <div style="font-weight:800;font-size:14px">Lote fijo</div>
-          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">Siempre el mismo tamaño en cada operación. Tú decides cuánto.</div>
+          <div style="font-weight:800;font-size:14px">Fixed lot</div>
+          <div class="text-dim mt-2" style="font-size:11.5px;margin-top:4px;line-height:1.4">Always the same size on every trade. You decide how much.</div>
         </button>
       </div>
       ${lotMode === 'fixed' ? `
@@ -2519,7 +2517,7 @@ function renderStepRisk() {
             `).join('')}
           </div>
           <div style="display:flex;align-items:center;gap:10px">
-            <span class="text-dim" style="font-size:12px">Personalizado:</span>
+            <span class="text-dim" style="font-size:12px">Custom:</span>
             <input type="number" class="input" id="lot-custom" value="${fixedLot}" min="0.01" max="100" step="0.01" style="text-align:center;font-family:'JetBrains Mono';font-weight:700;flex:1"/>
           </div>
         </div>
@@ -2527,7 +2525,7 @@ function renderStepRisk() {
     </div>
 
     <div style="margin-bottom:24px">
-      <div class="field-label">Apalancamiento</div>
+      <div class="field-label">Leverage</div>
       <div class="option-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
         ${presets.map(p => `
           <button class="option-card mono ${d.leverage === p ? 'selected' : ''}" data-leverage="${p}" style="font-size:15px">
@@ -2540,7 +2538,7 @@ function renderStepRisk() {
         <input type="number" class="input" id="leverage-custom" value="${d.leverage}" min="1" max="2000" style="text-align:center;font-family:'JetBrains Mono';font-weight:700"/>
       </div>
       <div class="text-dim mt-2" style="font-size:12px;margin-top:10px">
-        Con $1,000 puedes operar hasta <strong style="color:var(--text)">$${(1000 * d.leverage).toLocaleString()}</strong>
+        With $1,000 you can trade up to <strong style="color:var(--text)">$${(1000 * d.leverage).toLocaleString()}</strong>
       </div>
     </div>
 
@@ -2553,66 +2551,66 @@ function renderStepRisk() {
       <input type="range" id="r-tp" class="slider-modern" min="0.5" max="20" step="0.1" value="${d.risk.takeProfit}"/>
     </div>
     <div style="margin-bottom:22px">
-      <div class="field-label" id="lbl-ps">Tamaño posición · ${d.risk.posSize}% del capital</div>
+      <div class="field-label" id="lbl-ps">Position size · ${d.risk.posSize}% of capital</div>
       <input type="range" id="r-ps" class="slider-modern" min="0.5" max="10" step="0.1" value="${d.risk.posSize}"/>
     </div>
     <div>
-      <div class="field-label" id="lbl-dl">Pérdida diaria máxima · ${d.risk.dailyLoss}%</div>
+      <div class="field-label" id="lbl-dl">Max daily loss · ${d.risk.dailyLoss}%</div>
       <input type="range" id="r-dl" class="slider-modern" min="1" max="15" step="0.5" value="${d.risk.dailyLoss}"/>
     </div>
     <div class="card" id="rr-card" style="margin-top:18px">
       <div id="lbl-rr" style="font-size:13px;font-weight:600">
-        Ratio R:R = 1:${(d.risk.takeProfit / d.risk.stopLoss).toFixed(1)}
+        R:R Ratio = 1:${(d.risk.takeProfit / d.risk.stopLoss).toFixed(1)}
       </div>
       <div id="lbl-rr-hint" class="text-dim mt-2" style="font-size:12px"></div>
     </div>
 
-    <div class="field-label" style="margin-top:32px;margin-bottom:10px">Filtro de noticias</div>
+    <div class="field-label" style="margin-top:32px;margin-bottom:10px">News filter</div>
     <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer" id="toggle-news">
       <div style="width:48px;height:28px;border-radius:14px;background:${d.news.enabled ? 'var(--pos)' : 'var(--border)'};position:relative;transition:background 0.2s;flex-shrink:0">
         <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.news.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
       </div>
       <div style="flex:1">
-        <div class="h3">Pausar bot durante noticias</div>
-        <div class="text-dim mt-2" style="font-size:13px">Evita operar en NFP, FOMC, CPI y similares. Recomendado para cuentas funded.</div>
+        <div class="h3">Pause bot during news</div>
+        <div class="text-dim mt-2" style="font-size:13px">Avoids trading during NFP, FOMC, CPI and similar. Recommended for funded accounts.</div>
       </div>
     </div>
     ${d.news.enabled ? `
       <div class="card" style="background:rgba(0,209,122,0.06);border-color:rgba(0,209,122,0.22);margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
         <div style="width:34px;height:34px;border-radius:10px;background:var(--pos);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Inter Tight';font-weight:800;font-size:11px;letter-spacing:0.5px;flex-shrink:0">MT5</div>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:700;margin-bottom:2px;color:var(--pos)">Solo disponible en MetaTrader 5</div>
-          <div class="text-dim" style="font-size:12.5px;line-height:1.5">El filtro de noticias usa el calendario económico nativo de MT5 (función <code style="font-family:'JetBrains Mono';font-size:11px">CalendarValueHistory</code>). MetaTrader 4 no incluye este calendario, así que si descargas el archivo <strong style="color:var(--text)">.mq4</strong> el filtro se ignora automáticamente.</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px;color:var(--pos)">Only available in MetaTrader 5</div>
+          <div class="text-dim" style="font-size:12.5px;line-height:1.5">The news filter uses MT5's native economic calendar (function <code style="font-family:'JetBrains Mono';font-size:11px">CalendarValueHistory</code>). MetaTrader 4 does not include this calendar, so if you download the <strong style="color:var(--text)">.mq4</strong> file the filter is ignored automatically.</div>
         </div>
       </div>
 
       <div class="card" style="margin-bottom:14px">
-        <div class="field-label" style="margin-bottom:10px">Nivel de impacto a evitar</div>
+        <div class="field-label" style="margin-bottom:10px">Impact level to avoid</div>
         <div class="chip-row" style="margin-bottom:18px">
-          <button class="chip ${d.news.impactMin === 'high' ? 'selected' : ''}" data-news-impact="high">Solo alto impacto</button>
-          <button class="chip ${d.news.impactMin === 'medium' ? 'selected' : ''}" data-news-impact="medium">Medio + alto</button>
-          <button class="chip ${d.news.impactMin === 'all' ? 'selected' : ''}" data-news-impact="all">Todas las noticias</button>
+          <button class="chip ${d.news.impactMin === 'high' ? 'selected' : ''}" data-news-impact="high">High impact only</button>
+          <button class="chip ${d.news.impactMin === 'medium' ? 'selected' : ''}" data-news-impact="medium">Medium + high</button>
+          <button class="chip ${d.news.impactMin === 'all' ? 'selected' : ''}" data-news-impact="all">All news</button>
         </div>
 
         <div style="margin-bottom:18px">
-          <div class="field-label" id="lbl-newsbef">Pausar antes de la noticia · ${d.news.beforeMin} min</div>
+          <div class="field-label" id="lbl-newsbef">Pause before news · ${d.news.beforeMin} min</div>
           <input type="range" id="r-newsbef" class="slider-modern" min="0" max="120" step="5" value="${d.news.beforeMin}"/>
         </div>
         <div style="margin-bottom:8px">
-          <div class="field-label" id="lbl-newsaft">Reanudar después de la noticia · ${d.news.afterMin} min</div>
+          <div class="field-label" id="lbl-newsaft">Resume after news · ${d.news.afterMin} min</div>
           <input type="range" id="r-newsaft" class="slider-modern" min="0" max="120" step="5" value="${d.news.afterMin}"/>
         </div>
       </div>
 
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div class="field-label" style="margin:0">Eventos específicos a vigilar</div>
+          <div class="field-label" style="margin:0">Specific events to watch</div>
           <div style="display:flex;gap:6px">
-            <button class="chip" id="news-events-all" style="padding:5px 10px;font-size:11px">Todos</button>
-            <button class="chip" id="news-events-none" style="padding:5px 10px;font-size:11px">Ninguno</button>
+            <button class="chip" id="news-events-all" style="padding:5px 10px;font-size:11px">All</button>
+            <button class="chip" id="news-events-none" style="padding:5px 10px;font-size:11px">None</button>
           </div>
         </div>
-        <div class="text-dim" style="font-size:12px;margin-bottom:14px">Marca los que el bot debe evitar. Los no marcados se ignorarán aunque MT5 los califique como alto impacto.</div>
+        <div class="text-dim" style="font-size:12px;margin-bottom:14px">Check the ones the bot should avoid. Unchecked ones are ignored even if MT5 rates them as high impact.</div>
         ${[...new Set(NEWS_EVENTS.map(e => e.cur))].map(cur => `
           <div style="margin-bottom:14px">
             <div class="field-label" style="font-size:10px">${cur}</div>
@@ -2624,7 +2622,7 @@ function renderStepRisk() {
           </div>
         `).join('')}
         <div class="text-dim" style="font-size:12px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border);line-height:1.5">
-          El bot lee el calendario nativo de MetaTrader sin URLs externas. Solo afecta a aperturas nuevas — las posiciones abiertas siguen su SL/TP normal.
+          The bot reads MetaTrader's native calendar without external URLs. Only affects new openings — open positions continue their normal SL/TP.
         </div>
       </div>
     ` : ''}
@@ -2632,11 +2630,11 @@ function renderStepRisk() {
 }
 
 function rrFeedback(ratio) {
-  if (ratio >= 3)   return { msg: 'Excelente — basta con un 25% de aciertos para ser rentable', tone: 'pos' };
-  if (ratio >= 2)   return { msg: 'Bueno — basta con un 33% de aciertos para ser rentable', tone: 'pos' };
-  if (ratio >= 1.5) return { msg: 'Aceptable — necesitas más de 40% de aciertos', tone: 'warn' };
-  if (ratio >= 1)   return { msg: 'Justo — necesitas más del 50% de aciertos', tone: 'warn' };
-  return            { msg: 'Arriesgado — el take profit es menor que el stop loss', tone: 'neg' };
+  if (ratio >= 3)   return { msg: 'Excellent — just 25% win rate is enough to be profitable', tone: 'pos' };
+  if (ratio >= 2)   return { msg: 'Good — just 33% win rate is enough to be profitable', tone: 'pos' };
+  if (ratio >= 1.5) return { msg: 'Acceptable — you need more than 40% win rate', tone: 'warn' };
+  if (ratio >= 1)   return { msg: 'Tight — you need more than 50% win rate', tone: 'warn' };
+  return            { msg: 'Risky — take profit is smaller than stop loss', tone: 'neg' };
 }
 
 function applyRRFeedback() {
@@ -2647,7 +2645,7 @@ function applyRRFeedback() {
   const w = state.wizard.data.risk;
   const ratio = w.takeProfit / w.stopLoss;
   const fb = rrFeedback(ratio);
-  lbl.textContent = `Ratio R:R = 1:${ratio.toFixed(1)}`;
+  lbl.textContent = `R:R Ratio = 1:${ratio.toFixed(1)}`;
   hint.textContent = fb.msg;
   const colors = {
     pos:  { bg: 'rgba(0,209,122,0.08)',  bd: 'rgba(0,209,122,0.22)',  fg: 'var(--pos)' },
@@ -2662,10 +2660,10 @@ function applyRRFeedback() {
 function renderStepFunded() {
   const d = state.wizard.data;
   const policyMeta = {
-    allowed:     { label: 'Bots permitidos',         color: 'var(--pos)',      bg: 'rgba(0,209,122,0.08)' },
-    conditional: { label: 'Permitidos con reglas',   color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
-    restricted:  { label: 'Uso restringido',         color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
-    banned:      { label: 'Bots prohibidos',         color: 'var(--neg)',      bg: 'rgba(255,71,87,0.08)' },
+    allowed:     { label: 'Bots allowed',            color: 'var(--pos)',      bg: 'rgba(0,209,122,0.08)' },
+    conditional: { label: 'Allowed with rules',      color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
+    restricted:  { label: 'Restricted use',          color: '#FFB020',          bg: 'rgba(255,176,32,0.08)' },
+    banned:      { label: 'Bots prohibited',         color: 'var(--neg)',      bg: 'rgba(255,71,87,0.08)' },
   };
   const selected = FUNDED_FIRMS.find(f => f.id === d.funded.firm);
   return `
@@ -2674,8 +2672,8 @@ function renderStepFunded() {
         <div style="width:24px;height:24px;border-radius:12px;background:var(--text);position:absolute;top:2px;left:${d.funded.enabled ? '22px' : '2px'};transition:left 0.2s"></div>
       </div>
       <div style="flex:1">
-        <div class="h3">¿Usas cuenta de fondeo?</div>
-        <div class="text-dim mt-2" style="font-size:13px">El bot respetará reglas de drawdown y consistency</div>
+        <div class="h3">Are you using a funded account?</div>
+        <div class="text-dim mt-2" style="font-size:13px">The bot will respect drawdown and consistency rules</div>
       </div>
     </div>
 
@@ -2684,15 +2682,15 @@ function renderStepFunded() {
         <div style="display:flex;gap:10px;align-items:flex-start">
           <div style="font-size:18px;line-height:1.2">⚠️</div>
           <div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#FFB020">Antes de usar un bot en una cuenta funded</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#FFB020">Before using a bot on a funded account</div>
             <div class="text-dim" style="font-size:13px;line-height:1.6">
-              Cada prop firm tiene reglas distintas. Algunas <strong style="color:var(--text)">permiten EAs sin restricciones</strong>, otras los <strong style="color:var(--text)">prohíben totalmente</strong>, y otras tienen condiciones (no HFT, no copy-trading entre cuentas, no martingala). <strong style="color:var(--text)">Lee bien las reglas</strong> de tu firm antes de operar — usar un bot en una cuenta donde no está permitido puede suponer la <strong style="color:var(--text)">pérdida del fondeo sin reembolso</strong>.
+              Each prop firm has different rules. Some <strong style="color:var(--text)">allow EAs without restrictions</strong>, others <strong style="color:var(--text)">prohibit them entirely</strong>, and others have conditions (no HFT, no copy-trading between accounts, no martingale). <strong style="color:var(--text)">Read your firm's rules carefully</strong> before trading — using a bot on an account where it's not allowed can result in <strong style="color:var(--text)">losing the funding without refund</strong>.
             </div>
           </div>
         </div>
       </div>
 
-      <div class="field-label" style="margin-bottom:12px">Selecciona tu prop firm</div>
+      <div class="field-label" style="margin-bottom:12px">Select your prop firm</div>
       <div class="firm-grid">
         ${FUNDED_FIRMS.map(f => {
           const policy = policyMeta[f.bots] || policyMeta.allowed;
@@ -2705,7 +2703,7 @@ function renderStepFunded() {
               </div>
               <div class="firm-card-grid">
                 <div><span class="firm-meta-lbl">Profit split</span><span class="firm-meta-val">${f.profitSplit}</span></div>
-                <div><span class="firm-meta-lbl">Cuenta máx.</span><span class="firm-meta-val">${f.maxAccount}</span></div>
+                <div><span class="firm-meta-lbl">Max account</span><span class="firm-meta-val">${f.maxAccount}</span></div>
                 <div><span class="firm-meta-lbl">Daily loss</span><span class="firm-meta-val">${f.maxDailyLoss}</span></div>
                 <div><span class="firm-meta-lbl">Loss total</span><span class="firm-meta-val">${f.maxLoss}</span></div>
               </div>
@@ -2717,15 +2715,15 @@ function renderStepFunded() {
       ${selected ? `
         <div class="card" style="margin-top:18px;padding:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="h3">${selected.name} · detalle</div>
+            <div class="h3">${selected.name} · details</div>
             <span class="firm-policy-badge" style="background:${(policyMeta[selected.bots] || policyMeta.allowed).bg};color:${(policyMeta[selected.bots] || policyMeta.allowed).color}">${(policyMeta[selected.bots] || policyMeta.allowed).label}</span>
           </div>
           <div class="firm-detail-grid">
-            <div><span class="firm-meta-lbl">Evaluación</span><div>${selected.eval}</div></div>
-            <div><span class="firm-meta-lbl">Días mínimos</span><div>${selected.minDays}</div></div>
-            <div><span class="firm-meta-lbl">Consistencia</span><div>${selected.consistency}</div></div>
-            <div><span class="firm-meta-lbl">Holding fin de semana</span><div>${selected.weekend}</div></div>
-            <div><span class="firm-meta-lbl">Operar noticias</span><div>${selected.news}</div></div>
+            <div><span class="firm-meta-lbl">Evaluation</span><div>${selected.eval}</div></div>
+            <div><span class="firm-meta-lbl">Min days</span><div>${selected.minDays}</div></div>
+            <div><span class="firm-meta-lbl">Consistency</span><div>${selected.consistency}</div></div>
+            <div><span class="firm-meta-lbl">Weekend holding</span><div>${selected.weekend}</div></div>
+            <div><span class="firm-meta-lbl">Trade during news</span><div>${selected.news}</div></div>
           </div>
           <div class="text-dim" style="font-size:13px;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
             ${selected.notes}
@@ -2743,14 +2741,14 @@ function renderStepFunded() {
 
 function renderStepGenerate() {
   const phases = [
-    'Conectando con motor de generación',
-    'Analizando histórico del par',
-    'Calibrando indicadores',
-    'Backtesting estrategia',
-    'Optimizando parámetros',
-    `Aplicando apalancamiento 1:${state.wizard.data.leverage}`,
-    'Compilando archivo MQL',
-    'Bot generado correctamente',
+    'Connecting to generation engine',
+    'Analyzing pair history',
+    'Calibrating indicators',
+    'Backtesting strategy',
+    'Optimizing parameters',
+    `Applying leverage 1:${state.wizard.data.leverage}`,
+    'Compiling MQL file',
+    'Bot generated successfully',
   ];
   return `
     <div class="card card-pad-lg" id="generate-list">
@@ -2759,7 +2757,7 @@ function renderStepGenerate() {
           ${getAvatarSVG(state.wizard.data.avatar)}
         </div>
         <div>
-          <div class="h3">Construyendo tu bot</div>
+          <div class="h3">Building your bot</div>
           <div class="text-dim" style="font-size:12px;margin-top:2px">${_esc(state.wizard.data.name)}</div>
         </div>
       </div>
@@ -2784,18 +2782,18 @@ function renderStepReview() {
   const d = state.wizard.data;
   return `
     <div class="card card-pad-lg">
-      <div class="h3 mb-4">Resumen del bot</div>
+      <div class="h3 mb-4">Bot summary</div>
       ${[
-        ['Nombre', d.name],
-        ['Mercado', MARKETS.find(m => m.id === d.market)?.name],
-        ['Par', d.pair],
-        ['Estrategia', STRATEGIES.find(s => s.id === d.strategy)?.name],
-        ['Indicadores', d.indicators.join(', ')],
-        ['Apalancamiento', `1:${d.leverage}`],
+        ['Name', d.name],
+        ['Market', MARKETS.find(m => m.id === d.market)?.name],
+        ['Pair', d.pair],
+        ['Strategy', STRATEGIES.find(s => s.id === d.strategy)?.name],
+        ['Indicators', d.indicators.join(', ')],
+        ['Leverage', `1:${d.leverage}`],
         ['Stop loss', `${d.risk.stopLoss}%`],
         ['Take profit', `${d.risk.takeProfit}%`],
-        ['Filtro noticias', d.news.enabled ? `${({high:'Alto',medium:'Medio+',all:'Todas'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min · ${d.news.events.length}/${NEWS_EVENTS.length} eventos` : 'Desactivado'],
-        ['Cuenta de fondeo', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Sí' : 'No'],
+        ['News filter', d.news.enabled ? `${({high:'High',medium:'Medium+',all:'All'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min · ${d.news.events.length}/${NEWS_EVENTS.length} events` : 'Disabled'],
+        ['Funded account', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Yes' : 'No'],
       ].map(([k, v]) => `
         <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);font-size:14px">
           <span class="text-dim">${k}</span>
@@ -2806,11 +2804,11 @@ function renderStepReview() {
     <div class="card mt-4" style="background:var(--bg-soft);margin-top:14px">
       <div class="flex items-center justify-between">
         <div>
-          <div class="text-dim" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Total a pagar</div>
+          <div class="text-dim" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Total to pay</div>
           <div class="h2 mt-2" style="font-family:'Inter Tight';font-size:36px;font-weight:800;letter-spacing:-0.03em">€9.99</div>
         </div>
         <div class="text-dim text-center" style="font-size:12px">
-          Pago único<br/>El bot es tuyo
+          One-time payment<br/>The bot is yours
         </div>
       </div>
     </div>
@@ -2821,8 +2819,8 @@ function renderStepPay() {
   return `
     <div class="card card-pad-lg text-center">
       <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 18px"></div>
-      <h3 class="h3">Redirigiendo a la pasarela de pago...</h3>
-      <p class="text-dim mt-2">Si no se abre automáticamente, haz click en el botón de abajo.</p>
+      <h3 class="h3">Redirecting to payment gateway...</h3>
+      <p class="text-dim mt-2">If it doesn't open automatically, click the button below.</p>
     </div>
   `;
 }
@@ -2871,7 +2869,7 @@ function bindWizard() {
       // Bloqueamos los indicadores marcados como no disponibles para que el
       // usuario no termine con un bot que no analiza lo que cree analizar.
       if (el.dataset.available === 'false' || el.disabled) {
-        toast('Este indicador estará disponible próximamente. Por ahora elige RSI, EMA, MACD o Bollinger.', 'info');
+        toast('This indicator will be available soon. For now choose RSI, EMA, MACD or Bollinger.', 'info');
         return;
       }
       const id = el.dataset.indicator;
@@ -2923,8 +2921,8 @@ function bindWizard() {
   const sliderLabels = {
     sl: (v) => `Stop loss · ${v}%`,
     tp: (v) => `Take profit · ${v}%`,
-    ps: (v) => `Tamaño posición · ${v}% del capital`,
-    dl: (v) => `Pérdida diaria máxima · ${v}%`,
+    ps: (v) => `Position size · ${v}% of capital`,
+    dl: (v) => `Max daily loss · ${v}%`,
   };
   const updateSliderFill = (el) => {
     const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
@@ -2963,7 +2961,7 @@ function bindWizard() {
       else w.data.news.afterMin = v;
       updateSliderFill(el);
       const lbl = document.getElementById('lbl-' + k);
-      if (lbl) lbl.textContent = (k === 'newsbef' ? 'Pausar antes de la noticia · ' : 'Reanudar después de la noticia · ') + v + ' min';
+      if (lbl) lbl.textContent = (k === 'newsbef' ? 'Pause before news · ' : 'Resume after news · ') + v + ' min';
     });
   });
   document.querySelectorAll('[data-news-event]').forEach(el => {
@@ -3012,13 +3010,13 @@ function bindWizard() {
 function validateWizardStep(step) {
   const d = state.wizard.data;
   if (step === 0) {
-    if (!d.name || !d.name.trim()) return 'Pon un nombre a tu bot';
-    if (d.name.length > 60) return 'El nombre es demasiado largo (máx. 60)';
-    if (!d.market || !d.pair) return 'Elige un mercado y un par';
+    if (!d.name || !d.name.trim()) return 'Give your bot a name';
+    if (d.name.length > 60) return 'Name is too long (max 60)';
+    if (!d.market || !d.pair) return 'Pick a market and a pair';
   }
-  if (step === 1 && !d.strategy) return 'Elige una estrategia';
-  if (step === 2 && (!d.indicators || d.indicators.length === 0)) return 'Selecciona al menos un indicador';
-  if (step === 4 && d.funded.enabled && !d.funded.firm) return 'Selecciona tu prop firm o desactiva la cuenta de fondeo';
+  if (step === 1 && !d.strategy) return 'Pick a strategy';
+  if (step === 2 && (!d.indicators || d.indicators.length === 0)) return 'Select at least one indicator';
+  if (step === 4 && d.funded.enabled && !d.funded.firm) return 'Select your prop firm or disable the funded account';
   return null;
 }
 
@@ -3065,7 +3063,7 @@ async function startCheckout() {
   // Guardar config para crear bot tras pago
   const botConfig = {
     name: w.data.name,
-    description: `Bot ${w.data.strategy} en ${w.data.pair}`,
+    description: `Bot ${w.data.strategy} on ${w.data.pair}`,
     strategy: w.data.strategy,
     parameters: {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
@@ -3086,7 +3084,7 @@ async function startCheckout() {
       window.location.href = res.url;
     }
   } catch (e) {
-    toast('Error al crear sesión de pago', 'error');
+    toast('Error creating payment session', 'error');
   }
 }
 
@@ -3100,9 +3098,9 @@ function loadGuide(root) {
   if (!state.guideBroker) {
     root.innerHTML = `
       <div class="container container-narrow">
-        <div class="eyebrow fade-up">Guía de implementación</div>
-        <h1 class="h1 fade-up">Conecta tu bot a MetaTrader.</h1>
-        <p class="text-dim mt-4 fade-up" style="margin-top:16px">Selecciona tu plataforma. Te llevará menos de 5 minutos tener tu bot operando.</p>
+        <div class="eyebrow fade-up">Implementation guide</div>
+        <h1 class="h1 fade-up">Connect your bot to MetaTrader.</h1>
+        <p class="text-dim mt-4 fade-up" style="margin-top:16px">Select your platform. It'll take you less than 5 minutes to get your bot running.</p>
 
         <div class="flex flex-col gap-3" style="margin-top:32px">
           <button class="card card-hover fade-up" id="select-mt5" style="display:flex;align-items:center;gap:18px;text-align:left;cursor:pointer">
@@ -3110,9 +3108,9 @@ function loadGuide(root) {
             <div style="flex:1">
               <div class="flex items-center gap-2">
                 <div class="h3">MetaTrader 5</div>
-                <span class="status-badge status-recommended">Recomendado</span>
+                <span class="status-badge status-recommended">Recommended</span>
               </div>
-              <div class="text-dim mt-2" style="font-size:13px">Forex · Índices · Materias primas · Crypto CFDs</div>
+              <div class="text-dim mt-2" style="font-size:13px">Forex · Indices · Commodities · Crypto CFDs</div>
             </div>
             ${I.arrow}
           </button>
@@ -3120,7 +3118,7 @@ function loadGuide(root) {
             <div style="width:56px;height:56px;border-radius:14px;background:var(--bg-elev);color:var(--text);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-family:'Inter Tight';font-size:14px;font-weight:800;letter-spacing:0.5px">MT4</div>
             <div style="flex:1">
               <div class="h3">MetaTrader 4</div>
-              <div class="text-dim mt-2" style="font-size:13px">Forex · CFDs (compatibilidad legado)</div>
+              <div class="text-dim mt-2" style="font-size:13px">Forex · CFDs (legacy compatibility)</div>
             </div>
             ${I.arrow}
           </button>
@@ -3139,24 +3137,24 @@ function loadGuide(root) {
   const platName = isMT5 ? 'MetaTrader 5' : 'MetaTrader 4';
 
   const steps = [
-    { title: 'Ten el archivo descargado', body: `Antes de empezar, descarga el archivo ${ext} desde el detalle de tu bot.`, details: ['El archivo es código fuente Expert Advisor', 'En el siguiente paso lo compilarás dentro de MetaEditor para convertirlo en ejecutable'] },
-    { title: `Abre ${platName}`, body: `Inicia ${platName} en tu ordenador. Si no lo tienes, descárgalo desde tu broker.`, details: ['Asegúrate de estar logueado en tu cuenta (real o demo)', 'Recomendamos cuenta demo para los primeros días'] },
-    { title: 'Abre la carpeta de datos', body: `En ${platName}: Archivo → Abrir carpeta de datos.`, details: ['En inglés: File → Open Data Folder', `Verás carpetas como config, history, ${folder}`] },
-    { title: 'Copia el archivo en Experts', body: `Entra en ${folder} → Experts. Pega aquí tu archivo ${ext}.`, details: [`Ruta exacta: ${folder}/Experts/`, 'Si la carpeta Experts no existe, créala'] },
-    { title: 'Abre MetaEditor (F4) y compila', body: `Vuelve a ${platName} y pulsa F4 (o menú: Herramientas → MetaQuotes Language Editor). Se abre el editor.`, details: ['En el panel izquierdo del editor → Experts → busca tu archivo y haz doble click', `Pulsa F7 (o botón "Compilar" arriba) para compilar el ${ext}`, 'Abajo verás "0 errores, 0 advertencias" si todo va bien · si hay errores, contacta soporte'] },
-    { title: `Reinicia ${platName}`, body: 'Cierra y vuelve a abrir la plataforma para que detecte el bot ya compilado.', details: ['Alternativa rápida: en el panel "Navegador" pulsa F5 para refrescar', 'Tu bot aparecerá en "Asesores Expertos" con el nombre que le pusiste'] },
-    { title: 'Activa AutoTrading', body: 'Click en el botón "AutoTrading" de la barra superior hasta que esté VERDE.', details: ['Botón con icono de play · Verde = activo · Rojo = desactivado', 'Sin esto el bot está cargado pero NO opera'] },
-    { title: 'Abre el gráfico del par y carga el bot', body: `Abre el gráfico del par que configuraste (ej: EURUSD). En el Navegador → Asesores Expertos → doble click sobre tu bot.`, details: ['Aparecerá una ventana de configuración del bot', 'Marca la pestaña "Comunes" → "Permitir trading automático"', 'Click en "Cargar" (Aceptar) y el bot se activa en el gráfico', 'En la esquina superior derecha del gráfico verás 😊 verde = bot operando'] },
-    { title: '¡Listo! Bot operando', body: 'Tu bot está funcionando 24/7 con tus reglas de riesgo.', details: ['IMPORTANTE: el ordenador debe estar encendido y MetaTrader abierto', 'Alternativa: alquila un VPS (~$10/mes) para que opere sin tu PC'] },
+    { title: 'Have the file downloaded', body: `Before you start, download the ${ext} file from your bot detail page.`, details: ['The file is Expert Advisor source code', 'In the next step you will compile it inside MetaEditor to turn it into an executable'] },
+    { title: `Open ${platName}`, body: `Launch ${platName} on your computer. If you do not have it, download it from your broker.`, details: ['Make sure you are logged into your account (live or demo)', 'We recommend a demo account for the first few days'] },
+    { title: 'Open the data folder', body: `In ${platName}: File → Open Data Folder.`, details: ['Menu path: File → Open Data Folder', `You will see folders like config, history, ${folder}`] },
+    { title: 'Copy the file into Experts', body: `Go into ${folder} → Experts. Paste your ${ext} file here.`, details: [`Exact path: ${folder}/Experts/`, 'If the Experts folder does not exist, create it'] },
+    { title: 'Open MetaEditor (F4) and compile', body: `Go back to ${platName} and press F4 (or menu: Tools → MetaQuotes Language Editor). The editor opens.`, details: ['In the editor left panel → Experts → find your file and double click', `Press F7 (or "Compile" button at the top) to compile the ${ext}`, 'At the bottom you should see "0 errors, 0 warnings" if all goes well · if there are errors, contact support'] },
+    { title: `Restart ${platName}`, body: 'Close and reopen the platform so it detects the compiled bot.', details: ['Quick alternative: in the "Navigator" panel press F5 to refresh', 'Your bot will appear in "Expert Advisors" with the name you gave it'] },
+    { title: 'Enable AutoTrading', body: 'Click the "AutoTrading" button in the top toolbar until it is GREEN.', details: ['Button with play icon · Green = active · Red = disabled', 'Without this the bot is loaded but does NOT trade'] },
+    { title: 'Open the pair chart and load the bot', body: `Open the chart of the pair you configured (e.g. EURUSD). In the Navigator → Expert Advisors → double click on your bot.`, details: ['A bot configuration window will appear', 'Check the "Common" tab → "Allow automated trading"', 'Click "OK" and the bot activates on the chart', 'In the top right corner of the chart you will see a green smiley = bot trading'] },
+    { title: 'Done! Bot trading', body: 'Your bot is running 24/7 with your risk rules.', details: ['IMPORTANT: the computer must be on and MetaTrader open', 'Alternative: rent a VPS (~$10/month) so it trades without your PC'] },
   ];
   const cur = steps[state.guideStep];
 
   root.innerHTML = `
     <div class="container container-narrow">
-      <button class="btn btn-soft fade-up" id="back-to-broker" style="margin-bottom:24px">${I.arrowLeft} Cambiar plataforma</button>
+      <button class="btn btn-soft fade-up" id="back-to-broker" style="margin-bottom:24px">${I.arrowLeft} Change platform</button>
 
       <div class="eyebrow fade-up">${platName}</div>
-      <h1 class="h1 fade-up">Paso ${state.guideStep + 1} de ${steps.length}</h1>
+      <h1 class="h1 fade-up">Step ${state.guideStep + 1} of ${steps.length}</h1>
 
       <div class="wizard-progress" style="margin-top:18px">
         ${steps.map((_, i) => `<div class="wizard-progress-bar ${i <= state.guideStep ? 'done' : ''}"></div>`).join('')}
@@ -3181,9 +3179,9 @@ function loadGuide(root) {
       </div>
 
       <div class="flex gap-3 fade-up" style="margin-top:18px">
-        ${state.guideStep > 0 ? `<button class="btn btn-soft" id="guide-prev">${I.arrowLeft} Anterior</button>` : ''}
+        ${state.guideStep > 0 ? `<button class="btn btn-soft" id="guide-prev">${I.arrowLeft} Back</button>` : ''}
         <button class="btn btn-primary" id="guide-next" style="flex:1;justify-content:center">
-          ${state.guideStep < steps.length - 1 ? 'Siguiente' : 'Finalizar'}
+          ${state.guideStep < steps.length - 1 ? 'Next' : 'Finish'}
           ${state.guideStep < steps.length - 1 ? '<span class="btn-arrow">→</span>' : I.check}
         </button>
       </div>
@@ -3193,8 +3191,8 @@ function loadGuide(root) {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
         </div>
         <div style="flex:1">
-          <div class="h3">Ver video tutorial</div>
-          <div class="text-dim mt-2" style="font-size:13px">Tutorial paso a paso en YouTube</div>
+          <div class="h3">Watch video tutorial</div>
+          <div class="text-dim mt-2" style="font-size:13px">Step-by-step tutorial on YouTube</div>
         </div>
         ${I.arrow}
       </div>
@@ -3204,7 +3202,7 @@ function loadGuide(root) {
   document.getElementById('guide-prev')?.addEventListener('click', () => { state.guideStep--; render(); });
   document.getElementById('guide-next')?.addEventListener('click', () => {
     if (state.guideStep < steps.length - 1) { state.guideStep++; render(); }
-    else { state.guideBroker = null; state.guideStep = 0; toast('¡Guía completada!', 'success'); render(); }
+    else { state.guideBroker = null; state.guideStep = 0; toast('Guide completed!', 'success'); render(); }
   });
 }
 
@@ -3213,24 +3211,24 @@ function loadAccount(root) {
   const initial = (u.name || 'U')[0].toUpperCase();
   root.innerHTML = `
     <div class="container container-narrow">
-      <h1 class="h1 fade-up">Mi cuenta</h1>
+      <h1 class="h1 fade-up">My account</h1>
 
       <div class="card card-pad-lg fade-up" style="margin-top:28px;display:flex;align-items:center;gap:18px;">
         <div class="user-avatar" style="width:64px;height:64px;font-size:24px;">${initial}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Inter Tight';font-size:22px;font-weight:800;letter-spacing:-0.02em;">${_esc(u.name || 'Usuario')}</div>
+          <div style="font-family:'Inter Tight';font-size:22px;font-weight:800;letter-spacing:-0.02em;">${_esc(u.name || 'User')}</div>
           <div class="text-dim mt-2" style="font-size:14px;overflow:hidden;text-overflow:ellipsis">${_esc(u.email || '')}</div>
         </div>
       </div>
 
       <div class="account-section">
-        <h2 class="account-section-title">Información personal</h2>
+        <h2 class="account-section-title">Personal information</h2>
 
         <form class="card account-form" id="account-name-form">
-          <label class="field-label" for="acc-name">Nombre completo</label>
+          <label class="field-label" for="acc-name">Full name</label>
           <div style="display:flex;gap:10px">
             <input class="input" id="acc-name" name="name" type="text" required maxlength="80" value="${_esc(u.name || '')}" autocomplete="name" style="flex:1"/>
-            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
+            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Save</button>
           </div>
         </form>
 
@@ -3238,63 +3236,63 @@ function loadAccount(root) {
           <label class="field-label" for="acc-email">Email</label>
           <div style="display:flex;gap:10px">
             <input class="input" id="acc-email" name="email" type="email" required value="${_esc(u.email || '')}" autocomplete="email" style="flex:1"/>
-            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Guardar</button>
+            <button type="submit" class="btn btn-primary" style="white-space:nowrap">Save</button>
           </div>
-          <div class="text-dim" style="font-size:12px;margin-top:8px">Te enviaremos un código al nuevo email para confirmar el cambio.</div>
+          <div class="text-dim" style="font-size:12px;margin-top:8px">We will send a code to the new email to confirm the change.</div>
 
           <div id="email-change-verify" style="display:none;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
-            <div class="field-label">Confirma tu nuevo email</div>
-            <div class="text-dim" style="font-size:12px;margin-bottom:12px">Hemos enviado un código de 6 dígitos a <strong id="email-change-hint" style="color:var(--text)"></strong>. Introdúcelo aquí:</div>
+            <div class="field-label">Confirm your new email</div>
+            <div class="text-dim" style="font-size:12px;margin-bottom:12px">We have sent a 6-digit code to <strong id="email-change-hint" style="color:var(--text)"></strong>. Enter it here:</div>
             <div class="otp-row" style="margin-bottom:14px">
               ${[0,1,2,3,4,5].map(i => `<input class="otp-input email-change-otp" type="tel" inputmode="numeric" maxlength="1" data-otp-i="${i}"/>`).join('')}
             </div>
             <div style="display:flex;gap:10px">
-              <button type="button" class="btn btn-primary" id="email-change-confirm" style="flex:1;justify-content:center">Confirmar</button>
-              <button type="button" class="btn btn-soft" id="email-change-cancel" style="white-space:nowrap">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="email-change-confirm" style="flex:1;justify-content:center">Confirm</button>
+              <button type="button" class="btn btn-soft" id="email-change-cancel" style="white-space:nowrap">Cancel</button>
             </div>
           </div>
         </form>
       </div>
 
       <div class="account-section">
-        <h2 class="account-section-title">Seguridad</h2>
+        <h2 class="account-section-title">Security</h2>
 
         <form class="card account-form" id="account-pw-form">
-          <label class="field-label" for="acc-pw-current">Contraseña actual</label>
+          <label class="field-label" for="acc-pw-current">Current password</label>
           <input class="input" id="acc-pw-current" type="password" required autocomplete="current-password" placeholder="••••••••"/>
 
-          <label class="field-label" for="acc-pw-new" style="margin-top:14px">Nueva contraseña</label>
-          <input class="input" id="acc-pw-new" type="password" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres"/>
+          <label class="field-label" for="acc-pw-new" style="margin-top:14px">New password</label>
+          <input class="input" id="acc-pw-new" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters"/>
           <div id="acc-pw-strength" style="display:none;margin-top:8px">
             <div class="pw-bar"><div class="pw-bar-fill" id="acc-pw-bar-fill"></div></div>
             <div class="pw-rules">
-              <span class="pw-rule" id="acc-r-len">${I.dot} 8+ caracteres</span>
-              <span class="pw-rule" id="acc-r-upper">${I.dot} Una mayúscula</span>
-              <span class="pw-rule" id="acc-r-num">${I.dot} Un número</span>
+              <span class="pw-rule" id="acc-r-len">${I.dot} 8+ characters</span>
+              <span class="pw-rule" id="acc-r-upper">${I.dot} One uppercase</span>
+              <span class="pw-rule" id="acc-r-num">${I.dot} One number</span>
             </div>
           </div>
 
-          <label class="field-label" for="acc-pw-new2" style="margin-top:14px">Repetir nueva contraseña</label>
-          <input class="input" id="acc-pw-new2" type="password" required autocomplete="new-password" placeholder="Repite la nueva contraseña"/>
+          <label class="field-label" for="acc-pw-new2" style="margin-top:14px">Repeat new password</label>
+          <input class="input" id="acc-pw-new2" type="password" required autocomplete="new-password" placeholder="Repeat the new password"/>
 
-          <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center">Cambiar contraseña</button>
+          <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center">Change password</button>
         </form>
       </div>
 
       <div class="account-section">
-        <h2 class="account-section-title">Pagos y bots</h2>
+        <h2 class="account-section-title">Payments and bots</h2>
         <div class="card fade-up" style="display:flex;align-items:center;gap:14px;cursor:pointer" id="recover-bots-btn">
           ${I.download}
           <div style="flex:1">
-            <div class="h3">Recuperar bots pagados</div>
-            <div class="text-dim mt-2" style="font-size:13px">Si pagaste un bot pero no aparece en tu dashboard, click aquí. Buscamos en Lemon Squeezy las órdenes a tu nombre y creamos los bots que falten.</div>
+            <div class="h3">Recover paid bots</div>
+            <div class="text-dim mt-2" style="font-size:13px">If you paid for a bot but it does not appear in your dashboard, click here. We search Lemon Squeezy for orders in your name and create the missing bots.</div>
           </div>
           ${I.arrow}
         </div>
       </div>
 
       <div class="account-section">
-        <h2 class="account-section-title">Idioma · Language</h2>
+        <h2 class="account-section-title">Language · Idioma</h2>
         <div class="card fade-up" style="display:flex;align-items:center;gap:10px">
           <button class="btn ${APP_LANG === 'es' ? 'btn-primary' : 'btn-soft'}" style="flex:1;justify-content:center" id="lang-es-btn">Español</button>
           <button class="btn ${APP_LANG === 'en' ? 'btn-primary' : 'btn-soft'}" style="flex:1;justify-content:center" id="lang-en-btn">English</button>
@@ -3302,17 +3300,17 @@ function loadAccount(root) {
       </div>
 
       <div class="account-section">
-        <h2 class="account-section-title">Ayuda y cuenta</h2>
+        <h2 class="account-section-title">Help and account</h2>
 
         <div class="card fade-up" style="display:flex;align-items:center;gap:14px;cursor:pointer" id="goto-support">
           ${I.mail}
           <div style="flex:1">
-            <div class="h3">Contactar soporte</div>
+            <div class="h3">Contact support</div>
           </div>
           ${I.arrow}
         </div>
 
-        <button class="btn btn-soft" id="logout-btn" style="margin-top:12px;width:100%;justify-content:center;color:var(--neg);border-color:rgba(255,71,87,0.2)">${I.logout} Cerrar sesión</button>
+        <button class="btn btn-soft" id="logout-btn" style="margin-top:12px;width:100%;justify-content:center;color:var(--neg);border-color:rgba(255,71,87,0.2)">${I.logout} Log out</button>
       </div>
     </div>
   `;
@@ -3328,8 +3326,7 @@ function loadAccount(root) {
     render();
   });
 
-  // Cambio de idioma: persiste preferencia y salta al app del idioma elegido.
-  // El propio app re-leerá lang al cargar y respetará la elección.
+  // Language switch: persist choice and reload the right localized app.
   document.getElementById('lang-es-btn')?.addEventListener('click', () => {
     try { localStorage.setItem('lang', 'es'); } catch(e) {}
     if (window.location.pathname.startsWith('/en/')) window.location.href = '/app';
@@ -3343,16 +3340,16 @@ function loadAccount(root) {
     if (btn.dataset.busy === '1') return;
     btn.dataset.busy = '1';
     const originalText = btn.querySelector('.h3')?.textContent;
-    if (btn.querySelector('.h3')) btn.querySelector('.h3').textContent = 'Buscando órdenes…';
+    if (btn.querySelector('.h3')) btn.querySelector('.h3').textContent = 'Searching orders…';
     try {
       const res = await api('/payments/recover', { method: 'POST' });
       if (res.count > 0) {
-        toast(`✅ ${res.count} bot${res.count > 1 ? 's' : ''} recuperado${res.count > 1 ? 's' : ''}. Ve al Dashboard.`, 'success');
+        toast(`✅ ${res.count} bot${res.count > 1 ? 's' : ''} recovered. Go to the Dashboard.`, 'success');
       } else {
-        toast('No hay pagos pendientes a tu nombre', 'success');
+        toast('No pending payments under your name', 'success');
       }
     } catch (e) {
-      toast(e.message || 'Error al recuperar bots', 'error');
+      toast(e.message || 'Error recovering bots', 'error');
     } finally {
       btn.dataset.busy = '0';
       if (btn.querySelector('.h3') && originalText) btn.querySelector('.h3').textContent = originalText;
@@ -3363,15 +3360,15 @@ function loadAccount(root) {
   document.getElementById('account-name-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('acc-name').value.trim();
-    if (name.length < 2) { toast('Pon tu nombre completo', 'error'); return; }
+    if (name.length < 2) { toast('Enter your full name', 'error'); return; }
     try {
       const data = await api('/auth/me', { method: 'PUT', body: JSON.stringify({ name }) });
       state.user = data.user;
       try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
-      toast('Nombre actualizado', 'success');
+      toast('Name updated', 'success');
       render();
     } catch (err) {
-      toast(err.message || 'No se pudo actualizar', 'error');
+      toast(err.message || 'Could not update', 'error');
     }
   });
 
@@ -3401,8 +3398,8 @@ function loadAccount(root) {
   document.getElementById('account-email-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('acc-email').value.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Email no válido', 'error'); return; }
-    if (email === (state.user?.email || '').toLowerCase()) { toast('Ese email ya es el tuyo', 'info'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Invalid email', 'error'); return; }
+    if (email === (state.user?.email || '').toLowerCase()) { toast('That email is already yours', 'info'); return; }
     try {
       const data = await api('/auth/me', { method: 'PUT', body: JSON.stringify({ email }) });
       if (data.emailChangeRequested) {
@@ -3411,15 +3408,15 @@ function loadAccount(root) {
         emailVerifyBox.style.display = '';
         emailOtpInputs.forEach(x => x.value = '');
         emailOtpInputs[0]?.focus();
-        toast('Código enviado al nuevo email', 'success');
+        toast('Code sent to the new email', 'success');
       } else {
-        toast('Email actualizado', 'success');
+        toast('Email updated', 'success');
         state.user = data.user;
         try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
         render();
       }
     } catch (err) {
-      toast(err.message || 'No se pudo actualizar', 'error');
+      toast(err.message || 'Could not update', 'error');
     }
   });
 
@@ -3430,16 +3427,16 @@ function loadAccount(root) {
 
   document.getElementById('email-change-confirm')?.addEventListener('click', async () => {
     const code = [...emailOtpInputs].map(x => x.value).join('');
-    if (!/^\d{6}$/.test(code)) { toast('Mete los 6 dígitos del código', 'error'); return; }
+    if (!/^\d{6}$/.test(code)) { toast('Enter the 6 digits of the code', 'error'); return; }
     try {
       const data = await api('/auth/verify-email-change', { method: 'POST', body: JSON.stringify({ code }) });
       state.user = data.user;
       try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (_) {}
-      toast('Email actualizado correctamente', 'success');
+      toast('Email updated successfully', 'success');
       emailVerifyBox.style.display = 'none';
       render();
     } catch (err) {
-      toast(err.message || 'Código incorrecto', 'error');
+      toast(err.message || 'Incorrect code', 'error');
     }
   });
 
@@ -3472,22 +3469,22 @@ function loadAccount(root) {
     const currentPassword = document.getElementById('acc-pw-current').value;
     const newPassword = document.getElementById('acc-pw-new').value;
     const confirm2 = document.getElementById('acc-pw-new2').value;
-    if (newPassword !== confirm2) { toast('Las contraseñas nuevas no coinciden', 'error'); return; }
+    if (newPassword !== confirm2) { toast('New passwords do not match', 'error'); return; }
     if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      toast('La nueva contraseña necesita 8+ chars, mayúscula y número', 'error');
+      toast('New password needs 8+ chars, uppercase and number', 'error');
       return;
     }
-    if (currentPassword === newPassword) { toast('La nueva contraseña debe ser distinta de la actual', 'error'); return; }
+    if (currentPassword === newPassword) { toast('New password must differ from the current one', 'error'); return; }
     try {
       await api('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
-      toast('Contraseña actualizada', 'success');
+      toast('Password updated', 'success');
       // Reset form
       document.getElementById('acc-pw-current').value = '';
       document.getElementById('acc-pw-new').value = '';
       document.getElementById('acc-pw-new2').value = '';
       if (strengthBox) strengthBox.style.display = 'none';
     } catch (err) {
-      toast(err.message || 'No se pudo cambiar la contraseña', 'error');
+      toast(err.message || 'Could not change password', 'error');
     }
   });
 }
@@ -3496,67 +3493,67 @@ function loadAccount(root) {
 //  SOPORTE CHATBOT
 // =====================================================
 const FAQ_DB = [
-  // ───── COMPRA / FACTURACIÓN ─────
-  { id: 'comprar', cat: 'Compra', kw: ['compr','precio','cuesta','pago','pagar','tarjeta','cobr','cuanto vale','factura'], q: '¿Cómo compro un bot?', a: 'Cada bot cuesta €9.99 (pago único, sin suscripciones).\n\n1. Click en "Crear bot" en el sidebar\n2. Configura tu bot en 8 pasos\n3. Al final, click en "Pagar €9.99"\n4. Pagas con tarjeta vía Lemon Squeezy (seguro)\n5. Tu bot aparece en el dashboard automáticamente' },
-  { id: 'reembolso', cat: 'Compra', kw: ['reembolso','devolucion','cancelar','refund','recuperar dinero','no me gusta'], q: '¿Puedo pedir un reembolso?', a: 'Política de reembolsos:\n\n• Si el archivo no se descarga: reembolso 100%\n• Problemas técnicos no resueltos en 7 días: reembolso 100%\n• Si no estás satisfecho: caso por caso\n\nEscríbenos a support@yudbot.com con el ID del bot.' },
-  { id: 'metodos-pago', cat: 'Compra', kw: ['metodo de pago','paypal','crypto','bizum','transferencia','google pay','apple pay'], q: '¿Qué métodos de pago aceptáis?', a: 'A través de Lemon Squeezy aceptamos:\n\n• Tarjeta crédito/débito (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• PayPal\n\nDe momento no admitimos transferencia bancaria ni crypto.' },
-  { id: 'iva-impuestos', cat: 'Compra', kw: ['iva','impuesto','tax','vat','factura empresa'], q: '¿El precio incluye IVA?', a: 'Sí. Los €9.99 ya incluyen el IVA correspondiente a tu país (Lemon Squeezy actúa como Merchant of Record y se encarga del IVA automáticamente).\n\nSi necesitas factura con tu CIF/empresa, en el checkout puedes introducir tu razón social y NIF y Lemon Squeezy te emite la factura. Si tienes problemas, escríbenos a support@yudbot.com.' },
+  // ───── PURCHASE / BILLING ─────
+  { id: 'comprar', cat: 'Purchase', kw: ['buy','price','cost','payment','pay','card','charge','how much','invoice'], q: 'How do I buy a bot?', a: 'Each bot costs €9.99 (one-time payment, no subscriptions).\n\n1. Click "Create bot" in the sidebar\n2. Configure your bot in 8 steps\n3. At the end, click "Pay €9.99"\n4. Pay by card via Lemon Squeezy (secure)\n5. Your bot appears in the dashboard automatically' },
+  { id: 'reembolso', cat: 'Purchase', kw: ['refund','return','cancel','get money back','don\'t like'], q: 'Can I request a refund?', a: 'Refund policy:\n\n• If the file does not download: 100% refund\n• Technical issues unresolved within 7 days: 100% refund\n• If you are not satisfied: case by case\n\nEmail us at support@yudbot.com with the bot ID.' },
+  { id: 'metodos-pago', cat: 'Purchase', kw: ['payment method','paypal','crypto','wire transfer','google pay','apple pay'], q: 'Which payment methods do you accept?', a: 'Through Lemon Squeezy we accept:\n\n• Credit/debit card (Visa, Mastercard, Amex)\n• Apple Pay\n• Google Pay\n• PayPal\n\nWe do not currently accept bank transfer or crypto.' },
+  { id: 'iva-impuestos', cat: 'Purchase', kw: ['vat','tax','company invoice'], q: 'Does the price include VAT?', a: 'Yes. The €9.99 already includes the VAT for your country (Lemon Squeezy acts as Merchant of Record and handles VAT automatically).\n\nIf you need a business invoice, at checkout you can enter your company name and VAT number and Lemon Squeezy will issue the invoice. If you have problems, email us at support@yudbot.com.' },
 
-  // ───── DESCARGA / INSTALACIÓN ─────
-  { id: 'descargar', cat: 'Instalación', kw: ['descarg','archivo','baj','obtener','dónde está','no encuentro'], q: '¿Cómo descargo el archivo?', a: 'Para descargar tu bot:\n\n1. Ve al Dashboard\n2. Click en el bot que quieres\n3. Baja hasta "Descargar bot"\n4. Elige MetaTrader 5 (.mq5) o MetaTrader 4 (.mq4)\n5. El archivo se descarga a tu PC' },
-  { id: 'instalar', cat: 'Instalación', kw: ['instal','meter','poner','colocar','experts','metatrader','arrastrar','grafico','compilar','metaeditor','f4','f7'], q: '¿Cómo instalo el bot en MetaTrader?', a: '1. Abre MetaTrader 4 o 5\n2. Archivo → Abrir carpeta de datos\n3. Entra en MQL5/Experts (o MQL4/Experts) y pega el archivo .mq5 o .mq4\n4. Vuelve a MetaTrader y pulsa F4 → se abre MetaEditor\n5. En el editor, doble click en tu archivo → pulsa F7 para compilar (debe decir "0 errores")\n6. Cierra y vuelve a abrir MetaTrader (o F5 en el panel Navegador)\n7. Activa "AutoTrading" (botón verde de la barra superior)\n8. Abre el gráfico de tu par → Navegador → Asesores Expertos → doble click en tu bot\n9. Marca "Permitir trading automático" → Aceptar\n10. Ya estás operando — verás 😊 verde en el gráfico\n\nVer pestaña Guía para imágenes paso a paso.' },
-  { id: 'mq4-vs-mq5', cat: 'Instalación', kw: ['mq4 o mq5','que descargo','version','cual elijo','diferencia mt4 mt5'], q: '¿Descargo .mq4 o .mq5?', a: 'Depende de tu plataforma:\n\n• .mq5 (MetaTrader 5) — Recomendado\n  ✅ Filtro de noticias completo\n  ✅ Soporta más mercados (índices, crypto)\n  ✅ Tester más rápido\n\n• .mq4 (MetaTrader 4) — Solo si tu broker no ofrece MT5\n  ⚠️ Sin filtro de noticias (MT4 no tiene calendario)\n  ⚠️ Solo Forex y CFDs básicos\n\nSi puedes elegir, usa MT5.' },
-  { id: 'mac', cat: 'Instalación', kw: ['mac','macos','apple','osx','macbook'], q: '¿Funciona en Mac?', a: 'MetaTrader es nativo de Windows, pero hay opciones para Mac:\n\n1. MetaTrader oficial para Mac (algunos brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. VPS Windows (lo más práctico)\n\nEl bot funciona igual sin importar el SO.' },
-  { id: 'movil', cat: 'Instalación', kw: ['movil','telefono','android','iphone','app metatrader'], q: '¿Funciona en el móvil?', a: 'No. La app móvil de MetaTrader **no soporta Expert Advisors** (limitación de MetaQuotes, no nuestra).\n\nNecesitas MT4/MT5 desktop o un VPS. Desde el móvil puedes monitorizar las operaciones que abre el bot, pero no ejecutarlo.' },
-  { id: 'vps', cat: 'Instalación', kw: ['vps','servidor','24/7','siempre','pc encendido','computadora'], q: '¿Necesito el PC encendido todo el tiempo?', a: 'Sí, MetaTrader debe estar abierto para que el bot opere.\n\nOpciones:\n\n1. PC encendido 24/7\n2. VPS alquilado (~$10/mes) — Mejor opción\n   • Recomendados: Contabo, ForexVPS, AccuWeb\n3. AWS / Azure / Google Cloud (más caro)\n\nVPS es lo más práctico: opera 24/7 con bajo costo.' },
+  // ───── DOWNLOAD / INSTALLATION ─────
+  { id: 'descargar', cat: 'Installation', kw: ['download','file','get','where is','can\'t find'], q: 'How do I download the file?', a: 'To download your bot:\n\n1. Go to the Dashboard\n2. Click on the bot you want\n3. Scroll to "Download bot"\n4. Choose MetaTrader 5 (.mq5) or MetaTrader 4 (.mq4)\n5. The file downloads to your PC' },
+  { id: 'instalar', cat: 'Installation', kw: ['install','put','place','experts','metatrader','drag','chart','compile','metaeditor','f4','f7'], q: 'How do I install the bot in MetaTrader?', a: '1. Open MetaTrader 4 or 5\n2. File → Open Data Folder\n3. Go into MQL5/Experts (or MQL4/Experts) and paste the .mq5 or .mq4 file\n4. Go back to MetaTrader and press F4 → MetaEditor opens\n5. In the editor, double click your file → press F7 to compile (must say "0 errors")\n6. Close and reopen MetaTrader (or F5 in the Navigator panel)\n7. Enable "AutoTrading" (green button in the top toolbar)\n8. Open the chart of your pair → Navigator → Expert Advisors → double click your bot\n9. Check "Allow automated trading" → OK\n10. You are now trading — you will see a green smiley on the chart\n\nSee the Guide tab for step-by-step images.' },
+  { id: 'mq4-vs-mq5', cat: 'Installation', kw: ['mq4 or mq5','which to download','version','which to choose','difference mt4 mt5'], q: 'Should I download .mq4 or .mq5?', a: 'Depends on your platform:\n\n• .mq5 (MetaTrader 5) — Recommended\n  ✅ Full news filter\n  ✅ Supports more markets (indices, crypto)\n  ✅ Faster tester\n\n• .mq4 (MetaTrader 4) — Only if your broker does not offer MT5\n  ⚠️ No news filter (MT4 has no calendar)\n  ⚠️ Only Forex and basic CFDs\n\nIf you can choose, use MT5.' },
+  { id: 'mac', cat: 'Installation', kw: ['mac','macos','apple','osx','macbook'], q: 'Does it work on Mac?', a: 'MetaTrader is native to Windows, but there are options for Mac:\n\n1. Official MetaTrader for Mac (some brokers)\n2. Wine + CrossOver\n3. Parallels / VMware\n4. Windows VPS (most practical)\n\nThe bot works the same regardless of OS.' },
+  { id: 'movil', cat: 'Installation', kw: ['mobile','phone','android','iphone','metatrader app'], q: 'Does it work on mobile?', a: 'No. The mobile MetaTrader app **does not support Expert Advisors** (a MetaQuotes limitation, not ours).\n\nYou need MT4/MT5 desktop or a VPS. From mobile you can monitor the trades the bot opens, but not run it.' },
+  { id: 'vps', cat: 'Installation', kw: ['vps','server','24/7','always','pc on','computer'], q: 'Do I need the PC on all the time?', a: 'Yes, MetaTrader must be open for the bot to trade.\n\nOptions:\n\n1. PC on 24/7\n2. Rented VPS (~$10/month) — Best option\n   • Recommended: Contabo, ForexVPS, AccuWeb\n3. AWS / Azure / Google Cloud (more expensive)\n\nVPS is the most practical: trades 24/7 at low cost.' },
 
-  // ───── BROKER / CUENTA REAL ─────
-  { id: 'broker', cat: 'Broker', kw: ['broker','recomienda','donde abrir','icmarkets','pepperstone','xm','que broker'], q: '¿Qué broker me recomiendas?', a: 'Cualquier broker que ofrezca MT4 o MT5:\n\n• IC Markets — spreads bajos\n• Pepperstone — bueno para scalping\n• OANDA — confiable\n• XM — múltiples plataformas\n• FBS — apalancamiento alto\n\nO prop firms: FTMO, FundedNext, The5ers, Funding Pips.\n\nEvita brokers no regulados.' },
-  { id: 'demo', cat: 'Broker', kw: ['demo','probar','sin dinero','practicar','simulado'], q: '¿Puedo probar el bot en demo primero?', a: 'Sí, totalmente recomendado.\n\n1. Abre cuenta demo en cualquier broker (gratis, sin verificación)\n2. Instala el bot en MT4/MT5 conectado a la cuenta demo\n3. Déjalo correr al menos 1-2 semanas\n4. Cuando estés satisfecho, repite los pasos en cuenta real\n\nNUNCA pongas un bot en cuenta real sin probarlo antes en demo.' },
-  { id: 'spread', cat: 'Broker', kw: ['spread','comisiones','costos broker','cobra'], q: '¿El bot tiene en cuenta el spread?', a: 'El bot opera con los precios bid/ask reales que MetaTrader ofrece, así que el spread se aplica naturalmente en cada operación.\n\nConsejo: si haces scalping, elige un broker con spreads bajos (IC Markets, Pepperstone). Spreads altos pueden destrozar la rentabilidad de scalping.' },
-  { id: 'simbolos', cat: 'Broker', kw: ['simbolo','par','no encuentra','symbol not found','eurusd','eur/usd'], q: 'El símbolo no se encuentra en MetaTrader', a: 'Cada broker nombra los símbolos de forma distinta:\n\n• EURUSD vs EUR/USD vs EURUSD.r vs EURUSDpro\n• XAUUSD vs GOLD vs XAU/USD\n\nSolución: en MT5, click derecho en el bot → "Parámetros" → cambia "InpSymbol" al nombre exacto que usa tu broker (lo ves en la pestaña "Observación de mercado").' },
+  // ───── BROKER / LIVE ACCOUNT ─────
+  { id: 'broker', cat: 'Broker', kw: ['broker','recommend','where to open','icmarkets','pepperstone','xm','which broker'], q: 'Which broker do you recommend?', a: 'Any broker that offers MT4 or MT5:\n\n• IC Markets — low spreads\n• Pepperstone — good for scalping\n• OANDA — reliable\n• XM — multiple platforms\n• FBS — high leverage\n\nOr prop firms: FTMO, FundedNext, The5ers, Funding Pips.\n\nAvoid unregulated brokers.' },
+  { id: 'demo', cat: 'Broker', kw: ['demo','try','no money','practice','simulated'], q: 'Can I try the bot on demo first?', a: 'Yes, totally recommended.\n\n1. Open a demo account at any broker (free, no verification)\n2. Install the bot in MT4/MT5 connected to the demo account\n3. Let it run for at least 1-2 weeks\n4. When you are satisfied, repeat the steps on a live account\n\nNEVER put a bot on a live account without testing it on demo first.' },
+  { id: 'spread', cat: 'Broker', kw: ['spread','commissions','broker costs','charges'], q: 'Does the bot account for the spread?', a: 'The bot trades with the real bid/ask prices MetaTrader provides, so the spread is naturally applied on every trade.\n\nTip: if you scalp, choose a broker with low spreads (IC Markets, Pepperstone). High spreads can destroy scalping profitability.' },
+  { id: 'simbolos', cat: 'Broker', kw: ['symbol','pair','not found','symbol not found','eurusd','eur/usd'], q: 'The symbol is not found in MetaTrader', a: 'Each broker names symbols differently:\n\n• EURUSD vs EUR/USD vs EURUSD.r vs EURUSDpro\n• XAUUSD vs GOLD vs XAU/USD\n\nFix: in MT5, right click the bot → "Parameters" → change "InpSymbol" to the exact name your broker uses (you see it in the "Market Watch" tab).' },
 
-  // ───── CUENTAS DE FONDEO ─────
-  { id: 'ftmo', cat: 'Fondeo', kw: ['ftmo','funded','fondeo','fondeada','prop','the5ers','fundednext','e8','fundingpips','aqua','smart prop','goat'], q: '¿Funciona con FTMO o cuentas de fondeo?', a: 'Sí. Compatible con 12 prop firms:\n\n• FTMO\n• FundedNext\n• E8 Markets\n• The5ers\n• Funding Pips\n• Funded Trading Plus\n• City Traders Imperium\n• Smart Prop Trader\n• Alpha Capital Group\n• Aqua Funded\n• Funding Traders\n• Goat Funded Trader\n\nCada firm tiene reglas distintas sobre bots — el wizard te muestra cuáles permiten EAs y bajo qué condiciones para que no pierdas tu fondeo.' },
-  { id: 'fondeo-prohibido', cat: 'Fondeo', kw: ['prohibe','prohibido','no permite','baneo','suspender cuenta','perder fondeo'], q: '¿Pueden suspenderme la cuenta de fondeo por usar el bot?', a: 'Depende de la prop firm. En el wizard cada firm tiene un badge:\n\n🟢 Permitidos — uso libre de EAs\n🟡 Permitidos con reglas — sin HFT, sin copy entre cuentas\n🔴 Prohibidos — el uso del bot supone pérdida del fondeo\n\nALGUNAS REGLAS UNIVERSALES:\n• No copy-trading entre cuentas\n• No latency arbitrage\n• No tick scalping (HFT)\n• Tu bot tiene lógica propia (no copia de otra cuenta)\n\nLee siempre las reglas de TU firm antes de operar.' },
+  // ───── FUNDED ACCOUNTS ─────
+  { id: 'ftmo', cat: 'Funded', kw: ['ftmo','funded','funding','prop','the5ers','fundednext','e8','fundingpips','aqua','smart prop','goat'], q: 'Does it work with FTMO or funded accounts?', a: 'Yes. Compatible with 12 prop firms:\n\n• FTMO\n• FundedNext\n• E8 Markets\n• The5ers\n• Funding Pips\n• Funded Trading Plus\n• City Traders Imperium\n• Smart Prop Trader\n• Alpha Capital Group\n• Aqua Funded\n• Funding Traders\n• Goat Funded Trader\n\nEach firm has different rules about bots — the wizard shows you which ones allow EAs and under what conditions so you don\'t lose your funding.' },
+  { id: 'fondeo-prohibido', cat: 'Funded', kw: ['prohibit','prohibited','not allowed','ban','suspend account','lose funding'], q: 'Can my funded account be suspended for using the bot?', a: 'Depends on the prop firm. In the wizard each firm has a badge:\n\n🟢 Allowed — free use of EAs\n🟡 Allowed with rules — no HFT, no copy between accounts\n🔴 Prohibited — using the bot means loss of funding\n\nSOME UNIVERSAL RULES:\n• No copy-trading between accounts\n• No latency arbitrage\n• No tick scalping (HFT)\n• Your bot has its own logic (not copied from another account)\n\nAlways read YOUR firm\'s rules before trading.' },
 
-  // ───── CONFIGURACIÓN DEL BOT ─────
-  { id: 'apalancamiento', cat: 'Configuración', kw: ['apalanc','leverage','1:30','1:100','1:500','1:90'], q: '¿Qué apalancamiento elijo?', a: 'Depende del mercado y tu tolerancia al riesgo:\n\n• 1:1 - Sin apalancamiento\n• 1:10 - Conservador (recomendado para crypto)\n• 1:30 - Estándar EU para Forex\n• 1:100 - Estándar global\n• 1:500 - Profesional (alto riesgo)\n\nPuedes configurar el valor exacto que quieras (ej: 1:90).' },
-  { id: 'stop-loss', cat: 'Configuración', kw: ['stop loss','sl','tp','take profit','que es stop'], q: '¿Qué es Stop Loss y Take Profit?', a: 'Son los porcentajes de pérdida/ganancia a los que el bot cierra una operación:\n\n• Stop Loss — Si el precio se mueve en tu contra X%, el bot cierra automáticamente para limitar pérdidas\n• Take Profit — Si el precio se mueve a tu favor Y%, el bot cierra para asegurar ganancia\n\nEjemplo: SL 1.5% + TP 3% = ratio 1:2 (arriesgas 1 para ganar 2).' },
-  { id: 'rr', cat: 'Configuración', kw: ['ratio','rr','riesgo recompensa','r:r'], q: '¿Qué ratio R:R debería usar?', a: 'El ratio Risk:Reward es Take Profit ÷ Stop Loss. Indica cuánto ganas por cada euro arriesgado:\n\n• 1:1 — Necesitas >50% de aciertos para ganar dinero\n• 1:2 — Con 33% de aciertos eres rentable\n• 1:3 — Con 25% de aciertos eres rentable\n\nSi tu estrategia tiene baja tasa de aciertos (como reversal o breakout), apunta a R:R alto. Para scalping de alta frecuencia, R:R 1:1 o 1:1.5 puede valer.' },
-  { id: 'indicadores', cat: 'Configuración', kw: ['indicador','rsi','ema','macd','bollinger','cuantos','muchos'], q: '¿Cuántos indicadores debería elegir?', a: 'Recomendamos 2-4. Más de 5 genera señales contradictorias y el bot apenas opera.\n\nCombinaciones que funcionan bien:\n• Tendencia + Momentum (EMA + RSI)\n• Tendencia + Volatilidad (EMA + ATR)\n• Mean reversion (Bollinger + RSI)\n• Breakout (Donchian + ATR)\n\nEvita combinar 4 momentum: dirán lo mismo y no aportan.' },
-  { id: 'estrategia', cat: 'Configuración', kw: ['estrategia','que estrategia','scalping','swing','grid','cual elegir'], q: '¿Qué estrategia elijo?', a: 'Depende de tu disponibilidad y tolerancia al riesgo:\n\n• Scalping — Muchas operaciones cortas, requiere spread bajo\n• Swing — Posiciones de días, baja frecuencia\n• Momentum — Sigue la tendencia, riesgo medio\n• Mean reversion — Apuesta al rebote, mercado lateral\n• Breakout — Captura rupturas, riesgo alto\n• Grid — Ideal en rango lateral, alto capital\n• Trend following — Largos periodos, pocas operaciones\n• DCA — Promedia el coste, requiere capital y disciplina\n• Hedging — Cobertura, reduce riesgo y beneficio\n• Reversal — Detecta giros, baja tasa de acierto\n\nEl wizard muestra el riesgo y frecuencia de cada una.' },
-  { id: 'noticias', cat: 'Configuración', kw: ['noticias','news','nfp','fomc','cpi','calendario','filtro'], q: '¿Cómo funciona el filtro de noticias?', a: 'El bot consulta el calendario económico nativo de MetaTrader 5 y NO opera durante eventos relevantes (NFP, FOMC, CPI, BCE, etc.).\n\nConfiguración:\n• Toggle on/off\n• Nivel de impacto (alto / medio+ / todas)\n• Minutos antes/después de la noticia\n• Eventos específicos a vigilar\n\n⚠️ Solo funciona en .mq5 (MT4 no tiene calendario nativo).\n\nNo requiere conexión a servidores externos — todo es local de MT5.' },
-  { id: 'modificar', cat: 'Configuración', kw: ['modificar','cambiar','editar','ajustar','parametros'], q: '¿Puedo modificar mi bot?', a: 'Sí, hay 2 formas:\n\n1. EN METATRADER:\n   Click derecho en el bot del gráfico → Cambiar parámetros\n   Modifica: Stop Loss, Take Profit, Lote, horario, etc.\n   Los cambios solo afectan a esa instancia.\n\n2. CREA OTRO BOT:\n   Si quieres una estrategia totalmente nueva (ej. cambiar de Scalping a Swing). Cuesta otros €9.99.' },
-  { id: 'backtest', cat: 'Configuración', kw: ['backtest','probar pasado','tester','simular','rentable'], q: '¿Cómo hago backtest del bot?', a: 'En MetaTrader 5:\n\n1. Ver → Probador de estrategias (Ctrl+R)\n2. Selecciona tu Expert Advisor (el archivo .mq5)\n3. Símbolo: el mismo de tu bot\n4. Periodo: últimos 6-12 meses\n5. Modo: "Cada tick basado en ticks reales"\n6. Click en Start\n\nMira el reporte: profit factor >1.3, drawdown <20% es buena señal. NUNCA bases una decisión solo en el backtest, prueba luego en demo.' },
+  // ───── BOT CONFIGURATION ─────
+  { id: 'apalancamiento', cat: 'Configuration', kw: ['leverage','1:30','1:100','1:500','1:90'], q: 'Which leverage should I choose?', a: 'Depends on the market and your risk tolerance:\n\n• 1:1 - No leverage\n• 1:10 - Conservative (recommended for crypto)\n• 1:30 - EU standard for Forex\n• 1:100 - Global standard\n• 1:500 - Professional (high risk)\n\nYou can configure the exact value you want (e.g. 1:90).' },
+  { id: 'stop-loss', cat: 'Configuration', kw: ['stop loss','sl','tp','take profit','what is stop'], q: 'What are Stop Loss and Take Profit?', a: 'They are the loss/gain percentages at which the bot closes a trade:\n\n• Stop Loss — If price moves against you X%, the bot closes automatically to limit losses\n• Take Profit — If price moves in your favor Y%, the bot closes to lock in profit\n\nExample: SL 1.5% + TP 3% = 1:2 ratio (you risk 1 to gain 2).' },
+  { id: 'rr', cat: 'Configuration', kw: ['ratio','rr','risk reward','r:r'], q: 'What R:R ratio should I use?', a: 'The Risk:Reward ratio is Take Profit ÷ Stop Loss. It tells you how much you gain for each euro risked:\n\n• 1:1 — You need >50% win rate to make money\n• 1:2 — At 33% win rate you are profitable\n• 1:3 — At 25% win rate you are profitable\n\nIf your strategy has a low win rate (like reversal or breakout), aim for high R:R. For high-frequency scalping, R:R 1:1 or 1:1.5 may be enough.' },
+  { id: 'indicadores', cat: 'Configuration', kw: ['indicator','rsi','ema','macd','bollinger','how many','many'], q: 'How many indicators should I choose?', a: 'We recommend 2-4. More than 5 generates contradictory signals and the bot barely trades.\n\nCombinations that work well:\n• Trend + Momentum (EMA + RSI)\n• Trend + Volatility (EMA + ATR)\n• Mean reversion (Bollinger + RSI)\n• Breakout (Donchian + ATR)\n\nAvoid combining 4 momentum: they will say the same thing and add nothing.' },
+  { id: 'estrategia', cat: 'Configuration', kw: ['strategy','what strategy','scalping','swing','grid','which to choose'], q: 'Which strategy should I choose?', a: 'Depends on your availability and risk tolerance:\n\n• Scalping — Many short trades, requires low spread\n• Swing — Day-long positions, low frequency\n• Momentum — Follows the trend, medium risk\n• Mean reversion — Bets on the bounce, sideways market\n• Breakout — Captures breakouts, high risk\n• Grid — Ideal in sideways range, high capital\n• Trend following — Long periods, few trades\n• DCA — Averages cost, requires capital and discipline\n• Hedging — Hedge, reduces risk and reward\n• Reversal — Detects turns, low win rate\n\nThe wizard shows the risk and frequency of each one.' },
+  { id: 'noticias', cat: 'Configuration', kw: ['news','nfp','fomc','cpi','calendar','filter'], q: 'How does the news filter work?', a: 'The bot reads MetaTrader 5\'s native economic calendar and does NOT trade during relevant events (NFP, FOMC, CPI, ECB, etc.).\n\nConfiguration:\n• On/off toggle\n• Impact level (high / medium+ / all)\n• Minutes before/after the news\n• Specific events to watch\n\n⚠️ Only works in .mq5 (MT4 has no native calendar).\n\nNo external server connection required — everything is local in MT5.' },
+  { id: 'modificar', cat: 'Configuration', kw: ['modify','change','edit','adjust','parameters'], q: 'Can I modify my bot?', a: 'Yes, in 2 ways:\n\n1. IN METATRADER:\n   Right click the bot on the chart → Change parameters\n   Modify: Stop Loss, Take Profit, Lot, schedule, etc.\n   Changes only affect that instance.\n\n2. CREATE ANOTHER BOT:\n   If you want a totally new strategy (e.g. switch from Scalping to Swing). Costs another €9.99.' },
+  { id: 'backtest', cat: 'Configuration', kw: ['backtest','test past','tester','simulate','profitable'], q: 'How do I backtest the bot?', a: 'In MetaTrader 5:\n\n1. View → Strategy Tester (Ctrl+R)\n2. Select your Expert Advisor (the .mq5 file)\n3. Symbol: same as your bot\n4. Period: last 6-12 months\n5. Mode: "Every tick based on real ticks"\n6. Click Start\n\nLook at the report: profit factor >1.3, drawdown <20% is a good sign. NEVER base a decision only on backtest, then test on demo.' },
 
-  // ───── EJECUCIÓN / PROBLEMAS ─────
-  { id: 'noFunciona', cat: 'Problemas', kw: ['no funciona','error','falla','no opera','problema','no abre','no entra'], q: 'El bot no opera, ¿qué hago?', a: 'Checklist:\n\n✅ AutoTrading activado (botón VERDE arriba)\n✅ Bot tiene 😊 verde en esquina superior derecha del gráfico\n✅ "Permitir trading algorítmico" marcado en parámetros del bot\n✅ Símbolo del gráfico coincide con InpSymbol\n✅ Mercado abierto (Forex cerrado fines de semana)\n✅ Filtro horario dentro de rango (hora del broker, no la tuya)\n✅ Suficiente margen libre\n\n👉 ABRE LA PESTAÑA "EXPERTOS" (abajo en MetaTrader, junto a "Diario") — el bot escribe ahí cada minuto qué está haciendo y por qué (o no) opera. Pregúntame por "logs expertos" para entender los mensajes.' },
-  { id: 'logs-expertos', cat: 'Problemas', kw: ['expertos','logs','log','journal','diario','mensajes','que dice','consola','registro'], q: '¿Qué significan los mensajes en la pestaña Expertos?', a: 'Cada bot escribe en la pestaña "Expertos" de MetaTrader (Ver → Caja de herramientas → Expertos) lo que hace en cada barra cerrada:\n\n📊 [eval] bar=2026-05-06 12:34 buy=false sell=false\n   → El bot evaluó la barra. Las señales no se cumplen aún. Es lo más común; espera al próximo cruce.\n\n⏸ [skip] fuera de horario (8-22 hora del broker)\n   → Estás fuera de InpStartHour/InpEndHour. La hora es la del servidor del broker, no la tuya.\n\n⏸ [skip] ya hay una posición abierta de este bot\n   → El bot solo opera una posición a la vez. Cuando cierre la actual, evaluará nuevas señales.\n\n⏸ [skip] noticia de alto impacto cercana\n   → Filtro de noticias activo. Espera a que pase la noticia.\n\n⏸ [skip] pérdida diaria máxima alcanzada\n   → Alcanzaste InpMaxDailyLoss. El bot se reanuda al cambiar de día.\n\n✅ BUY enviada: lot=0.10 sl=... tp=...\n   → Operación abierta correctamente.\n\n❌ BUY rechazada: 10018 No money (...)\n   → El broker rechazó la orden. El número y descripción te dicen el motivo:\n      • 10018 → Mercado cerrado\n      • 10019 → No hay margen suficiente\n      • 10014 → Volumen inválido (lote fuera de min/max del broker)\n      • 10016 → Stops inválidos (SL/TP muy cerca del precio)\n      • [trade disabled] → Trading algorítmico desactivado en MT5 o en propiedades del EA\n\nSi el log no contiene ningún [eval] tras varios minutos, el OnTick ni siquiera se ejecuta — revisa AutoTrading y el símbolo del chart.' },
-  { id: 'trade-disabled', cat: 'Problemas', kw: ['trade disabled','trading disabled','desactivado','no permite operar','rejected'], q: 'Sale "[trade disabled]" en los logs', a: 'El terminal MT5 tiene el trading algorítmico bloqueado. Pasos:\n\n1. Botón "Trading algorítmico" arriba en MT5 → debe estar VERDE\n2. Doble click en el bot del chart → pestaña Común → marca "Permitir trading algorítmico"\n3. Herramientas → Opciones → pestaña Asesores Expertos:\n   ✅ Permitir trading algorítmico\n   ❌ DESMARCA "Inhabilitar el trading algorítmico cuando se cambie la cuenta/perfil/símbolo/período" (esto te lo desactiva solo al cambiar TF)\n4. Vuelve a arrastrar el bot al chart\n\nEn cuentas tipo "Investor" no hay forma — esa cuenta es solo de lectura.' },
-  { id: 'cara-roja', cat: 'Problemas', kw: ['cara roja','smiley rojo','x roja','no permite trading'], q: '¿Por qué sale una cara roja en el gráfico?', a: 'La cara roja 😞 significa que el bot está cargado pero NO puede operar. Causas:\n\n1. AutoTrading desactivado (botón verde de la barra)\n2. "Permitir trading automático" desmarcado en parámetros del bot\n3. Cuenta sin permisos de trading (cuenta de inversión, no real)\n\nClick derecho en el bot → "Propiedades del experto" → marca "Permitir trading automático".' },
-  { id: 'multiples-bots', cat: 'Problemas', kw: ['varios bots','multiples','dos bots','tres bots','mismo grafico','conflicto'], q: '¿Puedo correr varios bots a la vez?', a: 'Sí, pero con cuidado:\n\n• Distinto símbolo cada bot (uno en EURUSD, otro en GBPUSD)\n• Mismo símbolo distinta estrategia: usa Magic Numbers diferentes (cada bot tiene uno único)\n• El margen libre se comparte entre todos\n\nNO pongas dos bots con el mismo Magic Number en el mismo símbolo: se pisarán las operaciones.' },
-  { id: 'spread-alto', cat: 'Problemas', kw: ['spread alto','no abre operaciones','spread amplio','requote'], q: 'El bot no abre operaciones aunque hay señal', a: 'Posibles causas:\n\n• Spread demasiado amplio (típico fuera de horario de Londres/NY)\n• Margen libre insuficiente\n• Filtro horario activo y fuera de rango\n• Filtro de noticias activo (consulta el calendario)\n• Ya hay una posición abierta (el bot solo opera una a la vez por defecto)\n• Trading algorítmico desactivado a nivel de EA (sale "[trade disabled]" en logs)\n\nLa pestaña "Expertos" abajo en MetaTrader te dice el motivo exacto en cada barra. Pregúntame por "logs expertos" si no entiendes los mensajes.' },
-  { id: 'demo-vs-real', cat: 'Problemas', kw: ['en demo si en real no','demo funciona real no','diferencia demo real'], q: 'Funciona en demo pero no en cuenta real', a: 'Es muy común. Causas habituales:\n\n• Spreads más altos en real (en demo suelen ser ideales)\n• Slippage en real durante alta volatilidad\n• Comisiones que el broker carga solo en cuentas reales\n• Stops out por margen apretado\n\nSolución: ajusta el bot en real con SL/TP un poco más amplios y reduce el tamaño de la posición.' },
+  // ───── EXECUTION / PROBLEMS ─────
+  { id: 'noFunciona', cat: 'Problems', kw: ['not working','error','fail','not trading','problem','not opening','not entering'], q: 'The bot is not trading, what should I do?', a: 'Checklist:\n\n✅ AutoTrading enabled (GREEN button at the top)\n✅ Bot has green smiley in top right corner of chart\n✅ "Allow algorithmic trading" checked in bot parameters\n✅ Chart symbol matches InpSymbol\n✅ Market open (Forex closed on weekends)\n✅ Schedule filter within range (broker time, not yours)\n✅ Sufficient free margin\n\n👉 OPEN THE "EXPERTS" TAB (bottom of MetaTrader, next to "Journal") — the bot writes there every minute what it is doing and why it (does or does not) trade. Ask me about "experts logs" to understand the messages.' },
+  { id: 'logs-expertos', cat: 'Problems', kw: ['experts','logs','log','journal','messages','what does it say','console','log'], q: 'What do the messages in the Experts tab mean?', a: 'Every bot writes in MetaTrader\'s "Experts" tab (View → Toolbox → Experts) what it does on each closed bar:\n\n📊 [eval] bar=2026-05-06 12:34 buy=false sell=false\n   → The bot evaluated the bar. Signals are not met yet. Most common; wait for next cross.\n\n⏸ [skip] outside hours (8-22 broker time)\n   → You are outside InpStartHour/InpEndHour. The time is the broker server\'s, not yours.\n\n⏸ [skip] there is already an open position from this bot\n   → The bot only trades one position at a time. When the current one closes, it will evaluate new signals.\n\n⏸ [skip] high impact news nearby\n   → News filter active. Wait for the news to pass.\n\n⏸ [skip] max daily loss reached\n   → You hit InpMaxDailyLoss. Bot resumes when the day changes.\n\n✅ BUY sent: lot=0.10 sl=... tp=...\n   → Trade opened correctly.\n\n❌ BUY rejected: 10018 No money (...)\n   → Broker rejected the order. The number and description tell you why:\n      • 10018 → Market closed\n      • 10019 → Not enough margin\n      • 10014 → Invalid volume (lot outside broker min/max)\n      • 10016 → Invalid stops (SL/TP too close to price)\n      • [trade disabled] → Algorithmic trading disabled in MT5 or in EA properties\n\nIf the log contains no [eval] after several minutes, OnTick is not even running — check AutoTrading and the chart symbol.' },
+  { id: 'trade-disabled', cat: 'Problems', kw: ['trade disabled','trading disabled','disabled','does not allow trading','rejected'], q: '"[trade disabled]" appears in logs', a: 'The MT5 terminal has algorithmic trading blocked. Steps:\n\n1. "Algo Trading" button at the top of MT5 → must be GREEN\n2. Double click the bot on the chart → Common tab → check "Allow algorithmic trading"\n3. Tools → Options → Expert Advisors tab:\n   ✅ Allow algorithmic trading\n   ❌ UNCHECK "Disable algorithmic trading when account/profile/symbol/period is changed" (this disables it on TF change)\n4. Drag the bot back onto the chart\n\nOn "Investor" type accounts there is no way — that account is read-only.' },
+  { id: 'cara-roja', cat: 'Problems', kw: ['red face','red smiley','red x','does not allow trading'], q: 'Why does a red face appear on the chart?', a: 'The red face 😞 means the bot is loaded but CANNOT trade. Causes:\n\n1. AutoTrading disabled (green button on the toolbar)\n2. "Allow automated trading" unchecked in bot parameters\n3. Account without trading permissions (investor account, not live)\n\nRight click the bot → "Expert properties" → check "Allow automated trading".' },
+  { id: 'multiples-bots', cat: 'Problems', kw: ['several bots','multiple','two bots','three bots','same chart','conflict'], q: 'Can I run several bots at once?', a: 'Yes, but with care:\n\n• Different symbol per bot (one on EURUSD, another on GBPUSD)\n• Same symbol, different strategy: use different Magic Numbers (each bot has a unique one)\n• Free margin is shared between them all\n\nDO NOT put two bots with the same Magic Number on the same symbol: trades will collide.' },
+  { id: 'spread-alto', cat: 'Problems', kw: ['high spread','no trades','wide spread','requote'], q: 'The bot does not open trades even though there is a signal', a: 'Possible causes:\n\n• Spread too wide (typical outside London/NY hours)\n• Insufficient free margin\n• Schedule filter active and outside range\n• News filter active (checks the calendar)\n• A position is already open (the bot only trades one at a time by default)\n• Algorithmic trading disabled at EA level ("[trade disabled]" appears in logs)\n\nThe "Experts" tab at the bottom of MetaTrader tells you the exact reason on each bar. Ask me about "experts logs" if you don\'t understand the messages.' },
+  { id: 'demo-vs-real', cat: 'Problems', kw: ['demo yes live no','demo works live not','demo live difference'], q: 'Works in demo but not in live account', a: 'Very common. Common causes:\n\n• Higher spreads in live (in demo they are usually ideal)\n• Slippage in live during high volatility\n• Commissions the broker charges only on live accounts\n• Stops out due to tight margin\n\nFix: tweak the bot in live with slightly wider SL/TP and reduce position size.' },
 
-  // ───── CUENTA / DATOS ─────
-  { id: 'cambiar-email', cat: 'Cuenta', kw: ['cambiar email','correo','actualizar email','nuevo correo'], q: '¿Cómo cambio mi email?', a: 'De momento no se puede cambiar el email desde la app. Escríbenos a support@yudbot.com desde el email registrado pidiendo el cambio y indicando el nuevo email.' },
-  { id: 'contraseña', cat: 'Cuenta', kw: ['contraseña','password','olvide','restablecer','recuperar contraseña','reset'], q: 'He olvidado mi contraseña', a: 'Por ahora la recuperación es manual: escríbenos a support@yudbot.com desde el email de tu cuenta y te enviamos un enlace para restablecer.\n\nEstamos trabajando en una recuperación automática para próximas versiones.' },
-  { id: 'borrar-cuenta', cat: 'Cuenta', kw: ['borrar cuenta','eliminar cuenta','dar de baja','rgpd','gdpr'], q: '¿Cómo elimino mi cuenta?', a: 'Escríbenos a support@yudbot.com desde el email registrado pidiendo la eliminación. Borraremos tu cuenta y todos tus datos en un máximo de 30 días, conforme al RGPD.\n\nLos archivos .mq4/.mq5 que ya descargaste son tuyos y los conservas.' },
-  { id: 'datos', cat: 'Cuenta', kw: ['privacidad','que datos','rgpd','gdpr','protección de datos'], q: '¿Qué datos guardáis sobre mí?', a: 'Solo lo necesario:\n\n• Email + contraseña hasheada\n• Nombre\n• Lista de bots creados (config)\n• Pagos via Lemon Squeezy (Lemon Squeezy gestiona los datos de tarjeta, no nosotros)\n\nNO guardamos:\n• Datos de tu broker\n• Operaciones que hace tu bot\n• Saldo de tu cuenta\n\nCumplimos con el RGPD. Puedes pedir borrar tu cuenta cuando quieras.' },
+  // ───── ACCOUNT / DATA ─────
+  { id: 'cambiar-email', cat: 'Account', kw: ['change email','update email','new email'], q: 'How do I change my email?', a: 'You currently can\'t change the email from the app. Email us at support@yudbot.com from the registered email asking for the change and indicating the new email.' },
+  { id: 'contraseña', cat: 'Account', kw: ['password','forgot','reset','recover password'], q: 'I forgot my password', a: 'Recovery is currently manual: email us at support@yudbot.com from your account email and we\'ll send you a reset link.\n\nWe\'re working on automatic recovery for upcoming versions.' },
+  { id: 'borrar-cuenta', cat: 'Account', kw: ['delete account','remove account','close account','gdpr'], q: 'How do I delete my account?', a: 'Email us at support@yudbot.com from the registered email asking for deletion. We will delete your account and all your data within a maximum of 30 days, in compliance with GDPR.\n\nThe .mq4/.mq5 files you already downloaded are yours and you keep them.' },
+  { id: 'datos', cat: 'Account', kw: ['privacy','what data','gdpr','data protection'], q: 'What data do you store about me?', a: 'Only what is needed:\n\n• Email + hashed password\n• Name\n• List of created bots (config)\n• Payments via Lemon Squeezy (Lemon Squeezy handles card data, not us)\n\nWe DO NOT store:\n• Your broker data\n• Trades your bot makes\n• Your account balance\n\nWe comply with GDPR. You can request to delete your account whenever you want.' },
 
-  // ───── SOPORTE HUMANO ─────
-  { id: 'soporte', cat: 'Contacto', kw: ['soporte humano','persona','hablar','contacto humano','email soporte'], q: '¿Cómo contacto soporte humano?', a: 'Email: support@yudbot.com\nTiempo de respuesta: 24-48h\n\nIncluye:\n• Tu email registrado\n• ID del bot (si aplica)\n• Descripción del problema\n• Capturas si es posible' },
+  // ───── HUMAN SUPPORT ─────
+  { id: 'soporte', cat: 'Contact', kw: ['human support','person','talk','human contact','support email'], q: 'How do I contact human support?', a: 'Email: support@yudbot.com\nResponse time: 24-48h\n\nInclude:\n• Your registered email\n• Bot ID (if applicable)\n• Description of the problem\n• Screenshots if possible' },
 ];
 
 const CONV = {
-  saludo: { triggers: ['hola','buenas','buenos','hey','que tal','hi','holi'], r: ['¡Hola! ¿En qué puedo ayudarte?', '¡Hola! Soy el asistente de YudBot. ¿Qué necesitas?'] },
-  gracias: { triggers: ['gracias','thanks','genial','perfecto'], r: ['¡De nada! Si tienes otra pregunta, aquí estoy.', '¡Para servirte!'] },
-  adios: { triggers: ['adios','adiós','bye','chao','hasta luego','nos vemos'], r: ['¡Hasta luego! 📈', '¡Adiós!', '¡Buena suerte con tus trades!'] },
-  ayuda: { triggers: ['ayuda','help','que puedes','que sabes','menu','como funciona esto'], r: ['Puedo ayudarte con:\n\n• 💳 Compra y reembolsos\n• 📥 Descarga e instalación en MT4/MT5\n• 🏢 Brokers y cuentas demo\n• 💼 FTMO y prop firms\n• ⚙️ Configuración (apalancamiento, SL/TP, indicadores)\n• 🔧 Errores comunes\n• 🖥️ VPS y Mac\n• 📰 Filtro de noticias\n• 👤 Tu cuenta\n\nEscríbeme tu pregunta o elige una de la lista.'] },
-  bot: { triggers: ['que es un bot','que hace el bot','expert advisor','ea'], r: ['Un bot de trading (también llamado Expert Advisor o EA) es un programa que opera por ti automáticamente en MetaTrader. Lee el mercado con indicadores técnicos y abre/cierra operaciones según las reglas de la estrategia que elegiste en el wizard. No necesita supervisión constante.'] },
-  rentable: { triggers: ['es rentable','gano dinero','garantizan','garantía','funciona seguro'], r: ['No prometemos rentabilidad — eso depende del mercado, tu configuración, broker y disciplina. Ningún bot tiene un historial garantizado.\n\nLo que SÍ te damos:\n• Código probado y compilable\n• Reglas claras (SL, TP, riesgo por operación, daily loss)\n• Filtro de noticias (en MT5)\n• Compatibilidad con prop firms\n\nUsa siempre cuenta demo primero.'] },
-  pip: { triggers: ['que es pip','pips','que es spread','que es lote'], r: ['Términos básicos:\n\n• Pip — Mínima variación de precio en Forex (0.0001 en EUR/USD).\n• Spread — Diferencia entre compra (ask) y venta (bid). Cuanto menor, mejor.\n• Lote — Tamaño de la posición. 1.0 lote estándar = 100,000 unidades. 0.10 = "mini lote".\n\nEl bot calcula el lote automáticamente según el riesgo % que le pongas.'] },
+  saludo: { triggers: ['hi','hey','hello','what\'s up','sup','howdy'], r: ['Hi! How can I help you?', 'Hi! I\'m the YudBot assistant. What do you need?'] },
+  gracias: { triggers: ['thanks','thank you','great','perfect','awesome'], r: ['You\'re welcome! If you have another question, I\'m here.', 'Happy to help!'] },
+  adios: { triggers: ['bye','goodbye','see you','later','cya'], r: ['See you! 📈', 'Bye!', 'Good luck with your trades!'] },
+  ayuda: { triggers: ['help','what can you do','what do you know','menu','how does this work'], r: ['I can help you with:\n\n• 💳 Purchase and refunds\n• 📥 Download and installation in MT4/MT5\n• 🏢 Brokers and demo accounts\n• 💼 FTMO and prop firms\n• ⚙️ Configuration (leverage, SL/TP, indicators)\n• 🔧 Common errors\n• 🖥️ VPS and Mac\n• 📰 News filter\n• 👤 Your account\n\nWrite your question or pick one from the list.'] },
+  bot: { triggers: ['what is a bot','what does the bot do','expert advisor','ea'], r: ['A trading bot (also called Expert Advisor or EA) is a program that trades automatically for you in MetaTrader. It reads the market with technical indicators and opens/closes trades according to the rules of the strategy you chose in the wizard. It doesn\'t need constant supervision.'] },
+  rentable: { triggers: ['is it profitable','do i earn money','guarantee','guaranteed','works for sure'], r: ['We do not promise profitability — that depends on the market, your config, broker and discipline. No bot has a guaranteed track record.\n\nWhat we DO give you:\n• Tested, compilable code\n• Clear rules (SL, TP, risk per trade, daily loss)\n• News filter (in MT5)\n• Compatibility with prop firms\n\nAlways use a demo account first.'] },
+  pip: { triggers: ['what is a pip','pips','what is spread','what is a lot'], r: ['Basic terms:\n\n• Pip — Smallest price variation in Forex (0.0001 in EUR/USD).\n• Spread — Difference between buy (ask) and sell (bid). The smaller, the better.\n• Lot — Position size. 1.0 standard lot = 100,000 units. 0.10 = "mini lot".\n\nThe bot calculates the lot automatically based on the risk % you set.'] },
 };
 
 function normalize(s) {
@@ -3598,7 +3595,7 @@ function findAnswer(q) {
 }
 
 if (!state.support) state.support = {
-  messages: [{ from: 'bot', text: '¡Hola! Soy el asistente de YudBot 🤖\n\nElige una categoría o escribe tu pregunta directamente.' }],
+  messages: [{ from: 'bot', text: 'Hi! I\'m the YudBot assistant 🤖\n\nPick a category or type your question directly.' }],
   showFaqs: true,
   showFollowUp: false,
   typing: false,
@@ -3616,8 +3613,8 @@ function loadSupport(root) {
     <div class="container container-narrow" style="display:flex;flex-direction:column;min-height:calc(100vh - 60px);">
       <div class="flex items-center justify-between" style="margin-bottom:24px">
         <div>
-          <div class="eyebrow">Soporte</div>
-          <h1 class="h1 mt-2">Asistente automático</h1>
+          <div class="eyebrow">Support</div>
+          <h1 class="h1 mt-2">Automated assistant</h1>
         </div>
       </div>
 
@@ -3640,16 +3637,16 @@ function loadSupport(root) {
         ` : ''}
         ${s.showFaqs && !s.typing ? `
           <div style="margin-top:8px">
-            <div class="label-up" style="margin-bottom:10px">${s.category ? s.category : 'Categorías'}</div>
+            <div class="label-up" style="margin-bottom:10px">${s.category ? s.category : 'Categories'}</div>
             ${!s.category ? `
               <div class="chip-row" style="margin-bottom:14px">
                 ${categories.map(c => `
                   <button class="chip" data-cat="${c}">${c}</button>
                 `).join('')}
               </div>
-              <div class="label-up" style="margin-bottom:10px;margin-top:14px">Preguntas frecuentes</div>
+              <div class="label-up" style="margin-bottom:10px;margin-top:14px">Frequently asked questions</div>
             ` : `
-              <button class="btn btn-soft" id="back-cats" style="margin-bottom:14px;font-size:12px;padding:6px 12px;">${I.arrowLeft} Todas las categorías</button>
+              <button class="btn btn-soft" id="back-cats" style="margin-bottom:14px;font-size:12px;padding:6px 12px;">${I.arrowLeft} All categories</button>
             `}
             <div class="flex flex-col gap-2">
               ${filteredFaqs.map(f => `
@@ -3662,17 +3659,17 @@ function loadSupport(root) {
         ` : ''}
         ${s.showFollowUp && !s.typing ? `
           <div style="margin-top:8px">
-            <div class="text-dim text-center" style="font-size:13px;margin-bottom:10px">¿He resuelto tu duda?</div>
+            <div class="text-dim text-center" style="font-size:13px;margin-bottom:10px">Did I answer your question?</div>
             <div class="flex gap-2">
-              <button class="btn" id="resolved-yes" style="flex:1;justify-content:center;background:var(--pos);color:#000;font-weight:700">${I.check} Sí, gracias</button>
-              <button class="btn btn-soft" id="resolved-no" style="flex:1;justify-content:center">No, otra pregunta</button>
+              <button class="btn" id="resolved-yes" style="flex:1;justify-content:center;background:var(--pos);color:#000;font-weight:700">${I.check} Yes, thanks</button>
+              <button class="btn btn-soft" id="resolved-no" style="flex:1;justify-content:center">No, another question</button>
             </div>
           </div>
         ` : ''}
       </div>
 
       <div style="position:sticky;bottom:0;background:color-mix(in srgb, var(--bg) 85%, transparent);backdrop-filter:blur(14px);padding:16px 0;border-top:1px solid var(--border);display:flex;gap:10px">
-        <input class="input" id="chat-input" placeholder="Escribe tu pregunta..." style="flex:1"/>
+        <input class="input" id="chat-input" placeholder="Type your question..." style="flex:1"/>
         <button class="btn btn-primary" id="chat-send" style="width:50px;height:52px;justify-content:center;padding:0">${I.arrow}</button>
       </div>
     </div>
@@ -3728,18 +3725,18 @@ function loadSupport(root) {
     simulate(() => {
       const result = findAnswer(v);
       if (!result) {
-        pushMsg('bot', 'Escribe alguna pregunta para que pueda ayudarte 👇');
+        pushMsg('bot', 'Type a question so I can help you 👇');
         loadSupport(document.getElementById('screen-root'));
         return;
       }
       if (result.type === 'fallback') {
-        let txt = 'No estoy 100% seguro de qué necesitas.';
+        let txt = 'I\'m not 100% sure what you need.';
         if (result.suggestions && result.suggestions.length) {
-          txt += ' ¿Te refieres a alguna de estas?\n\n' + result.suggestions.map((f, i) => `${i + 1}. ${f.q}`).join('\n');
-          txt += '\n\nEscribe el número o reformula tu pregunta.';
+          txt += ' Do you mean one of these?\n\n' + result.suggestions.map((f, i) => `${i + 1}. ${f.q}`).join('\n');
+          txt += '\n\nType the number or rephrase your question.';
           state.support._lastSuggestions = result.suggestions;
         } else {
-          txt = 'No he encontrado nada relacionado. Escribe "ayuda" para ver lo que puedo hacer, o contacta a support@yudbot.com.';
+          txt = 'I didn\'t find anything related. Type "help" to see what I can do, or contact support@yudbot.com.';
         }
         pushMsg('bot', txt);
         loadSupport(document.getElementById('screen-root'));
@@ -3758,14 +3755,14 @@ function loadSupport(root) {
 
   // Follow-up buttons
   document.getElementById('resolved-yes')?.addEventListener('click', () => {
-    pushMsg('user', 'Sí, gracias');
+    pushMsg('user', 'Yes, thanks');
     state.support.showFollowUp = false;
-    simulate(() => { pushMsg('bot', '¡Genial! Me alegro de haberte ayudado 😊'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
+    simulate(() => { pushMsg('bot', 'Great! Glad I could help 😊'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
   });
   document.getElementById('resolved-no')?.addEventListener('click', () => {
-    pushMsg('user', 'No, sigo con la duda');
+    pushMsg('user', 'No, I still have the question');
     state.support.showFollowUp = false;
-    simulate(() => { pushMsg('bot', 'Vale, prueba con otra pregunta o escríbela con otras palabras 👇'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
+    simulate(() => { pushMsg('bot', 'OK, try another question or rephrase it 👇'); state.support.showFaqs = true; loadSupport(document.getElementById('screen-root')); });
   });
 }
 
@@ -3796,7 +3793,7 @@ function loadBotDetail(root) {
 
   root.innerHTML = `
     <div class="container container-narrow">
-      <button class="btn btn-soft fade-up" id="back-to-dash" style="margin-bottom:24px">${I.arrowLeft} Volver</button>
+      <button class="btn btn-soft fade-up" id="back-to-dash" style="margin-bottom:24px">${I.arrowLeft} Back</button>
       <div class="fade-up" style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
         <div style="width:64px;height:64px;border-radius:16px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:9px;flex-shrink:0">
           ${getAvatarSVG(bot.parameters?.avatar)}
@@ -3808,34 +3805,34 @@ function loadBotDetail(root) {
       </div>
 
       <div class="card card-pad-lg fade-up" style="margin-top:28px">
-        <h3 class="h3" style="margin-bottom:6px">Cómo usar este bot</h3>
+        <h3 class="h3" style="margin-bottom:6px">How to use this bot</h3>
         <p class="text-dim" style="font-size:13px;line-height:1.6">
-          Descarga el archivo <strong style="color:var(--text)">.mq5</strong> (recomendado) o <strong style="color:var(--text)">.mq4</strong>, ábrelo en MetaTrader y arrástralo a un gráfico de <strong style="color:var(--text)">${pair}</strong>. Para iniciar o detener la operativa usa el botón <strong style="color:var(--text)">"Permitir trading automático"</strong> de MetaTrader.
+          Download the <strong style="color:var(--text)">.mq5</strong> file (recommended) or <strong style="color:var(--text)">.mq4</strong>, open it in MetaTrader and drag it to a <strong style="color:var(--text)">${pair}</strong> chart. To start or stop trading use MetaTrader's <strong style="color:var(--text)">"Allow automated trading"</strong> button.
         </p>
         <div style="margin-top:14px">
           <button class="btn btn-soft" data-screen="guide" style="font-size:13px">
-            Ver guía completa →
+            View full guide →
           </button>
         </div>
       </div>
 
       <div class="card fade-up" style="margin-top:14px">
-        <h3 class="h3" style="margin-bottom:14px">Descargar bot</h3>
+        <h3 class="h3" style="margin-bottom:14px">Download bot</h3>
         <div class="flex flex-col gap-3">
           <div>
             <button class="btn btn-primary" id="dl-mq5" style="justify-content:flex-start;width:100%">
-              ${I.download} Descargar para MetaTrader 5 (.mq5)
+              ${I.download} Download for MetaTrader 5 (.mq5)
             </button>
             <div class="text-dim" style="font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px">
-              <span style="color:var(--pos)">●</span> Recomendado · Filtro de noticias completo · Calendario económico
+              <span style="color:var(--pos)">●</span> Recommended · Full news filter · Economic calendar
             </div>
           </div>
           <div>
             <button class="btn btn-ghost" id="dl-mq4" style="justify-content:flex-start;width:100%">
-              ${I.download} Descargar para MetaTrader 4 (.mq4)
+              ${I.download} Download for MetaTrader 4 (.mq4)
             </button>
             <div class="text-dim" style="font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px">
-              <span style="color:#FFB020">●</span> Solo si usas MT4 · <strong style="color:#FFB020">Sin filtro de noticias</strong> (MT4 no tiene calendario económico)
+              <span style="color:#FFB020">●</span> Only if you use MT4 · <strong style="color:#FFB020">No news filter</strong> (MT4 has no economic calendar)
             </div>
           </div>
         </div>
@@ -3869,9 +3866,9 @@ function loadBotDetail(root) {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        toast(`Archivo .${fmt} descargado`, 'success');
+        toast(`.${fmt} file downloaded`, 'success');
       } catch (e) {
-        toast('Error al descargar', 'error');
+        toast('Download error', 'error');
       }
     });
   });
@@ -3914,7 +3911,7 @@ async function verifyPendingPayment() {
     localStorage.removeItem('pendingBotConfig');
     cleanUrl();
     state.currentScreen = 'dashboard';
-    toast(`Bot "${res.bot?.name || 'creado'}" añadido a tu cuenta`, 'success');
+    toast(`Bot "${res.bot?.name || 'created'}" added to your account`, 'success');
   } catch (e) {
     cleanUrl();
     const msg = (e && e.message) || '';
@@ -3928,10 +3925,10 @@ async function verifyPendingPayment() {
       // (significa que Lemon le redirigió pero algo falló). Sin order_number
       // suele ser config viejo de un test → silencioso.
       if (orderNumber) {
-        toast('No pudimos verificar tu pago. Si el cargo sí se hizo, contacta soporte.', 'error');
+        toast('We could not verify your payment. If the charge went through, contact support.', 'error');
       }
     } else {
-      toast(msg || 'No se pudo verificar el pago. Reintenta o contacta soporte.', 'error');
+      toast(msg || 'Could not verify payment. Retry or contact support.', 'error');
     }
   }
 }
