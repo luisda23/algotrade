@@ -1013,6 +1013,11 @@ svg { display: block; }
 
 <div id="toast-root"></div>
 
+<!-- Bilingual ES/EN catalog shared with the Spanish app. Defines
+     window.t() and window.tResp() that api() uses to translate response
+     `code`s into the active language. -->
+<script src="/i18n.js"></script>
+
 <script>
 // =====================================================
 //  LANGUAGE REDIRECT (English app)
@@ -1118,18 +1123,20 @@ async function api(path, opts = {}) {
   if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
   const res = await fetch(`${API}${path}`, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
+  // Localize via tResp() from i18n.js. If the code is unknown or i18n not
+  // loaded, fall back to the English `error` from the backend.
+  const localized = (typeof window.tResp === 'function') ? window.tResp(data) : null;
   if (res.status === 401 || res.status === 403) {
-    // Token caducado o inválido (típico tras un cambio de JWT_SECRET): cerramos
-    // sesión y mandamos al login en lugar de mostrar dashboard vacío.
+    // Token expired or invalid: log out and show the login screen.
     if (state.token) {
       clearAuth();
       state.currentScreen = 'auth';
-      toast('Your session has expired. Log in again.', 'error');
+      toast(localized || 'Your session has expired. Log in again.', 'error');
       render();
     }
-    throw new Error(data.error || 'Session expired');
+    throw new Error(localized || data.error || 'Session expired');
   }
-  if (!res.ok) throw new Error(data.error || 'Error');
+  if (!res.ok) throw new Error(localized || data.error || 'Error');
   return data;
 }
 
