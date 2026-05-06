@@ -2548,7 +2548,7 @@ function renderStepRisk() {
         <input type="number" class="input" id="leverage-custom" value="${d.leverage}" min="1" max="2000" style="text-align:center;font-family:'JetBrains Mono';font-weight:700"/>
       </div>
       <div class="text-dim mt-2" style="font-size:12px;margin-top:10px">
-        Con $1,000 puedes operar hasta <strong style="color:var(--text)">$${(1000 * d.leverage).toLocaleString()}</strong>
+        Con $1,000 puedes operar hasta <strong style="color:var(--text)">$${(1000 * d.leverage).toLocaleString('es-ES')}</strong>
       </div>
     </div>
 
@@ -3073,7 +3073,7 @@ async function startCheckout() {
   // Guardar config para crear bot tras pago
   const botConfig = {
     name: w.data.name,
-    description: `Bot ${w.data.strategy} en ${w.data.pair}`,
+    description: `${w.data.strategy} · ${w.data.pair}`,
     strategy: w.data.strategy,
     parameters: {
       market: w.data.market, pair: w.data.pair, leverage: w.data.leverage,
