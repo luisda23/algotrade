@@ -3,6 +3,7 @@ import { prisma } from '../server';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { generateMQL5 } from '../utils/mqlGenerator';
 import { generateMQL4 } from '../utils/mql4Generator';
+import { errResp, okResp, RC } from '../utils/responses';
 
 const router = Router();
 
@@ -12,12 +13,16 @@ router.get('/:botId/download', authenticateToken, async (req: AuthRequest, res: 
     const { botId } = req.params;
     const format = (req.query.format as string) === 'mq4' ? 'mq4' : 'mq5';
 
+    // Cargamos bot + user en una sola query: necesitamos user.lang para
+    // que los Print/comments del .mq5/.mq4 generado salgan en el idioma
+    // que el usuario eligió en el toggle del app.
     const bot = await prisma.bot.findUnique({
       where: { id: botId },
+      include: { user: { select: { lang: true } } },
     });
 
     if (!bot || bot.userId !== req.userId) {
-      return res.status(404).json({ error: 'Bot no encontrado' });
+      return res.status(404).json(errResp(RC.BOT_NOT_FOUND, 'Bot not found'));
     }
 
     const botData = {
@@ -27,9 +32,10 @@ router.get('/:botId/download', authenticateToken, async (req: AuthRequest, res: 
       strategy: bot.strategy,
       parameters: bot.parameters as any,
     };
+    const lang: 'es' | 'en' = bot.user?.lang === 'en' ? 'en' : 'es';
 
     // Generar según formato
-    const code = format === 'mq4' ? generateMQL4(botData) : generateMQL5(botData);
+    const code = format === 'mq4' ? generateMQL4(botData, lang) : generateMQL5(botData, lang);
     const filename = bot.name.replace(/[^a-zA-Z0-9_]/g, '_') + '.' + format;
 
     res.setHeader('Content-Type', `application/x-${format}`);
@@ -37,7 +43,7 @@ router.get('/:botId/download', authenticateToken, async (req: AuthRequest, res: 
     res.send(code);
   } catch (error: any) {
     console.error('Download error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json(errResp(RC.BOT_DOWNLOAD_FAIL, 'Failed to download bot'));
   }
 });
 
@@ -46,17 +52,27 @@ router.get('/:botId/download', authenticateToken, async (req: AuthRequest, res: 
 // pagada de Lemon Squeezy. Devolvemos 410 Gone para señalizar claramente
 // que esta ruta ya no existe (vs 404 que parece error temporal).
 router.post('/', authenticateToken, async (_req: AuthRequest, res: Response) => {
-  return res.status(410).json({
-    error: 'Bot creation requires a paid Lemon Squeezy order. Use POST /api/payments/verify.',
-  });
+  return res.status(410).json(errResp(RC.BOT_CREATE_DEPRECATED, 'Bot creation requires a paid Lemon Squeezy order. Use POST /api/payments/verify.'));
 });
+
+// Selector de campos seguros del broker conectado: NUNCA devolvemos apiKey
+// ni apiSecret al frontend. El bot solo necesita saber qué broker está
+// conectado y la cuenta enmascarada para mostrarlo en la UI; los secretos
+// se quedan en BD y solo los usa el backend para hablar con el broker.
+const safeBrokerSelect = {
+  id: true,
+  brokerName: true,
+  accountId: true,
+  isActive: true,
+  createdAt: true,
+} as const;
 
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const bots = await prisma.bot.findMany({
       where: { userId: req.userId },
       include: {
-        brokerConnection: true,
+        brokerConnection: { select: safeBrokerSelect },
         trades: true,
       },
     });
@@ -64,7 +80,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     res.json(bots);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al obtener bots' });
+    res.status(500).json(errResp(RC.BOT_LIST_FAIL, 'Failed to load bots'));
   }
 });
 
@@ -75,20 +91,20 @@ router.get('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
     const bot = await prisma.bot.findUnique({
       where: { id: botId },
       include: {
-        brokerConnection: true,
+        brokerConnection: { select: safeBrokerSelect },
         trades: true,
         botTemplate: true,
       },
     });
 
     if (!bot || bot.userId !== req.userId) {
-      return res.status(404).json({ error: 'Bot no encontrado' });
+      return res.status(404).json(errResp(RC.BOT_NOT_FOUND, 'Bot not found'));
     }
 
     res.json(bot);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al obtener el bot' });
+    res.status(500).json(errResp(RC.BOT_GET_FAIL, 'Failed to load bot'));
   }
 });
 
@@ -124,7 +140,7 @@ router.put('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
 
     const bot = await prisma.bot.findUnique({ where: { id: botId } });
     if (!bot || bot.userId !== req.userId) {
-      return res.status(404).json({ error: 'Bot no encontrado' });
+      return res.status(404).json(errResp(RC.BOT_NOT_FOUND, 'Bot not found'));
     }
 
     const data: any = {};
@@ -139,10 +155,10 @@ router.put('/:botId', authenticateToken, async (req: AuthRequest, res: Response)
     }
 
     const updatedBot = await prisma.bot.update({ where: { id: botId }, data });
-    res.json({ message: 'Bot actualizado', bot: updatedBot });
+    res.json({ ...okResp(RC.BOT_UPDATED, 'Bot updated'), bot: updatedBot });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al actualizar el bot' });
+    res.status(500).json(errResp(RC.BOT_UPDATE_FAIL, 'Failed to update bot'));
   }
 });
 
@@ -152,15 +168,15 @@ router.delete('/:botId', authenticateToken, async (req: AuthRequest, res: Respon
 
     const bot = await prisma.bot.findUnique({ where: { id: botId } });
     if (!bot || bot.userId !== req.userId) {
-      return res.status(404).json({ error: 'Bot no encontrado' });
+      return res.status(404).json(errResp(RC.BOT_NOT_FOUND, 'Bot not found'));
     }
 
     await prisma.bot.delete({ where: { id: botId } });
 
-    res.json({ message: 'Bot eliminado exitosamente' });
+    res.json(okResp(RC.BOT_DELETED, 'Bot deleted successfully'));
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el bot' });
+    res.status(500).json(errResp(RC.BOT_DELETE_FAIL, 'Failed to delete bot'));
   }
 });
 

@@ -2,6 +2,7 @@ import { Router, Response, Request } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../server';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { errResp, okResp, RC } from '../utils/responses';
 
 const router = Router();
 
@@ -29,12 +30,12 @@ async function lemonApi(path: string): Promise<any> {
 router.post('/checkout-custom', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     if (!LEMON_BUY_URL) {
-      return res.status(500).json({ error: 'Pasarela de pago no configurada' });
+      return res.status(500).json(errResp(RC.PAY_GATEWAY_DOWN, 'Payment gateway not configured'));
     }
 
     const { botName } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user) return res.status(404).json(errResp(RC.USER_NOT_FOUND, 'User not found'));
 
     const params = new URLSearchParams();
     params.set('checkout[email]', user.email);
@@ -46,7 +47,7 @@ router.post('/checkout-custom', authenticateToken, async (req: AuthRequest, res:
     res.json({ url });
   } catch (error: any) {
     console.error('Lemon checkout error:', error);
-    res.status(500).json({ error: error.message || 'Error al crear sesión de pago' });
+    res.status(500).json(errResp(RC.PAY_CHECKOUT_FAIL, 'Failed to create checkout session'));
   }
 });
 
@@ -57,17 +58,18 @@ interface SanitizedBot {
   description: string;
   parameters: Record<string, any>;
 }
-function sanitizeBotConfig(raw: any): { error: string; data: null } | { error: null; data: SanitizedBot } {
-  if (!raw || typeof raw !== 'object') return { error: 'Configuración del bot requerida', data: null };
+type SanitizeError = { code: string; fallback: string };
+function sanitizeBotConfig(raw: any): { error: SanitizeError; data: null } | { error: null; data: SanitizedBot } {
+  if (!raw || typeof raw !== 'object') return { error: { code: RC.PAY_CONFIG_REQUIRED, fallback: 'Bot configuration required' }, data: null };
 
   const name = typeof raw.name === 'string' ? raw.name.trim() : '';
   if (name.length === 0 || name.length > 60) {
-    return { error: 'Nombre de bot inválido (1-60 caracteres)', data: null };
+    return { error: { code: RC.PAY_NAME_INVALID, fallback: 'Invalid bot name (1-60 characters)' }, data: null };
   }
   const strategy = typeof raw.strategy === 'string' ? raw.strategy : '';
   const allowedStrategies = ['scalping','swing','momentum','mean','breakout','grid','trend','dca','hedge','reversal'];
   if (!allowedStrategies.includes(strategy)) {
-    return { error: 'Estrategia no válida', data: null };
+    return { error: { code: RC.PAY_STRATEGY_INVALID, fallback: 'Invalid strategy' }, data: null };
   }
 
   const description = typeof raw.description === 'string' ? raw.description.slice(0, 200) : '';
@@ -82,6 +84,70 @@ function sanitizeBotConfig(raw: any): { error: string; data: null } | { error: n
   if (cleanParams.timeframe && !ALLOWED_TF.includes(cleanParams.timeframe)) {
     delete cleanParams.timeframe;
   }
+
+  // Whitelist de indicadores. Sin esto, un usuario puede inyectar strings
+  // arbitrarios que el generator no conoce y, si en el futuro alguien
+  // refactoriza el generator concatenando el id al código MQL, hay
+  // inyección de código directa.
+  const ALLOWED_INDICATORS = new Set([
+    'rsi','stoch','stochrsi','cci','willr','roc',
+    'ema','sma','macd','adx','ichimoku','psar','supertrend',
+    'bb','atr','donchian','keltner',
+    'volume','vol','obv','vwap','mfi',
+    'fib','pivot','sr',
+  ]);
+  if (Array.isArray(cleanParams.indicators)) {
+    cleanParams.indicators = cleanParams.indicators
+      .filter((i: unknown) => typeof i === 'string' && ALLOWED_INDICATORS.has(i))
+      .slice(0, 24); // tope: nadie necesita más de los 24 que tenemos
+  } else {
+    cleanParams.indicators = [];
+  }
+
+  // Validar bounds en risk
+  if (cleanParams.risk && typeof cleanParams.risk === 'object') {
+    const r: any = {};
+    const numField = (key: string, min: number, max: number) => {
+      const v = cleanParams.risk[key];
+      if (typeof v === 'number' && isFinite(v)) r[key] = Math.min(max, Math.max(min, v));
+    };
+    numField('stopLoss', 0.05, 50);
+    numField('takeProfit', 0.05, 100);
+    numField('posSize', 0.1, 50);
+    numField('dailyLoss', 0.5, 50);
+    cleanParams.risk = r;
+  }
+
+  // Validar news
+  if (cleanParams.news && typeof cleanParams.news === 'object') {
+    const n: any = {};
+    n.enabled = cleanParams.news.enabled === true;
+    if (typeof cleanParams.news.beforeMin === 'number' && isFinite(cleanParams.news.beforeMin)) {
+      n.beforeMin = Math.min(180, Math.max(0, Math.floor(cleanParams.news.beforeMin)));
+    }
+    if (typeof cleanParams.news.afterMin === 'number' && isFinite(cleanParams.news.afterMin)) {
+      n.afterMin = Math.min(180, Math.max(0, Math.floor(cleanParams.news.afterMin)));
+    }
+    if (cleanParams.news.impactMin === 'high' || cleanParams.news.impactMin === 'medium' || cleanParams.news.impactMin === 'all') {
+      n.impactMin = cleanParams.news.impactMin;
+    }
+    if (Array.isArray(cleanParams.news.events)) {
+      n.events = cleanParams.news.events
+        .filter((e: unknown) => typeof e === 'string' && e.length < 200)
+        .slice(0, 50);
+    }
+    cleanParams.news = n;
+  }
+
+  // Validar funded
+  if (cleanParams.funded && typeof cleanParams.funded === 'object') {
+    const f: any = { enabled: cleanParams.funded.enabled === true };
+    if (typeof cleanParams.funded.firm === 'string' && cleanParams.funded.firm.length < 60) {
+      f.firm = cleanParams.funded.firm;
+    }
+    cleanParams.funded = f;
+  }
+
   // Sanity bounds en lot
   if (cleanParams.lot && typeof cleanParams.lot === 'object') {
     const lot: any = {};
@@ -92,6 +158,25 @@ function sanitizeBotConfig(raw: any): { error: string; data: null } | { error: n
       lot.fixedLot = Math.min(100, Math.max(0.01, cleanParams.lot.fixedLot));
     }
     cleanParams.lot = lot;
+  }
+
+  // Validar campos string simples (avatar, market, pair). Tope a 32 chars y
+  // sin caracteres raros que puedan acabar concatenados al MQL generado.
+  const safeShortStr = (v: unknown): string | undefined => {
+    if (typeof v !== 'string') return undefined;
+    const trimmed = v.trim().slice(0, 32);
+    if (!/^[A-Za-z0-9._/\- ]+$/.test(trimmed)) return undefined;
+    return trimmed;
+  };
+  const a = safeShortStr(cleanParams.avatar); if (a !== undefined) cleanParams.avatar = a; else delete cleanParams.avatar;
+  const m = safeShortStr(cleanParams.market); if (m !== undefined) cleanParams.market = m; else delete cleanParams.market;
+  const p = safeShortStr(cleanParams.pair);   if (p !== undefined) cleanParams.pair = p;   else delete cleanParams.pair;
+
+  // leverage: número 1..1000
+  if (typeof cleanParams.leverage === 'number' && isFinite(cleanParams.leverage)) {
+    cleanParams.leverage = Math.min(1000, Math.max(1, Math.floor(cleanParams.leverage)));
+  } else {
+    delete cleanParams.leverage;
   }
 
   return { error: null, data: { name, strategy, description, parameters: cleanParams } };
@@ -106,11 +191,11 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
   try {
     const { orderNumber, botConfig } = req.body;
     if (!LEMON_API_KEY || !LEMON_STORE_ID) {
-      return res.status(500).json({ error: 'Pasarela de pago no configurada' });
+      return res.status(500).json(errResp(RC.PAY_GATEWAY_DOWN, 'Payment gateway not configured'));
     }
 
     const reqUser = await prisma.user.findUnique({ where: { id: req.userId } });
-    if (!reqUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!reqUser) return res.status(404).json(errResp(RC.USER_NOT_FOUND, 'User not found'));
     const myEmail = (reqUser.email || '').toLowerCase();
 
     let order: any = null;
@@ -152,11 +237,10 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
         const ageMin = (Date.now() - created) / 60000;
         if (ageMin > 60 || ageMin < 0) continue;
 
-        // Skip si ya hay un bot con esta orden
+        // Skip si ya hay un bot con esta orden (consulta por columna unique
+        // o por el campo legacy en parameters para órdenes pre-migración)
         const orderId = String(c.id);
-        const already = await prisma.bot.findFirst({
-          where: { userId: req.userId, parameters: { path: ['lemonOrderId'], equals: orderId } as any },
-        });
+        const already = await findBotByLemonOrderId(orderId);
         if (already) continue;
 
         order = c;
@@ -166,13 +250,13 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
     }
 
     if (!order) {
-      return res.status(404).json({ error: 'Orden no encontrada o ya procesada' });
+      return res.status(404).json(errResp(RC.PAY_ORDER_NOT_FOUND, 'Order not found or already processed'));
     }
 
     const attrs = order.attributes || {};
     const status = attrs.status;
     if (status !== 'paid') {
-      return res.status(400).json({ error: 'Pago no confirmado', status });
+      return res.status(400).json({ ...errResp(RC.PAY_NOT_CONFIRMED, 'Payment not confirmed'), status });
     }
 
     // Validación final de propietario
@@ -181,43 +265,61 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
     const matchById = customUserId && customUserId === req.userId;
     const matchByEmail = orderEmail && myEmail && orderEmail === myEmail;
     if (!matchById && !matchByEmail) {
-      return res.status(403).json({ error: 'La orden no pertenece a este usuario' });
+      return res.status(403).json(errResp(RC.PAY_FOREIGN_ORDER, 'Order does not belong to this user'));
     }
 
-    // Idempotencia
+    // Idempotencia: la columna lemonOrderId tiene UNIQUE en BD, así que dos
+    // requests concurrentes no pueden crear ambos un bot — el segundo recibe
+    // P2002 y caemos al lookup. Sin transacción; el constraint hace el trabajo.
     const orderKey = String(order.id);
-    const existing = await prisma.bot.findFirst({
-      where: {
-        userId: req.userId,
-        parameters: { path: ['lemonOrderId'], equals: orderKey } as any,
-      },
-    });
+    const existing = await findBotByLemonOrderId(orderKey);
     if (existing) {
-      return res.json({ message: 'Pago ya verificado', bot: existing });
+      return res.json({ ...okResp(RC.PAY_ALREADY_VERIFIED, 'Payment already verified'), bot: existing });
     }
 
     const sanitized = sanitizeBotConfig(botConfig);
     if (sanitized.error) {
-      return res.status(400).json({ error: sanitized.error });
+      return res.status(400).json(errResp(sanitized.error.code, sanitized.error.fallback));
     }
     const data = sanitized.data!;
 
-    const bot = await prisma.bot.create({
-      data: {
-        userId: req.userId!,
-        name: data.name,
-        description: data.description,
-        strategy: data.strategy,
-        parameters: { ...data.parameters, lemonOrderId: orderKey, lemonOrderNumber: foundOrderNumber || '' },
-      },
-    });
+    let bot;
+    try {
+      bot = await prisma.bot.create({
+        data: {
+          userId: req.userId!,
+          name: data.name,
+          description: data.description,
+          strategy: data.strategy,
+          lemonOrderId: orderKey,
+          parameters: { ...data.parameters, lemonOrderId: orderKey, lemonOrderNumber: foundOrderNumber || '' },
+        },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        // Carrera: otro request ganó el create. Devolvemos el bot existente.
+        const winner = await findBotByLemonOrderId(orderKey);
+        if (winner) return res.json({ ...okResp(RC.PAY_ALREADY_VERIFIED, 'Payment already verified'), bot: winner });
+      }
+      throw e;
+    }
 
-    res.json({ message: 'Pago verificado y bot creado', bot });
+    res.json({ ...okResp(RC.PAY_VERIFIED, 'Payment verified and bot created'), bot });
   } catch (error: any) {
     console.error('Verify error:', error);
-    res.status(500).json({ error: error.message || 'Error al verificar el pago' });
+    res.status(500).json(errResp(RC.PAY_VERIFY_FAIL, 'Failed to verify payment'));
   }
 });
+
+// Helper común: busca por la columna unique (rápido) y cae al campo legacy
+// dentro de parameters para bots creados antes de la migración.
+async function findBotByLemonOrderId(orderId: string) {
+  const byColumn = await prisma.bot.findUnique({ where: { lemonOrderId: orderId } });
+  if (byColumn) return byColumn;
+  return prisma.bot.findFirst({
+    where: { parameters: { path: ['lemonOrderId'], equals: orderId } as any },
+  });
+}
 
 // ───── Webhook de Lemon Squeezy (auditoría / fallback) ─────
 // ───── Recuperar bots de pagos previos ─────
@@ -231,12 +333,11 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
 router.post('/recover', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     if (!LEMON_API_KEY || !LEMON_STORE_ID) {
-      return res.status(500).json({ error: 'Pasarela de pago no configurada' });
+      return res.status(500).json(errResp(RC.PAY_GATEWAY_DOWN, 'Payment gateway not configured'));
     }
 
     const reqUser = await prisma.user.findUnique({ where: { id: req.userId } });
-    if (!reqUser) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const myEmail = (reqUser.email || '').toLowerCase();
+    if (!reqUser) return res.status(404).json(errResp(RC.USER_NOT_FOUND, 'User not found'));
 
     const list = await lemonApi(
       `/orders?filter[store_id]=${encodeURIComponent(LEMON_STORE_ID)}&page[size]=100`
@@ -249,55 +350,60 @@ router.post('/recover', authenticateToken, async (req: AuthRequest, res: Respons
       const cAttrs = c.attributes || {};
       if (cAttrs.status !== 'paid') continue; // ignora refunded/pending/failed
 
-      const cEmail = (cAttrs.user_email || '').toLowerCase();
+      // Solo aceptamos órdenes con custom_data.user_id == req.userId. El email
+      // del comprador NO es prueba de propiedad (Lemon no verifica que el
+      // checkout email pertenezca al pagador), así que el match-by-email
+      // anterior permitía reclamar pedidos ajenos cambiando el email de cuenta.
       const cUserId = cAttrs?.first_order_item?.custom_data?.user_id || cAttrs?.custom_data?.user_id;
-      const matchById = cUserId && cUserId === req.userId;
-      const matchByEmail = cEmail && myEmail && cEmail === myEmail;
-      if (!matchById && !matchByEmail) continue;
+      if (!cUserId || cUserId !== req.userId) continue;
 
       const orderId = String(c.id);
-      const already = await prisma.bot.findFirst({
-        where: { userId: req.userId, parameters: { path: ['lemonOrderId'], equals: orderId } as any },
-      });
+      const already = await findBotByLemonOrderId(orderId);
       if (already) continue;
 
       const customBotName = cAttrs?.first_order_item?.custom_data?.bot_name
         || cAttrs?.custom_data?.bot_name
         || 'Mi Bot';
 
-      const bot = await prisma.bot.create({
-        data: {
-          userId: req.userId!,
-          name: String(customBotName).slice(0, 60),
-          description: 'Bot recuperado de pago previo · puedes editarlo',
-          strategy: 'momentum',
-          parameters: {
-            market: 'forex',
-            pair: 'EURUSD',
-            leverage: 30,
-            indicators: ['rsi', 'ema'],
-            timeframe: 'M15',
-            lot: { mode: 'auto', fixedLot: 0.10 },
-            risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
-            news: { enabled: false, beforeMin: 30, afterMin: 15, impactMin: 'high', events: [] },
-            funded: { enabled: false, firm: null },
+      try {
+        const bot = await prisma.bot.create({
+          data: {
+            userId: req.userId!,
+            name: String(customBotName).slice(0, 60),
+            description: 'Bot recuperado de pago previo · puedes editarlo',
+            strategy: 'momentum',
             lemonOrderId: orderId,
-            lemonOrderNumber: String(cAttrs.order_number || ''),
-            recovered: true,
+            parameters: {
+              market: 'forex',
+              pair: 'EURUSD',
+              leverage: 30,
+              indicators: ['rsi', 'ema'],
+              timeframe: 'M15',
+              lot: { mode: 'auto', fixedLot: 0.10 },
+              risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
+              news: { enabled: false, beforeMin: 30, afterMin: 15, impactMin: 'high', events: [] },
+              funded: { enabled: false, firm: null },
+              lemonOrderId: orderId,
+              lemonOrderNumber: String(cAttrs.order_number || ''),
+              recovered: true,
+            },
           },
-        },
-      });
-      recovered.push({ id: bot.id, name: bot.name, orderNumber: cAttrs.order_number });
+        });
+        recovered.push({ id: bot.id, name: bot.name, orderNumber: cAttrs.order_number });
+      } catch (e: any) {
+        // P2002 = otro request en paralelo creó el bot; lo ignoramos y seguimos
+        if (e?.code !== 'P2002') throw e;
+      }
     }
 
     return res.json({
-      message: `${recovered.length} bot(s) recuperado(s)`,
+      ...okResp(RC.PAY_RECOVER_OK, `${recovered.length} bot(s) recovered`, { args: { count: recovered.length } }),
       count: recovered.length,
       recovered,
     });
   } catch (error: any) {
     console.error('Recover error:', error);
-    res.status(500).json({ error: error.message || 'Error recuperando bots' });
+    res.status(500).json(errResp(RC.PAY_RECOVER_FAIL, 'Failed to recover bots'));
   }
 });
 

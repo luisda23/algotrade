@@ -3,6 +3,8 @@
 // Mismo modelo trigger+filter que mqlGenerator.ts, pero MQL4 no usa handles:
 // las funciones iX() devuelven el valor directamente.
 
+import { MQL_COPY, Lang, strategyDesc } from './mqlCopy';
+
 interface BotParams {
   market?: string;
   pair?: string;
@@ -23,6 +25,13 @@ const STRATEGY_DEFAULT_TF_MQL4: Record<string, string> = {
   swing: 'H4', trend: 'H1', reversal: 'M30', grid: 'M15',
   dca: 'H4', hedge: 'H1',
 };
+
+// Escapa una cadena para que sea segura como literal MQL4 (backslash y comillas
+// dobles). Sin esto, un nombre como `Bot "Pro"` rompería la compilación.
+function escapeMQL(s: string): string {
+  if (!s) return '';
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
 
 type IndDef4 = {
   logic: (strategy: string) => {
@@ -86,12 +95,16 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
           `   srsi_K_raw[sriI - 1] = (sri_hi > sri_lo) ? (srsi_rsi[sriI] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
           `}`,
           `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
-          `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
-          `static double srsi_K_prev = 50.0;`,
+          // Sembrar estado con valores reales en la primera evaluación, no con
+          // 50 hardcoded — si el K real está lejos de 50 al cargar el bot
+          // genera un cruce falso espurio.
+          `static double srsi_D_prev1 = 0.0, srsi_D_prev2 = 0.0;`,
+          `static double srsi_K_prev = 0.0;`,
+          `static bool srsi_init = false;`,
           `double srsi_D = (srsi_K + srsi_D_prev1 + srsi_D_prev2) / 3.0;`,
-          `bool srsi_crossUp   = (srsi_K_prev <= srsi_D_prev1 && srsi_K > srsi_D);`,
-          `bool srsi_crossDown = (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
-          `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K;`,
+          `bool srsi_crossUp   = srsi_init && (srsi_K_prev <= srsi_D_prev1 && srsi_K > srsi_D);`,
+          `bool srsi_crossDown = srsi_init && (srsi_K_prev >= srsi_D_prev1 && srsi_K < srsi_D);`,
+          `srsi_D_prev2 = srsi_D_prev1; srsi_D_prev1 = srsi_D; srsi_K_prev = srsi_K; srsi_init = true;`,
         ],
         triggerBuy:  `(srsi_crossUp && srsi_K < ${lo + 30})`,
         triggerSell: `(srsi_crossDown && srsi_K > ${hi - 30})`,
@@ -204,13 +217,16 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `double ichiKij1 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_KIJUNSEN, 1);`,
         `double ichiTen2 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_TENKANSEN, 2);`,
         `double ichiKij2 = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_KIJUNSEN, 2);`,
-        `double ichiSpA  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANA, 0);`,
-        `double ichiSpB  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANB, 0);`,
+        // Senkou A/B en MQL4 con shift=0 da el cloud proyectado +26 al futuro;
+        // para comparar el precio actual contra el cloud actual se lee con
+        // shift = Kijun period (26).
+        `double ichiSpA  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANA, 26);`,
+        `double ichiSpB  = iIchimoku(Symbol(), InpTimeframe, 9, 26, 52, MODE_SENKOUSPANB, 26);`,
       ],
-      triggerBuy:  `(ichiTen1 > ichiKij1 && ichiTen2 <= ichiKij2 && Bid > ichiSpA)`,
-      triggerSell: `(ichiTen1 < ichiKij1 && ichiTen2 >= ichiKij2 && Bid < ichiSpB)`,
-      filterBuy:   `(ichiTen1 > ichiKij1 && Bid > ichiSpA)`,
-      filterSell:  `(ichiTen1 < ichiKij1 && Bid < ichiSpB)`,
+      triggerBuy:  `(ichiTen1 > ichiKij1 && ichiTen2 <= ichiKij2 && Bid > ichiSpA && Bid > ichiSpB)`,
+      triggerSell: `(ichiTen1 < ichiKij1 && ichiTen2 >= ichiKij2 && Bid < ichiSpA && Bid < ichiSpB)`,
+      filterBuy:   `(ichiTen1 > ichiKij1 && Bid > ichiSpA && Bid > ichiSpB)`,
+      filterSell:  `(ichiTen1 < ichiKij1 && Bid < ichiSpA && Bid < ichiSpB)`,
     }),
   },
   psar: {
@@ -231,17 +247,23 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   supertrend: {
     logic: () => ({
       setup: [
-        `double stAtr0 = iATR(Symbol(), InpTimeframe, 10, 0);`,
+        // ATR de la barra cerrada (shift=1). Si lo leyéramos en shift 0, el
+        // valor cambia con cada tick y st_line/st_dir repintarían dentro de
+        // la misma barra dando flips fantasma.
+        `double stAtr1 = iATR(Symbol(), InpTimeframe, 10, 1);`,
         `double stMid = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1)) / 2.0;`,
         `double stClosePrev = iClose(Symbol(), InpTimeframe, 1);`,
-        `double stBasicUp = stMid + 3.0 * stAtr0;`,
-        `double stBasicDn = stMid - 3.0 * stAtr0;`,
+        `double stBasicUp = stMid + 3.0 * stAtr1;`,
+        `double stBasicDn = stMid - 3.0 * stAtr1;`,
         `static double st_line = 0;`,
         `static int st_dir = 0;`,
+        `static bool st_init = false;`,
         `int st_prevDir = st_dir;`,
-        `if(st_dir == 0) {`,
+        `if(!st_init) {`,
         `   st_dir = (stClosePrev > stMid) ? 1 : -1;`,
         `   st_line = (st_dir == 1) ? stBasicDn : stBasicUp;`,
+        `   st_prevDir = st_dir;`,
+        `   st_init = true;`,
         `} else if(st_dir == 1) {`,
         `   double newLine = MathMax(stBasicDn, st_line);`,
         `   if(stClosePrev < newLine) { st_dir = -1; st_line = stBasicUp; } else { st_line = newLine; }`,
@@ -260,29 +282,32 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   // Volatilidad
   bb: {
     logic: (s) => {
+      // Bandas leídas en barras CERRADAS (shift 1 y 2): el breakout no
+      // repinta dentro de la barra que se está formando.
       const setup = [
-        `double bbU = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 0);`,
-        `double bbL = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 0);`,
-        `double bbM = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_MAIN, 0);`,
         `double bbU1 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 1);`,
         `double bbL1 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 1);`,
-        `double bbPrevClose = iClose(Symbol(), InpTimeframe, 1);`,
+        `double bbM1 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_MAIN, 1);`,
+        `double bbU2 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_UPPER, 2);`,
+        `double bbL2 = iBands(Symbol(), InpTimeframe, 20, 2, 0, PRICE_CLOSE, MODE_LOWER, 2);`,
+        `double bbPrevClose     = iClose(Symbol(), InpTimeframe, 1);`,
+        `double bbPrevPrevClose = iClose(Symbol(), InpTimeframe, 2);`,
       ];
       if (isReversal(s)) {
         return {
           setup,
-          triggerBuy:  `(Bid <= bbL && bbPrevClose > bbL1)`,
-          triggerSell: `(Bid >= bbU && bbPrevClose < bbU1)`,
-          filterBuy:   `Bid <= bbM`,
-          filterSell:  `Bid >= bbM`,
+          triggerBuy:  `(bbPrevClose <= bbL1 && bbPrevPrevClose > bbL2)`,
+          triggerSell: `(bbPrevClose >= bbU1 && bbPrevPrevClose < bbU2)`,
+          filterBuy:   `bbPrevClose <= bbM1`,
+          filterSell:  `bbPrevClose >= bbM1`,
         };
       }
       return {
         setup,
-        triggerBuy:  `(Bid >= bbU && bbPrevClose < bbU1)`,
-        triggerSell: `(Bid <= bbL && bbPrevClose > bbL1)`,
-        filterBuy:   `Bid >= bbM`,
-        filterSell:  `Bid <= bbM`,
+        triggerBuy:  `(bbPrevClose >= bbU1 && bbPrevPrevClose < bbU2)`,
+        triggerSell: `(bbPrevClose <= bbL1 && bbPrevPrevClose > bbL2)`,
+        filterBuy:   `bbPrevClose >= bbM1`,
+        filterSell:  `bbPrevClose <= bbM1`,
       };
     },
   },
@@ -311,27 +336,35 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   },
   kc: {
     logic: (s) => {
+      // EMA y ATR de barras CERRADAS (shift 1 y 2). Breakout sobre cierres,
+      // sin repaint dentro de la barra que se está formando.
       const setup = [
-        `double kcEma = iMA(Symbol(), InpTimeframe, 20, 0, MODE_EMA, PRICE_CLOSE, 0);`,
-        `double kcAtr = iATR(Symbol(), InpTimeframe, 10, 0);`,
-        `double kcUpper = kcEma + 2.0 * kcAtr;`,
-        `double kcLower = kcEma - 2.0 * kcAtr;`,
+        `double kcEma1 = iMA(Symbol(), InpTimeframe, 20, 0, MODE_EMA, PRICE_CLOSE, 1);`,
+        `double kcAtr1 = iATR(Symbol(), InpTimeframe, 10, 1);`,
+        `double kcEma2 = iMA(Symbol(), InpTimeframe, 20, 0, MODE_EMA, PRICE_CLOSE, 2);`,
+        `double kcAtr2 = iATR(Symbol(), InpTimeframe, 10, 2);`,
+        `double kcUpper     = kcEma1 + 2.0 * kcAtr1;`,
+        `double kcLower     = kcEma1 - 2.0 * kcAtr1;`,
+        `double kcUpperPrev = kcEma2 + 2.0 * kcAtr2;`,
+        `double kcLowerPrev = kcEma2 - 2.0 * kcAtr2;`,
+        `double kcPrevClose     = iClose(Symbol(), InpTimeframe, 1);`,
+        `double kcPrevPrevClose = iClose(Symbol(), InpTimeframe, 2);`,
       ];
       if (isReversal(s)) {
         return {
           setup,
-          triggerBuy:  `Bid <= kcLower`,
-          triggerSell: `Bid >= kcUpper`,
-          filterBuy:   `Bid <= kcEma`,
-          filterSell:  `Bid >= kcEma`,
+          triggerBuy:  `(kcPrevClose <= kcLower && kcPrevPrevClose > kcLowerPrev)`,
+          triggerSell: `(kcPrevClose >= kcUpper && kcPrevPrevClose < kcUpperPrev)`,
+          filterBuy:   `kcPrevClose <= kcEma1`,
+          filterSell:  `kcPrevClose >= kcEma1`,
         };
       }
       return {
         setup,
-        triggerBuy:  `Bid >= kcUpper`,
-        triggerSell: `Bid <= kcLower`,
-        filterBuy:   `Bid >= kcEma`,
-        filterSell:  `Bid <= kcEma`,
+        triggerBuy:  `(kcPrevClose >= kcUpper && kcPrevPrevClose < kcUpperPrev)`,
+        triggerSell: `(kcPrevClose <= kcLower && kcPrevPrevClose > kcLowerPrev)`,
+        filterBuy:   `kcPrevClose >= kcEma1`,
+        filterSell:  `kcPrevClose <= kcEma1`,
       };
     },
   },
@@ -367,8 +400,15 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   },
   vwap: {
     logic: () => ({
+      // VWAP intra-día con WARM-UP: si el bot se carga a media sesión, sin
+      // back-fill el acumulado arrancaría en 0 y el VWAP sería inútil hasta
+      // acumular suficiente. Al cambiar de día (o en la primera ejecución)
+      // reconstruimos cumPV/cumV recorriendo todas las barras cerradas del
+      // día desde 00:00. La clave del día usa year+month+day para no
+      // confundir días separados un mes exacto.
       setup: [
-        `int vwap_today = TimeDay(TimeCurrent());`,
+        `datetime vwap_now = TimeCurrent();`,
+        `int vwap_today = TimeYear(vwap_now)*10000 + TimeMonth(vwap_now)*100 + TimeDay(vwap_now);`,
         `static int vwap_day = 0;`,
         `static double vwap_cumPV = 0;`,
         `static double vwap_cumV = 0;`,
@@ -376,11 +416,21 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
         `static double vwap_prevPrice = 0;`,
         `if(vwap_today != vwap_day) {`,
         `   vwap_cumPV = 0; vwap_cumV = 0; vwap_day = vwap_today;`,
+        `   datetime vwap_dayStart = vwap_now - TimeHour(vwap_now)*3600 - TimeMinute(vwap_now)*60 - TimeSeconds(vwap_now);`,
+        `   for(int vbi = 1; vbi < 10000; vbi++) {`,
+        `      datetime vbT = iTime(Symbol(), InpTimeframe, vbi);`,
+        `      if(vbT == 0 || vbT < vwap_dayStart) break;`,
+        `      double vbTp = (iHigh(Symbol(), InpTimeframe, vbi) + iLow(Symbol(), InpTimeframe, vbi) + iClose(Symbol(), InpTimeframe, vbi)) / 3.0;`,
+        `      long vbV = iVolume(Symbol(), InpTimeframe, vbi);`,
+        `      vwap_cumPV += vbTp * vbV;`,
+        `      vwap_cumV  += vbV;`,
+        `   }`,
+        `} else {`,
+        `   double vwap_tp = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1) + iClose(Symbol(), InpTimeframe, 1)) / 3.0;`,
+        `   long vwap_v = iVolume(Symbol(), InpTimeframe, 1);`,
+        `   vwap_cumPV += vwap_tp * vwap_v;`,
+        `   vwap_cumV  += vwap_v;`,
         `}`,
-        `double vwap_tp = (iHigh(Symbol(), InpTimeframe, 1) + iLow(Symbol(), InpTimeframe, 1) + iClose(Symbol(), InpTimeframe, 1)) / 3.0;`,
-        `long vwap_v = iVolume(Symbol(), InpTimeframe, 1);`,
-        `vwap_cumPV += vwap_tp * vwap_v;`,
-        `vwap_cumV  += vwap_v;`,
         `double vwap = (vwap_cumV > 0) ? vwap_cumPV / vwap_cumV : Bid;`,
         `bool vwap_crossUp   = (vwap_prev > 0 && vwap_prevPrice <= vwap_prev && Bid > vwap);`,
         `bool vwap_crossDown = (vwap_prev > 0 && vwap_prevPrice >= vwap_prev && Bid < vwap);`,
@@ -533,7 +583,8 @@ export function generateMQL4(bot: {
   description?: string | null;
   strategy: string;
   parameters: BotParams;
-}): string {
+}, lang: Lang = 'es'): string {
+  const T = MQL_COPY[lang];
   const p = bot.parameters || {};
   const risk = p.risk || {};
   const stopLoss = risk.stopLoss || 1.5;
@@ -558,13 +609,6 @@ export function generateMQL4(bot: {
   const fixedLotRaw = typeof lotConf.fixedLot === 'number' ? lotConf.fixedLot : 0.10;
   const fixedLot = Math.min(100, Math.max(0.01, fixedLotRaw));
 
-  const strategyDescriptions: Record<string, string> = {
-    scalping: 'Scalping rápido (M1-M5)', swing: 'Swing trading (H4-D1)',
-    grid: 'Grid trading', momentum: 'Momentum',
-    mean: 'Mean reversion', breakout: 'Breakout',
-    dca: 'DCA', trend: 'Trend following',
-    reversal: 'Reversal', hedge: 'Hedging',
-  };
 
   const sanitizeName = bot.name.replace(/[^a-zA-Z0-9_]/g, '_');
 
@@ -583,34 +627,35 @@ export function generateMQL4(bot: {
 
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq4 |
-//|                              Generado por YudBot · ${generatedDate} |
+//|                              ${T.headerGenerated} · ${generatedDate} |
 //|                                          https://yudbot.com |
 //+------------------------------------------------------------------+
 #property copyright "YudBot"
 #property link      "https://yudbot.com"
 #property version   "1.00"
 #property strict
-#property description "${bot.description || bot.name}"
-#property description "Estrategia: ${strategyDescriptions[strategy] || strategy}"
-#property description "Par: ${pair} · Apalancamiento: 1:${leverage}"
+#property description "${escapeMQL(bot.description || bot.name)}"
+#property description "${T.propStrategy}: ${strategyDesc(strategy, lang)}"
+#property description "${T.propPair}: ${pair} · ${T.propLeverage}: 1:${leverage}"
 
-extern string  _GENERAL              = "═══ CONFIGURACIÓN GENERAL ═══";
+extern string  _GENERAL              = "${T.groupGeneral}";
+extern string  InpSymbol             = "${symbol}";
 extern int     InpTimeframe          = ${timeframeMQL};
 extern int     InpMagicNumber        = ${magicNumber};
 extern int     InpSlippage           = 10;
 
-extern string  _LOT                  = "═══ TAMAÑO DE LOTE ═══";
+extern string  _LOT                  = "${T.groupLot}";
 extern bool    InpUseFixedLot        = ${lotMode === 'fixed' ? 'true' : 'false'};
 extern double  InpFixedLot           = ${fixedLot.toFixed(2)};
 
-extern string  _RISK                 = "═══ GESTIÓN DE RIESGO ═══";
+extern string  _RISK                 = "${T.groupRisk}";
 extern double  InpStopLoss           = ${stopLoss};
 extern double  InpTakeProfit         = ${takeProfit};
 extern double  InpRiskPerTrade       = ${posSize};
 extern double  InpMaxDailyLoss       = ${dailyLoss};
 extern int     InpLeverage           = ${leverage};
 
-extern string  _TIME                 = "═══ HORARIO DE OPERACIÓN ═══";
+extern string  _TIME                 = "${T.groupTime}";
 extern bool    InpUseTimeFilter      = true;
 extern int     InpStartHour          = 8;
 extern int     InpEndHour            = 22;
@@ -623,24 +668,40 @@ int lastBarTime = 0;
 int OnInit()
 {
    Print("═══════════════════════════════════════");
-   Print("  ${bot.name}");
-   Print("  Generado por YudBot · ${generatedDate}");
+   Print("  ${escapeMQL(bot.name)}");
+   Print("  ${T.headerGenerated} · ${generatedDate}");
    Print("═══════════════════════════════════════");
+
+   // Refuso operar sobre un chart de símbolo distinto al configurado: si
+   // generaste el bot para EURUSD y lo arrastras a un chart de GBPUSD, el
+   // EA debe abortar en lugar de operar silenciosamente en el par
+   // equivocado.
+   if(StringCompare(Symbol(), InpSymbol, false) != 0)
+   {
+      Print("${T.chartMismatchPre} ", InpSymbol, " ${T.chartMismatchMid} ", Symbol(), ". ${T.chartMismatchTail} ", InpSymbol, ".");
+      return INIT_FAILED;
+   }
+
    initialBalance = AccountBalance();
    dailyStartBalance = initialBalance;
    lastDayCheck = TimeCurrent();
-   Print("Bot inicializado correctamente");
-   Print("Balance inicial: ", initialBalance);
-   Print("Apalancamiento: 1:", InpLeverage);
+   Print("${T.initSuccess}");
+   Print("${T.initBalance} ", initialBalance);
+   Print("${T.initLeverage}", InpLeverage);
    return(INIT_SUCCEEDED);
 }
 
-void OnDeinit(const int reason) { Print("Bot detenido. Razón: ", reason); }
+void OnDeinit(const int reason) { Print("${T.deinitStopped} ", reason); }
 
 bool CheckDailyLoss()
 {
    datetime now = TimeCurrent();
-   if(TimeDay(now) != TimeDay(lastDayCheck))
+   // TimeDay solo devuelve día del mes (1-31). Comparar TimeDay(now) vs
+   // TimeDay(lastDayCheck) falla si entre ambos pasó exactamente un mes
+   // (mismo día numérico distinto mes). Comparamos year+month+day.
+   int nowKey  = TimeYear(now)*10000 + TimeMonth(now)*100 + TimeDay(now);
+   int lastKey = TimeYear(lastDayCheck)*10000 + TimeMonth(lastDayCheck)*100 + TimeDay(lastDayCheck);
+   if(nowKey != lastKey)
    {
       dailyStartBalance = AccountBalance();
       lastDayCheck = now;
@@ -648,7 +709,7 @@ bool CheckDailyLoss()
    double dailyLossPct = ((dailyStartBalance - AccountBalance()) / dailyStartBalance) * 100.0;
    if(dailyLossPct >= InpMaxDailyLoss)
    {
-      Print("⚠️ Pérdida diaria máxima alcanzada (", dailyLossPct, "%) - Bot pausado");
+      Print("${T.dailyLossHit} (", dailyLossPct, "%) - ${T.dailyLossPaused}");
       return false;
    }
    return true;
@@ -702,15 +763,15 @@ bool HasOpenPosition()
 
 void OnTick()
 {
-   if(!CheckDailyLoss()) return;
-   if(!IsTradingHours()) return;
-   if(HasOpenPosition()) return;
-
    if(Time[0] == lastBarTime) return;
    lastBarTime = Time[0];
 
-   //--- Estrategia: ${strategy} · indicadores: ${indicators.join(', ') || '(ninguno)'}
-   //--- Lógica: (al menos un trigger fire) AND (todos los filtros confirman)
+   if(!CheckDailyLoss()) { Print("${T.skipDailyLoss}"); return; }
+   if(!IsTradingHours()) { Print("${T.skipHours}", InpStartHour, "-", InpEndHour, "${T.skipBrokerTime}"); return; }
+   if(HasOpenPosition()) { Print("${T.skipPosition}"); return; }
+
+   //--- ${T.commentStrategy}: ${strategy} · ${T.commentIndicators}: ${indicators.join(', ') || T.commentNone}
+   //--- ${T.commentLogic}
    bool buySignal = false;
    bool sellSignal = false;
 
@@ -719,28 +780,30 @@ void OnTick()
    if(${buyExpr}) buySignal = true;
    if(${sellExpr}) sellSignal = true;
 
+   Print("[eval] bar=", TimeToString(Time[0], TIME_DATE|TIME_MINUTES), " buy=", buySignal, " sell=", sellSignal);
+
    if(buySignal)
    {
       double sl = Ask * (1 - InpStopLoss/100.0);
       double tp = Ask * (1 + InpTakeProfit/100.0);
       double lot = GetTradeLot(MathAbs(Ask - sl) / Point);
-      int ticket = OrderSend(Symbol(), OP_BUY, lot, Ask, InpSlippage, sl, tp, "${bot.name} BUY", InpMagicNumber, 0, clrGreen);
-      if(ticket < 0) Print("Error al abrir BUY: ", GetLastError());
-      else Print("BUY abierta · Ticket: ", ticket, " · Lote: ", lot);
+      int ticket = OrderSend(Symbol(), OP_BUY, lot, Ask, InpSlippage, sl, tp, "${escapeMQL(bot.name)} BUY", InpMagicNumber, 0, clrGreen);
+      if(ticket < 0) Print("${T.buyOpenError} ", GetLastError());
+      else Print("${T.buyOpened} ", ticket, " · ${T.lot} ", lot);
    }
    else if(sellSignal)
    {
       double sl = Bid * (1 + InpStopLoss/100.0);
       double tp = Bid * (1 - InpTakeProfit/100.0);
       double lot = GetTradeLot(MathAbs(sl - Bid) / Point);
-      int ticket = OrderSend(Symbol(), OP_SELL, lot, Bid, InpSlippage, sl, tp, "${bot.name} SELL", InpMagicNumber, 0, clrRed);
-      if(ticket < 0) Print("Error al abrir SELL: ", GetLastError());
-      else Print("SELL abierta · Ticket: ", ticket, " · Lote: ", lot);
+      int ticket = OrderSend(Symbol(), OP_SELL, lot, Bid, InpSlippage, sl, tp, "${escapeMQL(bot.name)} SELL", InpMagicNumber, 0, clrRed);
+      if(ticket < 0) Print("${T.sellOpenError} ", GetLastError());
+      else Print("${T.sellOpened} ", ticket, " · ${T.lot} ", lot);
    }
 }
 
 //+------------------------------------------------------------------+
-//| END OF FILE — Generado por YudBot                             |
+//| ${T.headerEndOfFile}                             |
 //+------------------------------------------------------------------+
 `;
 }
