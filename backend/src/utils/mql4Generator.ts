@@ -77,12 +77,13 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          `double srsi_rsi[16]; for(int sri = 0; sri < 16; sri++) srsi_rsi[sri] = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, sri);`,
+          // 17 RSI (bars 0-16) para Stoch RSI sobre bars cerradas 1, 2, 3
+          `double srsi_rsi[17]; for(int sri = 0; sri < 17; sri++) srsi_rsi[sri] = iRSI(Symbol(), InpTimeframe, 14, PRICE_CLOSE, sri);`,
           `double srsi_K_raw[3];`,
-          `for(int sriI = 0; sriI < 3; sriI++) {`,
+          `for(int sriI = 1; sriI <= 3; sriI++) {`,
           `   double sri_lo = srsi_rsi[sriI], sri_hi = srsi_rsi[sriI];`,
           `   for(int sriJ = sriI; sriJ < sriI + 14; sriJ++) { if(srsi_rsi[sriJ] < sri_lo) sri_lo = srsi_rsi[sriJ]; if(srsi_rsi[sriJ] > sri_hi) sri_hi = srsi_rsi[sriJ]; }`,
-          `   srsi_K_raw[sriI] = (sri_hi > sri_lo) ? (srsi_rsi[sriI] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
+          `   srsi_K_raw[sriI - 1] = (sri_hi > sri_lo) ? (srsi_rsi[sriI] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
           `}`,
           `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
           `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
@@ -215,15 +216,16 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   psar: {
     logic: () => ({
       setup: [
-        `double sar0 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 0);`,
         `double sar1 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 1);`,
+        `double sar2 = iSAR(Symbol(), InpTimeframe, 0.02, 0.2, 2);`,
         `double psarPrevClose = iClose(Symbol(), InpTimeframe, 1);`,
         `double psarPrevPrevClose = iClose(Symbol(), InpTimeframe, 2);`,
       ],
-      triggerBuy:  `(psarPrevClose > sar0 && psarPrevPrevClose <= sar1)`,
-      triggerSell: `(psarPrevClose < sar0 && psarPrevPrevClose >= sar1)`,
-      filterBuy:   `Bid > sar0`,
-      filterSell:  `Bid < sar0`,
+      // Comparamos close[1] vs sar[1] y close[2] vs sar[2] (alineados en tiempo)
+      triggerBuy:  `(psarPrevClose > sar1 && psarPrevPrevClose <= sar2)`,
+      triggerSell: `(psarPrevClose < sar1 && psarPrevPrevClose >= sar2)`,
+      filterBuy:   `psarPrevClose > sar1`,
+      filterSell:  `psarPrevClose < sar1`,
     }),
   },
   supertrend: {
@@ -338,8 +340,10 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   vol: {
     logic: () => ({
       setup: [
-        `long volNow = iVolume(Symbol(), InpTimeframe, 0);`,
-        `long volAvg = 0; for(int viI = 1; viI <= 20; viI++) volAvg += iVolume(Symbol(), InpTimeframe, viI); volAvg /= 20;`,
+        // iVolume(0) en MQL4 es la barra recién abierta (~0 ticks). Usamos
+        // bar 1 como volumen de referencia y promedio sobre bars 2-21.
+        `long volNow = iVolume(Symbol(), InpTimeframe, 1);`,
+        `long volAvg = 0; for(int viI = 2; viI <= 21; viI++) volAvg += iVolume(Symbol(), InpTimeframe, viI); volAvg /= 20;`,
         `bool volSpike = (volNow > volAvg * 1.5);`,
         `double volHi5 = iHigh(Symbol(), InpTimeframe, iHighest(Symbol(), InpTimeframe, MODE_HIGH, 5, 1));`,
         `double volLo5 = iLow(Symbol(), InpTimeframe, iLowest(Symbol(), InpTimeframe, MODE_LOW, 5, 1));`,
@@ -353,7 +357,9 @@ const INDICATOR_DEFS_MQL4: Record<string, IndDef4> = {
   obv: {
     logic: () => ({
       setup: [
-        `double obvSum = 0; for(int oiI = 0; oiI < 20; oiI++) { double prev = iClose(Symbol(), InpTimeframe, oiI + 1); double curr = iClose(Symbol(), InpTimeframe, oiI); long v = iVolume(Symbol(), InpTimeframe, oiI); if(curr > prev) obvSum += v; else if(curr < prev) obvSum -= v; }`,
+        // Comenzamos desde oiI=1 para evitar incluir la barra recién abierta
+        // (su precio aún no se ha movido significativamente).
+        `double obvSum = 0; for(int oiI = 1; oiI <= 20; oiI++) { double prev = iClose(Symbol(), InpTimeframe, oiI + 1); double curr = iClose(Symbol(), InpTimeframe, oiI); long v = iVolume(Symbol(), InpTimeframe, oiI); if(curr > prev) obvSum += v; else if(curr < prev) obvSum -= v; }`,
       ],
       filterBuy:  `obvSum > 0`,
       filterSell: `obvSum < 0`,

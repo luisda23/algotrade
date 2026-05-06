@@ -109,12 +109,16 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const hi = isReversal(s) ? 75 : 80;
       return {
         setup: [
-          `double srsi_rsi[]; ArraySetAsSeries(srsi_rsi, true); CopyBuffer(handleStochRSI_internalRSI, 0, 0, 16, srsi_rsi);`,
+          // Pedimos 17 valores RSI (barras 0 a 16) para calcular el Stoch RSI
+          // de las últimas 3 barras CERRADAS (índices 1, 2, 3 con sus ventanas
+          // de 14 RSI). Bar 0 (forming) se ignora porque su valor casi no
+          // cambia respecto a bar 1.
+          `double srsi_rsi[]; ArraySetAsSeries(srsi_rsi, true); CopyBuffer(handleStochRSI_internalRSI, 0, 0, 17, srsi_rsi);`,
           `double srsi_K_raw[3];`,
-          `for(int sri = 0; sri < 3; sri++) {`,
+          `for(int sri = 1; sri <= 3; sri++) {`,
           `   double sri_lo = srsi_rsi[sri], sri_hi = srsi_rsi[sri];`,
           `   for(int sri2 = sri; sri2 < sri + 14; sri2++) { if(srsi_rsi[sri2] < sri_lo) sri_lo = srsi_rsi[sri2]; if(srsi_rsi[sri2] > sri_hi) sri_hi = srsi_rsi[sri2]; }`,
-          `   srsi_K_raw[sri] = (sri_hi > sri_lo) ? (srsi_rsi[sri] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
+          `   srsi_K_raw[sri - 1] = (sri_hi > sri_lo) ? (srsi_rsi[sri] - sri_lo) / (sri_hi - sri_lo) * 100.0 : 50.0;`,
           `}`,
           `double srsi_K = (srsi_K_raw[0] + srsi_K_raw[1] + srsi_K_raw[2]) / 3.0;`,
           `static double srsi_D_prev1 = 50.0, srsi_D_prev2 = 50.0;`,
@@ -262,16 +266,16 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     release: '   IndicatorRelease(handleSAR);',
     logic: () => ({
       setup: [
-        `double sar[]; ArraySetAsSeries(sar, true); CopyBuffer(handleSAR, 0, 0, 2, sar);`,
+        `double sar[]; ArraySetAsSeries(sar, true); CopyBuffer(handleSAR, 0, 0, 3, sar);`,
         `double psarPrevClose = iClose(InpSymbol, InpTimeframe, 1);`,
         `double psarPrevPrevClose = iClose(InpSymbol, InpTimeframe, 2);`,
       ],
-      // Trigger: SAR acaba de cambiar de lado (flip)
-      triggerBuy:  `(psarPrevClose > sar[0] && psarPrevPrevClose <= sar[1])`,
-      triggerSell: `(psarPrevClose < sar[0] && psarPrevPrevClose >= sar[1])`,
-      // Filter: precio sobre/debajo de SAR
-      filterBuy:   `bidPrice > sar[0]`,
-      filterSell:  `bidPrice < sar[0]`,
+      // Trigger: SAR cambió de lado en barra 1 (close[1] > sar[1] mientras antes close[2] <= sar[2])
+      triggerBuy:  `(psarPrevClose > sar[1] && psarPrevPrevClose <= sar[2])`,
+      triggerSell: `(psarPrevClose < sar[1] && psarPrevPrevClose >= sar[2])`,
+      // Filter: cierre de la última barra cerrada vs su SAR
+      filterBuy:   `psarPrevClose > sar[1]`,
+      filterSell:  `psarPrevClose < sar[1]`,
     }),
   },
   supertrend: {
@@ -404,8 +408,11 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
   vol: {
     logic: () => ({
       setup: [
-        `long volNow = iVolume(InpSymbol, InpTimeframe, 0);`,
-        `long volAvg = 0; for(int viI = 1; viI <= 20; viI++) volAvg += iVolume(InpSymbol, InpTimeframe, viI); volAvg /= 20;`,
+        // Importante: iVolume(symbol, period, 0) es la barra RECIÉN ABIERTA
+        // y casi siempre es ~0. Usamos bar 1 (cerrada) como volumen "actual"
+        // para spike detection, comparado contra la media de barras 2-21.
+        `long volNow = iVolume(InpSymbol, InpTimeframe, 1);`,
+        `long volAvg = 0; for(int viI = 2; viI <= 21; viI++) volAvg += iVolume(InpSymbol, InpTimeframe, viI); volAvg /= 20;`,
         `bool volSpike = (volNow > volAvg * 1.5);`,
         `double volHi5 = iHigh(InpSymbol, InpTimeframe, iHighest(InpSymbol, InpTimeframe, MODE_HIGH, 5, 1));`,
         `double volLo5 = iLow(InpSymbol, InpTimeframe, iLowest(InpSymbol, InpTimeframe, MODE_LOW, 5, 1));`,
@@ -421,12 +428,14 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleOBV = iOBV(InpSymbol, InpTimeframe, VOLUME_TICK);\n   if(handleOBV == INVALID_HANDLE) { Print("Error creando OBV"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleOBV);',
     logic: () => ({
+      // Usamos bar 1 (cerrada) y promedio sobre bars 1-20 para evitar que
+      // el OBV de la barra recién abierta distorsione la lectura.
       setup: [
-        `double obv[]; ArraySetAsSeries(obv, true); CopyBuffer(handleOBV, 0, 0, 20, obv);`,
-        `double obvAvg = 0; for(int oiI = 0; oiI < 20; oiI++) obvAvg += obv[oiI]; obvAvg /= 20.0;`,
+        `double obv[]; ArraySetAsSeries(obv, true); CopyBuffer(handleOBV, 0, 0, 21, obv);`,
+        `double obvAvg = 0; for(int oiI = 1; oiI <= 20; oiI++) obvAvg += obv[oiI]; obvAvg /= 20.0;`,
       ],
-      filterBuy:  `obv[0] > obvAvg`,
-      filterSell: `obv[0] < obvAvg`,
+      filterBuy:  `obv[1] > obvAvg`,
+      filterSell: `obv[1] < obvAvg`,
     }),
   },
   vwap: {
