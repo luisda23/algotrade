@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# El app interior es para usuarios autenticados; no aporta contenido SEO
+Disallow: /app
+Disallow: /en/app
+
+Sitemap: https://yudbot.com/sitemap.xml

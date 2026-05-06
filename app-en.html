@@ -1509,7 +1509,7 @@ function bindResetPassword() {
         }),
       });
       // Limpiar URL, salir del modo reset, ir al login
-      try { window.history.replaceState({}, '', '/app'); } catch (_) {}
+      try { window.history.replaceState({}, '', '/en/app'); } catch (_) {}
       clearAuth();
       state.resetContext = null;
       state.authMode = 'login';
@@ -3905,7 +3905,7 @@ async function verifyPendingPayment() {
   loadAuth();
   if (!state.token) return;
 
-  const cleanUrl = () => window.history.replaceState({}, '', '/app');
+  const cleanUrl = () => window.history.replaceState({}, '', '/en/app');
 
   try {
     const res = await api('/payments/verify', {

@@ -10,6 +10,7 @@
 <link rel="canonical" href="https://yudbot.com/en/privacy"/>
 <link rel="alternate" hreflang="es" href="https://yudbot.com/privacy"/>
 <link rel="alternate" hreflang="en" href="https://yudbot.com/en/privacy"/>
+<link rel="alternate" hreflang="x-default" href="https://yudbot.com/privacy"/>
 <link rel="icon" type="image/png" href="/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,7 +113,7 @@ footer a { color: var(--text-dim); margin: 0 10px; }
     YudBot
   </a>
   <div class="nav-right">
-    <a class="lang-toggle" href="/privacy" title="Español">ES</a>
+    <a class="lang-toggle" href="/privacy" title="Español" aria-label="Switch to Spanish" onclick="try{localStorage.setItem('lang','es');}catch(e){}">ES</a>
     <a class="nav-back" href="/en">← Back to home</a>
   </div>
 </nav>
