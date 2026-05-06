@@ -94,9 +94,64 @@ app.use('/api/brokers', brokerRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/payments', paymentRoutes);
 
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', timestamp: new Date() });
+// Health check completo. Verifica las 3 dependencias críticas en paralelo
+// con un timeout corto. Devuelve 200 si TODAS responden, 503 si alguna
+// falla — así un monitoring (UptimeRobot, BetterStack, Railway healthcheck)
+// puede alertar de inmediato y no enmascarar fallos parciales.
+app.get('/health', async (_req: Request, res: Response) => {
+  const checks = await Promise.all([
+    // 1. Postgres vía Prisma — query trivial.
+    timed(() => prisma.$queryRaw`SELECT 1`, 'db'),
+    // 2. Resend API. /domains exige autenticación: si responde 200 las
+    //    credenciales son válidas y la API está arriba; si 401 → key mala;
+    //    si 5xx / timeout → caído.
+    timed(async () => {
+      if (!process.env.RESEND_API_KEY) return; // dev local sin email — OK
+      const r = await fetch('https://api.resend.com/domains', {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    }, 'resend'),
+    // 3. Lemon Squeezy API. /v1/stores requiere auth; mismo razonamiento.
+    timed(async () => {
+      if (!process.env.LEMON_API_KEY) return;
+      const r = await fetch('https://api.lemonsqueezy.com/v1/stores', {
+        headers: {
+          Authorization: `Bearer ${process.env.LEMON_API_KEY}`,
+          Accept: 'application/vnd.api+json',
+        },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    }, 'lemon'),
+  ]);
+
+  const allOk = checks.every(c => c.ok);
+  res.status(allOk ? 200 : 503).json({
+    status: allOk ? 'OK' : 'DEGRADED',
+    timestamp: new Date(),
+    checks: checks.reduce((acc, c) => {
+      acc[c.name] = c.ok ? { ok: true, ms: c.ms } : { ok: false, ms: c.ms, error: c.error };
+      return acc;
+    }, {} as Record<string, unknown>),
+  });
 });
+
+// Helper: ejecuta una promesa, mide latencia y captura errores en una
+// estructura serializable. Nunca tira — el caller agrega el resultado.
+async function timed(
+  fn: () => Promise<unknown>,
+  name: string,
+): Promise<{ name: string; ok: boolean; ms: number; error?: string }> {
+  const start = Date.now();
+  try {
+    await fn();
+    return { name, ok: true, ms: Date.now() - start };
+  } catch (err: any) {
+    return { name, ok: false, ms: Date.now() - start, error: err?.message?.slice(0, 200) || 'unknown' };
+  }
+}
 
 // Sentry error handler: tiene que ir DESPUÉS de las rutas y ANTES de
 // cualquier otro middleware de error custom. Captura cualquier excepción
