@@ -1,4 +1,11 @@
-import express, { Express, Request, Response } from 'express';
+// IMPORTANTE: ./instrument debe ser el PRIMER import. Sentry v8+ usa
+// auto-instrumentation de OpenTelemetry para Express y Prisma; si se
+// importa después de los módulos que va a instrumentar, el hook llega
+// tarde y no captura nada.
+import './instrument';
+import * as Sentry from '@sentry/node';
+
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
@@ -89,6 +96,21 @@ app.use('/api/payments', paymentRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', timestamp: new Date() });
+});
+
+// Sentry error handler: tiene que ir DESPUÉS de las rutas y ANTES de
+// cualquier otro middleware de error custom. Captura cualquier excepción
+// no manejada, la asocia con el contexto del request (URL, método, user
+// si lo hay) y la envía a Sentry. El cliente sigue recibiendo su 500
+// igual que antes — Sentry solo observa.
+Sentry.setupExpressErrorHandler(app);
+
+// Fallback final: si nada antes ha manejado el error, devolver 500 con
+// código bilingüe genérico para que el frontend pueda traducirlo.
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return;
+  res.status(500).json({ code: 'common.server_error', error: 'Server error' });
 });
 
 app.listen(PORT, () => {

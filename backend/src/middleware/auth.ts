@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import * as Sentry from '@sentry/node';
 // Import directo desde ./db para evitar el circular: server.ts → routes/*
 // → middleware/auth.ts. Si importáramos `prisma` de server.ts, durante el
 // registro de rutas el middleware se cargaría antes de que server.ts haya
@@ -76,6 +77,10 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
   }
 
   req.userId = decoded.userId;
+  // Vincular el usuario al scope de Sentry: si el siguiente handler explota,
+  // el evento llega a Sentry con `user.id` para poder buscar errores por
+  // usuario y ver el blast radius. No mandamos email (PII), solo el id.
+  Sentry.setUser({ id: decoded.userId });
   next();
 };
 
