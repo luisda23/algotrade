@@ -69,11 +69,14 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const lo = isReversal(s) ? 35 : 30;
       const hi = isReversal(s) ? 65 : 70;
       return {
-        setup: [`double rsi[]; ArraySetAsSeries(rsi, true); CopyBuffer(handleRSI, 0, 0, 2, rsi);`],
-        triggerBuy:  `(rsi[0] < ${lo} && rsi[1] >= ${lo})`, // recién entró en oversold
-        triggerSell: `(rsi[0] > ${hi} && rsi[1] <= ${hi})`,
-        filterBuy:   `rsi[0] < ${lo + 10}`,                  // amplio: RSI bajo (no exige extremo)
-        filterSell:  `rsi[0] > ${hi - 10}`,
+        setup: [`double rsi[]; ArraySetAsSeries(rsi, true); CopyBuffer(handleRSI, 0, 0, 3, rsi);`],
+        // Trigger en barras cerradas ([1] vs [2]): cruce confirmado al cierre.
+        // Usar [0] (barra recién abierta) detectaría apenas crosses porque
+        // el indicador en bar 0 es casi idéntico al de bar 1.
+        triggerBuy:  `(rsi[1] < ${lo} && rsi[2] >= ${lo})`,
+        triggerSell: `(rsi[1] > ${hi} && rsi[2] <= ${hi})`,
+        filterBuy:   `rsi[1] < ${lo + 10}`,
+        filterSell:  `rsi[1] > ${hi - 10}`,
       };
     },
   },
@@ -87,13 +90,13 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       return {
         setup: [
           `double stochMain[], stochSignal[]; ArraySetAsSeries(stochMain, true); ArraySetAsSeries(stochSignal, true);`,
-          `CopyBuffer(handleStoch, 0, 0, 2, stochMain);`,
-          `CopyBuffer(handleStoch, 1, 0, 2, stochSignal);`,
+          `CopyBuffer(handleStoch, 0, 0, 3, stochMain);`,
+          `CopyBuffer(handleStoch, 1, 0, 3, stochSignal);`,
         ],
-        triggerBuy:  `(stochMain[0] > stochSignal[0] && stochMain[1] <= stochSignal[1] && stochMain[0] < ${lo + 30})`,
-        triggerSell: `(stochMain[0] < stochSignal[0] && stochMain[1] >= stochSignal[1] && stochMain[0] > ${hi - 30})`,
-        filterBuy:   `stochMain[0] < ${lo + 20}`,
-        filterSell:  `stochMain[0] > ${hi - 20}`,
+        triggerBuy:  `(stochMain[1] > stochSignal[1] && stochMain[2] <= stochSignal[2] && stochMain[1] < ${lo + 30})`,
+        triggerSell: `(stochMain[1] < stochSignal[1] && stochMain[2] >= stochSignal[2] && stochMain[1] > ${hi - 30})`,
+        filterBuy:   `stochMain[1] < ${lo + 20}`,
+        filterSell:  `stochMain[1] > ${hi - 20}`,
       };
     },
   },
@@ -133,11 +136,11 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleCCI = iCCI(InpSymbol, InpTimeframe, 14, PRICE_TYPICAL);\n   if(handleCCI == INVALID_HANDLE) { Print("Error creando CCI"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleCCI);',
     logic: () => ({
-      setup: [`double cci[]; ArraySetAsSeries(cci, true); CopyBuffer(handleCCI, 0, 0, 2, cci);`],
-      triggerBuy:  `(cci[0] < -100 && cci[1] >= -100)`,
-      triggerSell: `(cci[0] > 100  && cci[1] <= 100)`,
-      filterBuy:   `cci[0] < 0`,
-      filterSell:  `cci[0] > 0`,
+      setup: [`double cci[]; ArraySetAsSeries(cci, true); CopyBuffer(handleCCI, 0, 0, 3, cci);`],
+      triggerBuy:  `(cci[1] < -100 && cci[2] >= -100)`,
+      triggerSell: `(cci[1] > 100  && cci[2] <= 100)`,
+      filterBuy:   `cci[1] < 0`,
+      filterSell:  `cci[1] > 0`,
     }),
   },
   williams: {
@@ -145,11 +148,11 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     init: '   handleWPR = iWPR(InpSymbol, InpTimeframe, 14);\n   if(handleWPR == INVALID_HANDLE) { Print("Error creando Williams %R"); return INIT_FAILED; }',
     release: '   IndicatorRelease(handleWPR);',
     logic: () => ({
-      setup: [`double wpr[]; ArraySetAsSeries(wpr, true); CopyBuffer(handleWPR, 0, 0, 2, wpr);`],
-      triggerBuy:  `(wpr[0] < -80 && wpr[1] >= -80)`,
-      triggerSell: `(wpr[0] > -20 && wpr[1] <= -20)`,
-      filterBuy:   `wpr[0] < -50`,
-      filterSell:  `wpr[0] > -50`,
+      setup: [`double wpr[]; ArraySetAsSeries(wpr, true); CopyBuffer(handleWPR, 0, 0, 3, wpr);`],
+      triggerBuy:  `(wpr[1] < -80 && wpr[2] >= -80)`,
+      triggerSell: `(wpr[1] > -20 && wpr[2] <= -20)`,
+      filterBuy:   `wpr[1] < -50`,
+      filterSell:  `wpr[1] > -50`,
     }),
   },
   roc: {
@@ -158,9 +161,9 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     release: '   IndicatorRelease(handleMomentum);',
     logic: () => ({
       setup: [
-        `double momBuf[]; ArraySetAsSeries(momBuf, true); CopyBuffer(handleMomentum, 0, 0, 2, momBuf);`,
-        `double roc = momBuf[0] - 100.0;`,
-        `double rocPrev = momBuf[1] - 100.0;`,
+        `double momBuf[]; ArraySetAsSeries(momBuf, true); CopyBuffer(handleMomentum, 0, 0, 3, momBuf);`,
+        `double roc = momBuf[1] - 100.0;`,
+        `double rocPrev = momBuf[2] - 100.0;`,
       ],
       triggerBuy:  `(roc > 0 && rocPrev <= 0)`,
       triggerSell: `(roc < 0 && rocPrev >= 0)`,
@@ -177,13 +180,13 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: () => ({
       setup: [
         `double emaFast[], emaSlow[]; ArraySetAsSeries(emaFast, true); ArraySetAsSeries(emaSlow, true);`,
-        `CopyBuffer(handleEMA_fast, 0, 0, 2, emaFast);`,
-        `CopyBuffer(handleEMA_slow, 0, 0, 2, emaSlow);`,
+        `CopyBuffer(handleEMA_fast, 0, 0, 3, emaFast);`,
+        `CopyBuffer(handleEMA_slow, 0, 0, 3, emaSlow);`,
       ],
-      triggerBuy:  `(emaFast[0] > emaSlow[0] && emaFast[1] <= emaSlow[1])`,
-      triggerSell: `(emaFast[0] < emaSlow[0] && emaFast[1] >= emaSlow[1])`,
-      filterBuy:   `emaFast[0] > emaSlow[0]`,
-      filterSell:  `emaFast[0] < emaSlow[0]`,
+      triggerBuy:  `(emaFast[1] > emaSlow[1] && emaFast[2] <= emaSlow[2])`,
+      triggerSell: `(emaFast[1] < emaSlow[1] && emaFast[2] >= emaSlow[2])`,
+      filterBuy:   `emaFast[1] > emaSlow[1]`,
+      filterSell:  `emaFast[1] < emaSlow[1]`,
     }),
   },
   sma: {
@@ -193,13 +196,13 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: () => ({
       setup: [
         `double smaFast[], smaSlow[]; ArraySetAsSeries(smaFast, true); ArraySetAsSeries(smaSlow, true);`,
-        `CopyBuffer(handleSMA_fast, 0, 0, 2, smaFast);`,
-        `CopyBuffer(handleSMA_slow, 0, 0, 2, smaSlow);`,
+        `CopyBuffer(handleSMA_fast, 0, 0, 3, smaFast);`,
+        `CopyBuffer(handleSMA_slow, 0, 0, 3, smaSlow);`,
       ],
-      triggerBuy:  `(smaFast[0] > smaSlow[0] && smaFast[1] <= smaSlow[1])`,
-      triggerSell: `(smaFast[0] < smaSlow[0] && smaFast[1] >= smaSlow[1])`,
-      filterBuy:   `smaFast[0] > smaSlow[0]`,
-      filterSell:  `smaFast[0] < smaSlow[0]`,
+      triggerBuy:  `(smaFast[1] > smaSlow[1] && smaFast[2] <= smaSlow[2])`,
+      triggerSell: `(smaFast[1] < smaSlow[1] && smaFast[2] >= smaSlow[2])`,
+      filterBuy:   `smaFast[1] > smaSlow[1]`,
+      filterSell:  `smaFast[1] < smaSlow[1]`,
     }),
   },
   macd: {
@@ -209,13 +212,13 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: () => ({
       setup: [
         `double macdMain[], macdSignal[]; ArraySetAsSeries(macdMain, true); ArraySetAsSeries(macdSignal, true);`,
-        `CopyBuffer(handleMACD, 0, 0, 2, macdMain);`,
-        `CopyBuffer(handleMACD, 1, 0, 2, macdSignal);`,
+        `CopyBuffer(handleMACD, 0, 0, 3, macdMain);`,
+        `CopyBuffer(handleMACD, 1, 0, 3, macdSignal);`,
       ],
-      triggerBuy:  `(macdMain[0] > macdSignal[0] && macdMain[1] <= macdSignal[1])`,
-      triggerSell: `(macdMain[0] < macdSignal[0] && macdMain[1] >= macdSignal[1])`,
-      filterBuy:   `macdMain[0] > macdSignal[0]`,
-      filterSell:  `macdMain[0] < macdSignal[0]`,
+      triggerBuy:  `(macdMain[1] > macdSignal[1] && macdMain[2] <= macdSignal[2])`,
+      triggerSell: `(macdMain[1] < macdSignal[1] && macdMain[2] >= macdSignal[2])`,
+      filterBuy:   `macdMain[1] > macdSignal[1]`,
+      filterSell:  `macdMain[1] < macdSignal[1]`,
     }),
   },
   adx: {
@@ -225,16 +228,14 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: () => ({
       setup: [
         `double adxMain[], adxPlus[], adxMinus[]; ArraySetAsSeries(adxMain, true); ArraySetAsSeries(adxPlus, true); ArraySetAsSeries(adxMinus, true);`,
-        `CopyBuffer(handleADX, 0, 0, 2, adxMain);`,
-        `CopyBuffer(handleADX, 1, 0, 2, adxPlus);`,
-        `CopyBuffer(handleADX, 2, 0, 2, adxMinus);`,
+        `CopyBuffer(handleADX, 0, 0, 3, adxMain);`,
+        `CopyBuffer(handleADX, 1, 0, 3, adxPlus);`,
+        `CopyBuffer(handleADX, 2, 0, 3, adxMinus);`,
       ],
-      // Trigger: +DI cruza al alza -DI (con tendencia ya activa)
-      triggerBuy:  `(adxPlus[0] > adxMinus[0] && adxPlus[1] <= adxMinus[1] && adxMain[0] > 20)`,
-      triggerSell: `(adxPlus[0] < adxMinus[0] && adxPlus[1] >= adxMinus[1] && adxMain[0] > 20)`,
-      // Filter: dirección continua con tendencia activa
-      filterBuy:   `(adxMain[0] > 20 && adxPlus[0] > adxMinus[0])`,
-      filterSell:  `(adxMain[0] > 20 && adxPlus[0] < adxMinus[0])`,
+      triggerBuy:  `(adxPlus[1] > adxMinus[1] && adxPlus[2] <= adxMinus[2] && adxMain[1] > 20)`,
+      triggerSell: `(adxPlus[1] < adxMinus[1] && adxPlus[2] >= adxMinus[2] && adxMain[1] > 20)`,
+      filterBuy:   `(adxMain[1] > 20 && adxPlus[1] > adxMinus[1])`,
+      filterSell:  `(adxMain[1] > 20 && adxPlus[1] < adxMinus[1])`,
     }),
   },
   ichi: {
@@ -244,17 +245,15 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
     logic: () => ({
       setup: [
         `double ichiTenkan[], ichiKijun[], ichiSenkouA[], ichiSenkouB[]; ArraySetAsSeries(ichiTenkan, true); ArraySetAsSeries(ichiKijun, true); ArraySetAsSeries(ichiSenkouA, true); ArraySetAsSeries(ichiSenkouB, true);`,
-        `CopyBuffer(handleIchi, 0, 0, 2, ichiTenkan);`,
-        `CopyBuffer(handleIchi, 1, 0, 2, ichiKijun);`,
+        `CopyBuffer(handleIchi, 0, 0, 3, ichiTenkan);`,
+        `CopyBuffer(handleIchi, 1, 0, 3, ichiKijun);`,
         `CopyBuffer(handleIchi, 2, 0, 1, ichiSenkouA);`,
         `CopyBuffer(handleIchi, 3, 0, 1, ichiSenkouB);`,
       ],
-      // Trigger: TK cross + precio fuera del Kumo en la dirección correcta
-      triggerBuy:  `(ichiTenkan[0] > ichiKijun[0] && ichiTenkan[1] <= ichiKijun[1] && bidPrice > ichiSenkouA[0])`,
-      triggerSell: `(ichiTenkan[0] < ichiKijun[0] && ichiTenkan[1] >= ichiKijun[1] && bidPrice < ichiSenkouB[0])`,
-      // Filter: Tenkan vs Kijun + precio relativo al Kumo
-      filterBuy:   `(ichiTenkan[0] > ichiKijun[0] && bidPrice > ichiSenkouA[0])`,
-      filterSell:  `(ichiTenkan[0] < ichiKijun[0] && bidPrice < ichiSenkouB[0])`,
+      triggerBuy:  `(ichiTenkan[1] > ichiKijun[1] && ichiTenkan[2] <= ichiKijun[2] && bidPrice > ichiSenkouA[0])`,
+      triggerSell: `(ichiTenkan[1] < ichiKijun[1] && ichiTenkan[2] >= ichiKijun[2] && bidPrice < ichiSenkouB[0])`,
+      filterBuy:   `(ichiTenkan[1] > ichiKijun[1] && bidPrice > ichiSenkouA[0])`,
+      filterSell:  `(ichiTenkan[1] < ichiKijun[1] && bidPrice < ichiSenkouB[0])`,
     }),
   },
   psar: {
@@ -465,11 +464,11 @@ const INDICATOR_DEFS_MQL5: Record<string, IndDef> = {
       const lo = isReversal(s) ? 25 : 20;
       const hi = isReversal(s) ? 75 : 80;
       return {
-        setup: [`double mfi[]; ArraySetAsSeries(mfi, true); CopyBuffer(handleMFI, 0, 0, 2, mfi);`],
-        triggerBuy:  `(mfi[0] < ${lo} && mfi[1] >= ${lo})`,
-        triggerSell: `(mfi[0] > ${hi} && mfi[1] <= ${hi})`,
-        filterBuy:   `mfi[0] < 50`,
-        filterSell:  `mfi[0] > 50`,
+        setup: [`double mfi[]; ArraySetAsSeries(mfi, true); CopyBuffer(handleMFI, 0, 0, 3, mfi);`],
+        triggerBuy:  `(mfi[1] < ${lo} && mfi[2] >= ${lo})`,
+        triggerSell: `(mfi[1] > ${hi} && mfi[2] <= ${hi})`,
+        filterBuy:   `mfi[1] < 50`,
+        filterSell:  `mfi[1] > 50`,
       };
     },
   },
