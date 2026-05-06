@@ -27,7 +27,7 @@ interface BotParams {
   indicators?: string[];
   timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
   lot?: { mode?: 'auto' | 'fixed'; fixedLot?: number };
-  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number };
+  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number; unit?: 'percent' | 'pips' | 'atr' };
   news?: {
     enabled?: boolean;
     beforeMin?: number;
@@ -686,10 +686,12 @@ export function generateMQL5(bot: {
   const T = MQL_COPY[lang];
   const p = bot.parameters || {};
   const risk = p.risk || {};
-  const stopLoss = risk.stopLoss || 1.5;
-  const takeProfit = risk.takeProfit || 3.0;
+  const riskUnit: 'percent' | 'pips' | 'atr' = risk.unit === 'pips' || risk.unit === 'atr' ? risk.unit : 'percent';
+  const stopLoss = risk.stopLoss || (riskUnit === 'percent' ? 1.5 : riskUnit === 'pips' ? 15 : 1.5);
+  const takeProfit = risk.takeProfit || (riskUnit === 'percent' ? 3.0 : riskUnit === 'pips' ? 30 : 3.0);
   const posSize = risk.posSize || 2.0;
   const dailyLoss = risk.dailyLoss || 4.0;
+  const riskUsesAtr = riskUnit === 'atr';
   const leverage = p.leverage || 30;
   const pair = p.pair || 'EURUSD';
   const symbol = pair.replace('/', '');
@@ -759,6 +761,26 @@ export function generateMQL5(bot: {
   const magicSeed = bot.id || `${bot.name}::${strategy}::${pair}`;
   const magicNumber = deterministicMagicNumber(magicSeed);
 
+  // Genera la expresión MQL5 para SL o TP según el modo de unidad de riesgo.
+  // entry es la variable MQL ('ask' o 'bid'); sign +1 abre encima, -1 debajo.
+  const slTpExpr = (entry: 'ask' | 'bid', sign: 1 | -1, inputName: 'InpStopLoss' | 'InpTakeProfit'): string => {
+    if (riskUnit === 'percent') {
+      // 1.5% del precio. Bien para acciones/indices de bajo precio. Pésimo
+      // para FX (1.5% en EURUSD = 162 pips, eternidad para scalping).
+      return `${entry} * (1 ${sign === 1 ? '+' : '-'} ${inputName}/100.0)`;
+    }
+    if (riskUnit === 'pips') {
+      // pips reales — RiskPip() resuelve la confusión 4-digit vs 5-digit.
+      return `${entry} ${sign === 1 ? '+' : '-'} ${inputName} * RiskPip()`;
+    }
+    // atr — múltiplo del ATR(14) actual. Auto-adaptativo a volatilidad.
+    return `${entry} ${sign === 1 ? '+' : '-'} ${inputName} * RiskATR()`;
+  };
+  const slBuy  = slTpExpr('ask', -1, 'InpStopLoss');
+  const tpBuy  = slTpExpr('ask',  1, 'InpTakeProfit');
+  const slSell = slTpExpr('bid',  1, 'InpStopLoss');
+  const tpSell = slTpExpr('bid', -1, 'InpTakeProfit');
+
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq5 |
 //|                              ${T.headerGenerated} · ${generatedDate} |
@@ -786,8 +808,8 @@ input bool     InpUseFixedLot      = ${lotMode === 'fixed' ? 'true' : 'false'};
 input double   InpFixedLot         = ${fixedLot.toFixed(2)};
 
 input group    "${T.groupRisk}"
-input double   InpStopLoss         = ${stopLoss};
-input double   InpTakeProfit       = ${takeProfit};
+input double   InpStopLoss         = ${stopLoss};   ${riskUnit === 'percent' ? '// %' : riskUnit === 'pips' ? '// pips' : '// × ATR(14)'}
+input double   InpTakeProfit       = ${takeProfit}; ${riskUnit === 'percent' ? '// %' : riskUnit === 'pips' ? '// pips' : '// × ATR(14)'}
 input double   InpRiskPerTrade     = ${posSize};
 input double   InpMaxDailyLoss     = ${dailyLoss};
 input int      InpLeverage         = ${leverage};
@@ -814,6 +836,7 @@ double dailyStartBalance;
 datetime lastDayCheck;
 
 ${ind.globals.join('\n')}
+${riskUsesAtr ? 'int handleRisk_ATR; // ATR exclusivo del cálculo SL/TP por unit=atr' : ''}
 
 int OnInit()
 {
@@ -834,6 +857,7 @@ int OnInit()
    }
 
 ${ind.inits.join('\n')}
+${riskUsesAtr ? '   handleRisk_ATR = iATR(InpSymbol, InpTimeframe, 14);\n   if(handleRisk_ATR == INVALID_HANDLE) { Print("Error creando ATR (riesgo)"); return INIT_FAILED; }' : ''}
 
    initialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    dailyStartBalance = initialBalance;
@@ -849,6 +873,7 @@ ${ind.inits.join('\n')}
 void OnDeinit(const int reason)
 {
 ${ind.releases.join('\n')}
+${riskUsesAtr ? '   IndicatorRelease(handleRisk_ATR);' : ''}
 }
 
 bool EventMatchesPatterns(const string eventName, const string patterns)
@@ -999,8 +1024,8 @@ void OnTick()
    if(buySignal)
    {
       double ask = SymbolInfoDouble(InpSymbol, SYMBOL_ASK);
-      double sl = ask * (1 - InpStopLoss/100.0);
-      double tp = ask * (1 + InpTakeProfit/100.0);
+      double sl = ${slBuy};
+      double tp = ${tpBuy};
       double lot = GetTradeLot(MathAbs(ask - sl) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
       if(!trade.Buy(lot, InpSymbol, ask, sl, tp, "${escapeMQL(bot.name)} BUY"))
          Print("${T.buyRejected} ", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription(), " (lot=", lot, " sl=", sl, " tp=", tp, ")");
@@ -1010,8 +1035,8 @@ void OnTick()
    else if(sellSignal)
    {
       double bid = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
-      double sl = bid * (1 + InpStopLoss/100.0);
-      double tp = bid * (1 - InpTakeProfit/100.0);
+      double sl = ${slSell};
+      double tp = ${tpSell};
       double lot = GetTradeLot(MathAbs(sl - bid) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
       if(!trade.Sell(lot, InpSymbol, bid, sl, tp, "${escapeMQL(bot.name)} SELL"))
          Print("${T.sellRejected} ", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription(), " (lot=", lot, " sl=", sl, " tp=", tp, ")");
@@ -1019,6 +1044,25 @@ void OnTick()
          Print("${T.sellSent} lot=", lot, " sl=", sl, " tp=", tp);
    }
 }
+
+${riskUnit === 'pips' ? `
+// 1 pip en el bróker actual. En cuentas 5-digit (la mayoría) y JPY 3-digit
+// "1 pip" son 10 puntos del precio; en 2/4-digit antiguos es 1 punto.
+double RiskPip()
+{
+   int d = (int)SymbolInfoInteger(InpSymbol, SYMBOL_DIGITS);
+   double pt = SymbolInfoDouble(InpSymbol, SYMBOL_POINT);
+   return (d == 3 || d == 5) ? pt * 10.0 : pt;
+}` : ''}
+${riskUnit === 'atr' ? `
+// ATR(14) sobre la última barra cerrada. Auto-adapta SL/TP a la volatilidad
+// del par. Si CopyBuffer falla devuelve 0 y el trade se rechaza por sl==tp.
+double RiskATR()
+{
+   double buf[]; ArraySetAsSeries(buf, true);
+   if(CopyBuffer(handleRisk_ATR, 0, 1, 1, buf) != 1) return 0;
+   return buf[0];
+}` : ''}
 
 //+------------------------------------------------------------------+
 //| ${T.headerEndOfFile}                             |

@@ -1071,7 +1071,7 @@ const state = {
       indicators: ['rsi', 'ema'],
       timeframe: 'M15', // M1 / M5 / M15 / M30 / H1 / H4 / D1
       lot: { mode: 'auto', fixedLot: 0.10 }, // mode: 'auto' (riesgo %) o 'fixed' (lote fijo)
-      risk: { stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
+      risk: { unit: 'percent', stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
       news: {
         enabled: true,
         beforeMin: 30,
@@ -2549,13 +2549,25 @@ function renderStepRisk() {
       </div>
     </div>
 
+    <div class="field-label" style="margin-bottom:10px">SL/TP unit</div>
+    <div class="chip-row" style="margin-bottom:18px">
+      <button class="chip ${d.risk.unit === 'percent' ? 'active' : ''}" data-risk-unit="percent">Percent</button>
+      <button class="chip ${d.risk.unit === 'pips' ? 'active' : ''}" data-risk-unit="pips">Pips</button>
+      <button class="chip ${d.risk.unit === 'atr' ? 'active' : ''}" data-risk-unit="atr">ATR(14)</button>
+    </div>
+    <div class="text-dim mb-4" style="font-size:12px;margin-bottom:18px">
+      ${d.risk.unit === 'percent' ? 'Distance as % of current price. Fine for stocks/indices; way too wide for Forex scalping.' : ''}
+      ${d.risk.unit === 'pips'    ? 'Distance in pips. The Forex standard unit (1 pip = 0.0001 in EUR/USD).' : ''}
+      ${d.risk.unit === 'atr'     ? 'Multiple of ATR(14). Auto-adapts SL/TP to the pair real volatility. Recommended for any asset.' : ''}
+    </div>
+
     <div style="margin-bottom:22px">
-      <div class="field-label" id="lbl-sl">Stop loss · ${d.risk.stopLoss}%</div>
-      <input type="range" id="r-sl" class="slider-modern" min="0.5" max="10" step="0.1" value="${d.risk.stopLoss}"/>
+      <div class="field-label" id="lbl-sl">Stop loss · ${d.risk.stopLoss}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}</div>
+      <input type="range" id="r-sl" class="slider-modern" min="${d.risk.unit === 'percent' ? '0.5' : d.risk.unit === 'pips' ? '5' : '0.5'}" max="${d.risk.unit === 'percent' ? '10' : d.risk.unit === 'pips' ? '200' : '5'}" step="${d.risk.unit === 'pips' ? '1' : '0.1'}" value="${d.risk.stopLoss}"/>
     </div>
     <div style="margin-bottom:22px">
-      <div class="field-label" id="lbl-tp">Take profit · ${d.risk.takeProfit}%</div>
-      <input type="range" id="r-tp" class="slider-modern" min="0.5" max="20" step="0.1" value="${d.risk.takeProfit}"/>
+      <div class="field-label" id="lbl-tp">Take profit · ${d.risk.takeProfit}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}</div>
+      <input type="range" id="r-tp" class="slider-modern" min="${d.risk.unit === 'percent' ? '0.5' : d.risk.unit === 'pips' ? '5' : '0.5'}" max="${d.risk.unit === 'percent' ? '20' : d.risk.unit === 'pips' ? '500' : '10'}" step="${d.risk.unit === 'pips' ? '1' : '0.1'}" value="${d.risk.takeProfit}"/>
     </div>
     <div style="margin-bottom:22px">
       <div class="field-label" id="lbl-ps">Position size · ${d.risk.posSize}% of capital</div>
@@ -2797,8 +2809,8 @@ function renderStepReview() {
         ['Strategy', STRATEGIES.find(s => s.id === d.strategy)?.name],
         ['Indicators', d.indicators.join(', ')],
         ['Leverage', `1:${d.leverage}`],
-        ['Stop loss', `${d.risk.stopLoss}%`],
-        ['Take profit', `${d.risk.takeProfit}%`],
+        ['Stop loss', `${d.risk.stopLoss}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}`],
+        ['Take profit', `${d.risk.takeProfit}${d.risk.unit === 'percent' ? '%' : d.risk.unit === 'pips' ? ' pips' : '× ATR'}`],
         ['News filter', d.news.enabled ? `${({high:'High',medium:'Medium+',all:'All'}[d.news.impactMin])} · −${d.news.beforeMin}/+${d.news.afterMin} min · ${d.news.events.length}/${NEWS_EVENTS.length} events` : 'Disabled'],
         ['Funded account', d.funded.enabled ? FUNDED_FIRMS.find(f => f.id === d.funded.firm)?.name || 'Yes' : 'No'],
       ].map(([k, v]) => `
@@ -2926,12 +2938,27 @@ function bindWizard() {
   });
   document.getElementById('leverage-custom')?.addEventListener('change', () => render());
   const sliderMap = { sl: 'stopLoss', tp: 'takeProfit', ps: 'posSize', dl: 'dailyLoss' };
+  const unitSuffix = w.data.risk.unit === 'percent' ? '%' : w.data.risk.unit === 'pips' ? ' pips' : '× ATR';
   const sliderLabels = {
-    sl: (v) => `Stop loss · ${v}%`,
-    tp: (v) => `Take profit · ${v}%`,
+    sl: (v) => `Stop loss · ${v}${unitSuffix}`,
+    tp: (v) => `Take profit · ${v}${unitSuffix}`,
     ps: (v) => `Position size · ${v}% of capital`,
     dl: (v) => `Max daily loss · ${v}%`,
   };
+  // SL/TP unit toggle. Switching units resets SL/TP to sensible defaults
+  // for that unit (15 pips, 1.5×ATR, 1.5%) instead of carrying over the
+  // old value which would be nonsensical (e.g. 1.5 pips or 15× ATR).
+  document.querySelectorAll('[data-risk-unit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const unit = btn.getAttribute('data-risk-unit');
+      if (unit === w.data.risk.unit) return;
+      w.data.risk.unit = unit;
+      const defaults = { percent: { sl: 1.5, tp: 3.0 }, pips: { sl: 15, tp: 30 }, atr: { sl: 1.5, tp: 3.0 } };
+      w.data.risk.stopLoss = defaults[unit].sl;
+      w.data.risk.takeProfit = defaults[unit].tp;
+      render();
+    });
+  });
   const updateSliderFill = (el) => {
     const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
     el.style.setProperty('--val', ((val - min) / (max - min)) * 100 + '%');

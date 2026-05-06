@@ -104,15 +104,27 @@ function sanitizeBotConfig(raw: any): { error: SanitizeError; data: null } | { e
     cleanParams.indicators = [];
   }
 
-  // Validar bounds en risk
+  // Validar bounds en risk. La unidad puede ser percent | pips | atr; cada
+  // una tiene rangos sensatos distintos (10% es enorme, 10 pips es scalping,
+  // 10× ATR es ridículo). Default 'percent' para retrocompat con bots viejos.
   if (cleanParams.risk && typeof cleanParams.risk === 'object') {
     const r: any = {};
+    const unit = cleanParams.risk.unit;
+    r.unit = (unit === 'pips' || unit === 'atr') ? unit : 'percent';
+
+    const ranges: Record<string, { sl: [number, number]; tp: [number, number] }> = {
+      percent: { sl: [0.05, 50],   tp: [0.05, 100]  },  // % del precio
+      pips:    { sl: [1,    5000], tp: [1,    10000] }, // pips
+      atr:     { sl: [0.1,  10],   tp: [0.1,  20]   },  // múltiplos de ATR(14)
+    };
+    const [slMin, slMax] = ranges[r.unit].sl;
+    const [tpMin, tpMax] = ranges[r.unit].tp;
     const numField = (key: string, min: number, max: number) => {
       const v = cleanParams.risk[key];
       if (typeof v === 'number' && isFinite(v)) r[key] = Math.min(max, Math.max(min, v));
     };
-    numField('stopLoss', 0.05, 50);
-    numField('takeProfit', 0.05, 100);
+    numField('stopLoss', slMin, slMax);
+    numField('takeProfit', tpMin, tpMax);
     numField('posSize', 0.1, 50);
     numField('dailyLoss', 0.5, 50);
     cleanParams.risk = r;

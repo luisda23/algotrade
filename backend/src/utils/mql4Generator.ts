@@ -14,7 +14,7 @@ interface BotParams {
   indicators?: string[];
   timeframe?: 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
   lot?: { mode?: 'auto' | 'fixed'; fixedLot?: number };
-  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number };
+  risk?: { stopLoss?: number; takeProfit?: number; posSize?: number; dailyLoss?: number; unit?: 'percent' | 'pips' | 'atr' };
   funded?: { enabled?: boolean; firm?: string };
 }
 
@@ -589,10 +589,20 @@ export function generateMQL4(bot: {
   const T = MQL_COPY[lang];
   const p = bot.parameters || {};
   const risk = p.risk || {};
-  const stopLoss = risk.stopLoss || 1.5;
-  const takeProfit = risk.takeProfit || 3.0;
+  const riskUnit: 'percent' | 'pips' | 'atr' = risk.unit === 'pips' || risk.unit === 'atr' ? risk.unit : 'percent';
+  const stopLoss = risk.stopLoss || (riskUnit === 'percent' ? 1.5 : riskUnit === 'pips' ? 15 : 1.5);
+  const takeProfit = risk.takeProfit || (riskUnit === 'percent' ? 3.0 : riskUnit === 'pips' ? 30 : 3.0);
   const posSize = risk.posSize || 2.0;
   const dailyLoss = risk.dailyLoss || 4.0;
+  const slTpExpr = (entry: 'Ask' | 'Bid', sign: 1 | -1, inputName: 'InpStopLoss' | 'InpTakeProfit'): string => {
+    if (riskUnit === 'percent') return `${entry} * (1 ${sign === 1 ? '+' : '-'} ${inputName}/100.0)`;
+    if (riskUnit === 'pips')    return `${entry} ${sign === 1 ? '+' : '-'} ${inputName} * RiskPip()`;
+    return `${entry} ${sign === 1 ? '+' : '-'} ${inputName} * RiskATR()`;
+  };
+  const slBuy  = slTpExpr('Ask', -1, 'InpStopLoss');
+  const tpBuy  = slTpExpr('Ask',  1, 'InpTakeProfit');
+  const slSell = slTpExpr('Bid',  1, 'InpStopLoss');
+  const tpSell = slTpExpr('Bid', -1, 'InpTakeProfit');
   const leverage = p.leverage || 30;
   const pair = p.pair || 'EURUSD';
   const symbol = pair.replace('/', '');
@@ -655,8 +665,8 @@ extern bool    InpUseFixedLot        = ${lotMode === 'fixed' ? 'true' : 'false'}
 extern double  InpFixedLot           = ${fixedLot.toFixed(2)};
 
 extern string  _RISK                 = "${T.groupRisk}";
-extern double  InpStopLoss           = ${stopLoss};
-extern double  InpTakeProfit         = ${takeProfit};
+extern double  InpStopLoss           = ${stopLoss};   ${riskUnit === 'percent' ? '// %' : riskUnit === 'pips' ? '// pips' : '// x ATR(14)'}
+extern double  InpTakeProfit         = ${takeProfit}; ${riskUnit === 'percent' ? '// %' : riskUnit === 'pips' ? '// pips' : '// x ATR(14)'}
 extern double  InpRiskPerTrade       = ${posSize};
 extern double  InpMaxDailyLoss       = ${dailyLoss};
 extern int     InpLeverage           = ${leverage};
@@ -790,8 +800,8 @@ void OnTick()
 
    if(buySignal)
    {
-      double sl = Ask * (1 - InpStopLoss/100.0);
-      double tp = Ask * (1 + InpTakeProfit/100.0);
+      double sl = ${slBuy};
+      double tp = ${tpBuy};
       double lot = GetTradeLot(MathAbs(Ask - sl) / Point);
       int ticket = OrderSend(Symbol(), OP_BUY, lot, Ask, InpSlippage, sl, tp, "${escapeMQL(bot.name)} BUY", InpMagicNumber, 0, clrGreen);
       if(ticket < 0) Print("${T.buyOpenError} ", GetLastError());
@@ -799,14 +809,29 @@ void OnTick()
    }
    else if(sellSignal)
    {
-      double sl = Bid * (1 + InpStopLoss/100.0);
-      double tp = Bid * (1 - InpTakeProfit/100.0);
+      double sl = ${slSell};
+      double tp = ${tpSell};
       double lot = GetTradeLot(MathAbs(sl - Bid) / Point);
       int ticket = OrderSend(Symbol(), OP_SELL, lot, Bid, InpSlippage, sl, tp, "${escapeMQL(bot.name)} SELL", InpMagicNumber, 0, clrRed);
       if(ticket < 0) Print("${T.sellOpenError} ", GetLastError());
       else Print("${T.sellOpened} ", ticket, " · ${T.lot} ", lot);
    }
 }
+
+${riskUnit === 'pips' ? `
+// 1 pip en el bróker actual. 5-digit y JPY 3-digit usan 10*Point; 4-digit
+// antiguos usan 1*Point.
+double RiskPip()
+{
+   if(Digits == 3 || Digits == 5) return Point * 10.0;
+   return Point;
+}` : ''}
+${riskUnit === 'atr' ? `
+// ATR(14) sobre la última barra cerrada. Auto-adapta SL/TP a la volatilidad.
+double RiskATR()
+{
+   return iATR(Symbol(), InpTimeframe, 14, 1);
+}` : ''}
 
 //+------------------------------------------------------------------+
 //| ${T.headerEndOfFile}                             |
