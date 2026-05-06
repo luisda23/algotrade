@@ -3173,12 +3173,19 @@ async function startCheckout() {
     },
     _ts: Date.now(),
   };
+  // Guardamos en localStorage solo como fallback de UI (recuperar config si
+  // el usuario vuelve a abrir el wizard sin haber pagado). La verdad de
+  // este bot la tiene el backend en `pending_bots`.
   localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
 
   try {
+    // Mandamos el config completo al backend: lo guarda como PendingBot y
+    // mete el id en custom_data de Lemon. Cuando el webhook reciba el pago,
+    // creará el Bot real automáticamente sin depender de que el usuario
+    // vuelva al app.
     const res = await api('/payments/checkout-custom', {
       method: 'POST',
-      body: JSON.stringify({ botName: w.data.name }),
+      body: JSON.stringify({ botName: w.data.name, botConfig }),
     });
     if (res.url) {
       window.location.href = res.url;

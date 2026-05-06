@@ -27,24 +27,54 @@ async function lemonApi(path: string): Promise<any> {
 }
 
 // ───── Crear sesión de checkout (devuelve URL de Lemon Squeezy) ─────
+// Acepta el botConfig completo, lo guarda como PendingBot en BD y embebe
+// el id corto en custom_data.pending_bot_id. Cuando llega el webhook de
+// pago, el handler busca el PendingBot por ese id y materializa el Bot.
+// Así el bot se crea aunque el usuario cierre el navegador o cambie de
+// dispositivo entre pagar y volver al app.
 router.post('/checkout-custom', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     if (!LEMON_BUY_URL) {
       return res.status(500).json(errResp(RC.PAY_GATEWAY_DOWN, 'Payment gateway not configured'));
     }
 
-    const { botName } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
     if (!user) return res.status(404).json(errResp(RC.USER_NOT_FOUND, 'User not found'));
+
+    // Validar el botConfig si llega. Si no, el flujo viejo (solo botName)
+    // sigue funcionando — el webhook materializará un bot con defaults.
+    const { botConfig, botName: rawBotName } = req.body;
+    let pendingBotId: string | undefined;
+    let botName: string | undefined = typeof rawBotName === 'string' ? rawBotName.slice(0, 60) : undefined;
+
+    if (botConfig) {
+      const sanitized = sanitizeBotConfig(botConfig);
+      if (sanitized.error) {
+        return res.status(400).json(errResp(sanitized.error.code, sanitized.error.fallback));
+      }
+      const data = sanitized.data!;
+      const pending = await prisma.pendingBot.create({
+        data: {
+          userId: req.userId!,
+          config: data as any,
+          // 24h de gracia: tiempo más que suficiente para que el usuario
+          // complete el checkout. Cron de purga limpia lo que caduca.
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+      pendingBotId = pending.id;
+      botName = data.name;
+    }
 
     const params = new URLSearchParams();
     params.set('checkout[email]', user.email);
     if (user.name) params.set('checkout[name]', user.name);
     params.set('checkout[custom][user_id]', String(req.userId || ''));
-    if (botName) params.set('checkout[custom][bot_name]', String(botName).slice(0, 60));
+    if (botName) params.set('checkout[custom][bot_name]', botName);
+    if (pendingBotId) params.set('checkout[custom][pending_bot_id]', pendingBotId);
 
     const url = `${LEMON_BUY_URL}?${params.toString()}`;
-    res.json({ url });
+    res.json({ url, pendingBotId });
   } catch (error: any) {
     console.error('Lemon checkout error:', error);
     res.status(500).json(errResp(RC.PAY_CHECKOUT_FAIL, 'Failed to create checkout session'));
@@ -466,10 +496,99 @@ router.post('/lemon-webhook', async (req: Request, res: Response) => {
 
     const event = (req.body?.meta?.event_name || '').toString();
     const orderId = req.body?.data?.id;
-    console.log(`[lemon-webhook] event=${event} order_id=${orderId}`);
+    const attrs = req.body?.data?.attributes || {};
+    const status = attrs.status;
+    console.log(`[lemon-webhook] event=${event} order_id=${orderId} status=${status}`);
 
-    // Solo registramos. La creación del bot se hace en /verify desde el frontend
-    // (necesita el botConfig que vive en localStorage del usuario).
+    // El webhook es la fuente de verdad: si una orden llega como `paid`,
+    // creamos el Bot inmediatamente (incluso si el usuario cerró el
+    // navegador y nunca vuelve a /verify).
+    const isPaidOrder =
+      (event === 'order_created' || event === 'order_refunded' || event === 'order_paid') &&
+      status === 'paid';
+
+    if (isPaidOrder && orderId) {
+      const pendingBotId =
+        attrs?.first_order_item?.custom_data?.pending_bot_id ||
+        attrs?.custom_data?.pending_bot_id;
+      const customUserId =
+        attrs?.first_order_item?.custom_data?.user_id ||
+        attrs?.custom_data?.user_id;
+      const customBotName =
+        attrs?.first_order_item?.custom_data?.bot_name ||
+        attrs?.custom_data?.bot_name ||
+        'Mi Bot';
+
+      const orderKey = String(orderId);
+      const existing = await findBotByLemonOrderId(orderKey);
+      if (existing) {
+        // Ya existe — /verify del frontend ganó la carrera o reentrega del webhook.
+        console.log(`[lemon-webhook] bot ya existía orderId=${orderKey}, no-op`);
+        return res.json({ received: true, idempotent: true });
+      }
+
+      // Caso A: tenemos pending_bot_id → materializar Bot con la config real.
+      if (pendingBotId && customUserId) {
+        const pending = await prisma.pendingBot.findUnique({ where: { id: pendingBotId } });
+        if (pending && pending.userId === customUserId) {
+          try {
+            const cfg: any = pending.config;
+            const bot = await prisma.bot.create({
+              data: {
+                userId: pending.userId,
+                name: cfg.name,
+                description: cfg.description || '',
+                strategy: cfg.strategy,
+                lemonOrderId: orderKey,
+                parameters: { ...cfg.parameters, lemonOrderId: orderKey, lemonOrderNumber: String(attrs.order_number || '') },
+              },
+            });
+            // Limpiar el PendingBot — su trabajo terminó.
+            await prisma.pendingBot.delete({ where: { id: pendingBotId } });
+            console.log(`[lemon-webhook] bot creado desde PendingBot id=${bot.id}`);
+            return res.json({ received: true, botId: bot.id });
+          } catch (e: any) {
+            // P2002 = otro flujo (posiblemente /verify) ganó la carrera y ya
+            // creó el bot. Idempotente: lo dejamos pasar.
+            if (e?.code !== 'P2002') console.error('[lemon-webhook] create bot fail:', e);
+          }
+        } else if (!pending) {
+          console.warn(`[lemon-webhook] PendingBot no encontrado id=${pendingBotId} (caducado?)`);
+        }
+      }
+
+      // Caso B: no hay pendingBotId pero sí user_id → bot fallback con defaults.
+      // Mismo patrón que /recover. Cubre flujos legacy donde el frontend no
+      // mandó botConfig al checkout.
+      if (customUserId) {
+        try {
+          const bot = await prisma.bot.create({
+            data: {
+              userId: customUserId,
+              name: String(customBotName).slice(0, 60),
+              description: 'Bot creado desde webhook · puedes editarlo',
+              strategy: 'momentum',
+              lemonOrderId: orderKey,
+              parameters: {
+                market: 'forex', pair: 'EURUSD', leverage: 30,
+                indicators: ['rsi', 'ema'], timeframe: 'M15',
+                lot: { mode: 'auto', fixedLot: 0.10 },
+                risk: { unit: 'percent', stopLoss: 1.5, takeProfit: 3.0, posSize: 2, dailyLoss: 4 },
+                news: { enabled: false }, funded: { enabled: false, firm: null },
+                lemonOrderId: orderKey,
+                lemonOrderNumber: String(attrs.order_number || ''),
+                webhookFallback: true,
+              },
+            },
+          });
+          console.log(`[lemon-webhook] bot fallback creado id=${bot.id}`);
+          return res.json({ received: true, botId: bot.id, fallback: true });
+        } catch (e: any) {
+          if (e?.code !== 'P2002') console.error('[lemon-webhook] fallback create fail:', e);
+        }
+      }
+    }
+
     res.json({ received: true });
   } catch (error: any) {
     console.error('Webhook error:', error);

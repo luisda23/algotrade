@@ -29,6 +29,7 @@ model User {
   bots          Bot[]
   brokers       BrokerConnection[]
   subscriptions Subscription[]
+  pendingBots   PendingBot[]
   referralCode  String?    @unique
   referredBy    String?
 
@@ -117,6 +118,29 @@ model Trade {
   closedAt      DateTime?
 
   @@map("trades")
+}
+
+// Bot config en standby a la espera del webhook de pago. El frontend lo
+// crea cuando el usuario pulsa "Pagar" en el wizard; el id corto se inyecta
+// como `custom_data.pending_bot_id` en la URL de Lemon Squeezy. Cuando
+// llega el webhook order_created (pagado), el handler busca este registro,
+// materializa el Bot real y lo borra. Así el bot se crea aunque el usuario
+// cierre el navegador o cambie de dispositivo entre pagar y volver.
+//
+// El `expiresAt` permite limpiar registros huérfanos: si el usuario inicia
+// checkout pero nunca paga, el PendingBot caduca a las 24h y se puede
+// purgar por cron.
+model PendingBot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  config      Json     // { name, description, strategy, parameters }
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("pending_bots")
 }
 
 model Subscription {
