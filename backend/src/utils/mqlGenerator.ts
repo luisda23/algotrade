@@ -17,6 +17,7 @@
 //   o el precio toca Fib mientras RSI está sobrevendido.
 
 import { MQL_COPY, Lang, strategyDesc } from './mqlCopy';
+import { BUILD_VERSION } from './version';
 
 interface BotParams {
   market?: string;
@@ -756,6 +757,7 @@ export function generateMQL5(bot: {
 //|                                              ${sanitizeName}.mq5 |
 //|                              ${T.headerGenerated} · ${generatedDate} |
 //|                                          https://yudbot.com |
+//|                                build: ${BUILD_VERSION} |
 //+------------------------------------------------------------------+
 #property copyright "YudBot"
 #property link      "https://yudbot.com"
