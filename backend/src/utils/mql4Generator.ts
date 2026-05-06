@@ -5,6 +5,7 @@
 
 import { MQL_COPY, Lang, strategyDesc } from './mqlCopy';
 import { BUILD_VERSION } from './version';
+import { deterministicMagicNumber } from './magicNumber';
 
 interface BotParams {
   market?: string;
@@ -598,7 +599,10 @@ export function generateMQL4(bot: {
   const indicators = p.indicators || [];
   const strategy = bot.strategy || 'momentum';
   const generatedDate = new Date().toISOString().split('T')[0];
-  const magicNumber = Math.floor(Math.random() * 900000) + 100000;
+  // Magic determinista: regenerar el bot conserva el mismo magic, así
+  // HasOpenPosition() reconoce posiciones abiertas del .mq4 anterior.
+  const magicSeed = bot.id || `${bot.name}::${strategy}::${pair}`;
+  const magicNumber = deterministicMagicNumber(magicSeed);
 
   const tfKey = (p.timeframe && TIMEFRAME_TO_MQL4[p.timeframe])
     ? p.timeframe

@@ -18,6 +18,7 @@
 
 import { MQL_COPY, Lang, strategyDesc } from './mqlCopy';
 import { BUILD_VERSION } from './version';
+import { deterministicMagicNumber } from './magicNumber';
 
 interface BotParams {
   market?: string;
@@ -753,6 +754,11 @@ export function generateMQL5(bot: {
   const buyExpr = combine(ind.triggerBuys, ind.filterBuys, fallbackBuy);
   const sellExpr = combine(ind.triggerSells, ind.filterSells, fallbackSell);
 
+  // Magic determinista: regenerar el bot conserva el mismo magic, así
+  // HasOwnPosition() reconoce las posiciones abiertas del bot anterior.
+  const magicSeed = bot.id || `${bot.name}::${strategy}::${pair}`;
+  const magicNumber = deterministicMagicNumber(magicSeed);
+
   return `//+------------------------------------------------------------------+
 //|                                              ${sanitizeName}.mq5 |
 //|                              ${T.headerGenerated} · ${generatedDate} |
@@ -773,7 +779,7 @@ export function generateMQL5(bot: {
 input group    "${T.groupGeneral}"
 input string         InpSymbol      = "${symbol}";
 input ENUM_TIMEFRAMES InpTimeframe  = ${timeframeMQL};
-input int            InpMagicNumber = ${Math.floor(Math.random() * 900000) + 100000};
+input int            InpMagicNumber = ${magicNumber};
 
 input group    "${T.groupLot}"
 input bool     InpUseFixedLot      = ${lotMode === 'fixed' ? 'true' : 'false'};
