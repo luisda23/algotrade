@@ -6,10 +6,10 @@
     { "source": "/en", "destination": "/landing-en" },
     { "source": "/en/terms", "destination": "/terms-en" },
     { "source": "/en/privacy", "destination": "/privacy-en" },
-    { "source": "/app", "destination": "/app.html" },
-    { "source": "/app/(.*)", "destination": "/app.html" },
-    { "source": "/en/app", "destination": "/app-en.html" },
-    { "source": "/en/app/(.*)", "destination": "/app-en.html" }
+    { "source": "/app", "destination": "/app" },
+    { "source": "/app/(.*)", "destination": "/app" },
+    { "source": "/en/app", "destination": "/app-en" },
+    { "source": "/en/app/(.*)", "destination": "/app-en" }
   ],
   "headers": [
     {
