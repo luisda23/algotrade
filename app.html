@@ -1796,7 +1796,7 @@ function bindAuth() {
       state.authLoading = true;
       render();
       try {
-        await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+        await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name, lang: APP_LANG }) });
         // Cuenta creada — mandamos al usuario al formulario de login con un mensaje
         state.authMode = 'login';
         state.authError = null;
@@ -3328,14 +3328,17 @@ function loadAccount(root) {
     render();
   });
 
-  // Cambio de idioma: persiste preferencia y salta al app del idioma elegido.
-  // El propio app re-leerá lang al cargar y respetará la elección.
-  document.getElementById('lang-es-btn')?.addEventListener('click', () => {
+  // Cambio de idioma: persiste preferencia (en localStorage para el redirect
+  // del app + en backend para que los emails salgan en el idioma elegido) y
+  // salta al app del idioma elegido. El propio app re-leerá lang al cargar.
+  document.getElementById('lang-es-btn')?.addEventListener('click', async () => {
     try { localStorage.setItem('lang', 'es'); } catch(e) {}
+    try { await api('/auth/lang', { method: 'POST', body: JSON.stringify({ lang: 'es' }) }); } catch (e) {}
     if (window.location.pathname.startsWith('/en/')) window.location.href = '/app';
   });
-  document.getElementById('lang-en-btn')?.addEventListener('click', () => {
+  document.getElementById('lang-en-btn')?.addEventListener('click', async () => {
     try { localStorage.setItem('lang', 'en'); } catch(e) {}
+    try { await api('/auth/lang', { method: 'POST', body: JSON.stringify({ lang: 'en' }) }); } catch (e) {}
     if (!window.location.pathname.startsWith('/en/')) window.location.href = '/en/app';
   });
   document.getElementById('recover-bots-btn')?.addEventListener('click', async () => {
