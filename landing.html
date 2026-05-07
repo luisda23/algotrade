@@ -1236,24 +1236,91 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   const dot = new THREE.Mesh(dotGeometry, dotMaterial);
   scene.add(dot);
 
-  // Orbe wireframe central — anclaje visual del hero
-  const orbGeo = new THREE.IcosahedronGeometry(2.2, 1);
-  const orbMat = new THREE.MeshBasicMaterial({
-    color: themeColor(),
-    wireframe: true,
-    transparent: true,
-    opacity: 0.55,
-  });
-  const orb = new THREE.Mesh(orbGeo, orbMat);
-  orb.position.y = 5;
-  scene.add(orb);
+  // ──────────────────────────────────────────────
+  //  ROBOT (sustituye al orbe icosaédrico anterior)
+  // ──────────────────────────────────────────────
+  // Construcción procedural con primitivas Three.js. La cabeza es un
+  // subgrupo independiente del cuerpo: rota más con el cursor para dar
+  // sensación de "el robot te está mirando" mientras el cuerpo solo
+  // sway leve. Materiales monocromáticos que se invierten con el tema.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+  keyLight.position.set(6, 10, 8);
+  scene.add(keyLight);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  rimLight.position.set(-6, 4, -5);
+  scene.add(rimLight);
+
+  const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
+  const bodyHex   = () => isLight() ? 0x1a1a1a : 0xf2f2f2;
+  const visorHex  = () => isLight() ? 0x000000 : 0x0a0a0a;
+  const accentHex = () => isLight() ? 0x000000 : 0xffffff;
+
+  const matBody  = new THREE.MeshPhongMaterial({ color: bodyHex(), shininess: 90, specular: 0x333333 });
+  const matVisor = new THREE.MeshPhongMaterial({ color: visorHex(), shininess: 220, specular: 0xffffff });
+  const matEye   = new THREE.MeshBasicMaterial({ color: accentHex() });
+
+  const robot = new THREE.Group();
+
+  // Cabeza (subgrupo — tracking cursor)
+  const headGroup = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 48, 48), matBody);
+  head.scale.set(1, 1.08, 0.95);
+  headGroup.add(head);
+
+  // Visor curvo frontal — porción de esfera ligeramente mayor
+  const visorGeo = new THREE.SphereGeometry(1.42, 48, 48, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.18, Math.PI * 0.55);
+  const visor = new THREE.Mesh(visorGeo, matVisor);
+  visor.rotation.y = Math.PI; // mirar al frente del observador
+  headGroup.add(visor);
+
+  // Ojo emisivo — desplazado al lado izquierdo del visor (perfil)
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), matEye);
+  eye.position.set(-0.5, 0.05, 1.3);
+  headGroup.add(eye);
+
+  headGroup.position.y = 1.7;
+  robot.add(headGroup);
+
+  // Cuello
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.55, 0.55, 24), matBody);
+  neck.position.y = 0.55;
+  robot.add(neck);
+
+  // Torso — caja redondeada falsa: box + capsule por encima
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.7, 1.25), matBody);
+  torso.position.y = -0.4;
+  robot.add(torso);
+
+  // Hombros — esferas grandes a los lados del torso
+  const shoulderGeo = new THREE.SphereGeometry(0.7, 32, 32);
+  const lShoulder = new THREE.Mesh(shoulderGeo, matBody);
+  lShoulder.position.set(-1.25, 0.25, 0);
+  robot.add(lShoulder);
+  const rShoulder = new THREE.Mesh(shoulderGeo, matBody);
+  rShoulder.position.set(1.25, 0.25, 0);
+  robot.add(rShoulder);
+
+  // Detalle pecho — lente circular oscura como en la referencia
+  const chestRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.07, 16, 32), matBody);
+  chestRing.position.set(0.55, -0.3, 0.65);
+  chestRing.rotation.x = 0;
+  robot.add(chestRing);
+  const chestLens = new THREE.Mesh(new THREE.CircleGeometry(0.38, 32), matVisor);
+  chestLens.position.set(0.55, -0.3, 0.66);
+  robot.add(chestLens);
+
+  robot.position.y = 4;
+  scene.add(robot);
 
   // Re-color when theme changes
   const themeObserver = new MutationObserver(() => {
     const c = themeColor();
     material.color.setHex(c);
     dotMaterial.color.setHex(c);
-    orbMat.color.setHex(c);
+    matBody.color.setHex(bodyHex());
+    matVisor.color.setHex(visorHex());
+    matEye.color.setHex(accentHex());
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1295,13 +1362,15 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
 
-    // Orbe: rotación constante + pulso suave + reactivo al ratón
-    orb.rotation.x += 0.003;
-    orb.rotation.y += 0.005;
-    const pulse = 1 + Math.sin(time * 0.8) * 0.04;
-    orb.scale.setScalar(pulse);
-    orb.position.y = 5 + Math.sin(time * 0.6) * 0.3;
-    orb.position.x += (mouseX * 0.6 - orb.position.x) * 0.04;
+    // Robot — la cabeza sigue al cursor (yaw + pitch); el cuerpo
+    // hace un sway sutil para que no parezca rígido. Lerp suave para
+    // evitar que cualquier movimiento brusco del cursor lo brusque.
+    const targetYaw   =  mouseX * 0.7;
+    const targetPitch = -mouseY * 0.45;
+    headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
+    headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
+    robot.rotation.y += (mouseX * 0.18 - robot.rotation.y) * 0.04;
+    robot.position.y = 4 + Math.sin(time * 0.5) * 0.15;
 
     renderer.render(scene, camera);
   }
