@@ -254,6 +254,41 @@ input, textarea, select { font-family: inherit; color: inherit; }
 [data-theme="light"] .theme-toggle-mobile .theme-icon-sun { display: block; }
 [data-theme="light"] .theme-toggle-mobile .theme-icon-moon { display: none; }
 
+.lang-toggle-app {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease);
+  font-family: inherit;
+}
+.lang-toggle-app:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg-card); }
+.lang-toggle-app .lang-toggle-code {
+  font-weight: 700; font-size: 11px; letter-spacing: 0.5px;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+}
+.lang-toggle-mobile {
+  height: 36px; padding: 0 10px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.lang-toggle-mobile:hover, .lang-toggle-mobile:active { color: var(--text); border-color: var(--border-strong); }
+
 /* Mobile top bar + bottom nav */
 .mobile-top {
   display: none;
@@ -1304,6 +1339,11 @@ function renderShell() {
             <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             <span class="theme-toggle-label">Theme</span>
           </button>
+          <button class="lang-toggle-app lang-toggle-trigger" aria-label="Switch language to Spanish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span class="theme-toggle-label">Language</span>
+            <span class="lang-toggle-code" style="margin-left:auto">ES</span>
+          </button>
           <div class="user-pill">
             <div class="user-avatar">${initial}</div>
             <div class="user-info">
@@ -1322,10 +1362,13 @@ function renderShell() {
             </span>
             YudBot
           </div>
-          <button class="theme-toggle-mobile theme-toggle-trigger" aria-label="Toggle theme">
-            <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="lang-toggle-mobile lang-toggle-trigger" aria-label="Switch language to Spanish">ES</button>
+            <button class="theme-toggle-mobile theme-toggle-trigger" aria-label="Toggle theme">
+              <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+              <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+          </div>
         </div>
         <div id="screen-root" class="fade-in"></div>
         <nav class="mobile-bottom">
@@ -1364,6 +1407,12 @@ function bindNav() {
         document.documentElement.setAttribute('data-theme', 'light');
         localStorage.setItem('theme', 'light');
       }
+    });
+  });
+  document.querySelectorAll('.lang-toggle-trigger').forEach(btn => {
+    btn.addEventListener('click', () => {
+      try { localStorage.setItem('lang', 'es'); } catch (e) {}
+      window.location.href = '/app' + window.location.search + window.location.hash;
     });
   });
 }
