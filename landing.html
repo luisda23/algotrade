@@ -1448,13 +1448,13 @@ if (!window._skipHeroCanvas) {
     scene.add(key);
     const rim = new THREE.SpotLight(0xffffff, 6, 40, Math.PI / 5, 0.4, 1.2);
     rim.position.set(-10, 6, -8);
-    rim.target.position.set(0, 4, 0);
+    rim.target.position.set(0, 7.5, 0);
     scene.add(rim, rim.target);
     scene.add(new THREE.AmbientLight(0x101418, 0.4));
 
     // Punto de luz dentro del visor — emergerá con el bloom
     const coreLight = new THREE.PointLight(0xffffff, 1.2, 8);
-    coreLight.position.set(0, 4.6, 0.6);
+    coreLight.position.set(0, 7.6, 0.6);
     scene.add(coreLight);
 
     // ========= POSTPROCESSING =========
@@ -1516,8 +1516,8 @@ if (!window._skipHeroCanvas) {
     }
     hudGroup.add(tickGroup);
 
-    hudGroup.position.set(0, 4.5, -2.5);
-    hudGroup.scale.setScalar(4.5);
+    hudGroup.position.set(0, 7.5, -2.5);
+    hudGroup.scale.setScalar(3.5);
     scene.add(hudGroup);
 
     function applyThemeToScene() {
@@ -1567,8 +1567,8 @@ if (!window._skipHeroCanvas) {
           });
           helmetMats.push(o.material);
         });
-        helmet.position.y = 4.5;
-        helmet.scale.setScalar(4.5);
+        helmet.position.y = 7.5;
+        helmet.scale.setScalar(3.5);
         helmet.rotation.y = -0.25;
         helmetGroup.add(helmet);
         // Re-apply theme tuning ahora que helmetMats ya tiene contenido
@@ -1635,7 +1635,7 @@ if (!window._skipHeroCanvas) {
         const targetPitch = -mouseY * 0.4;
         helmet.rotation.y += (targetYaw   - helmet.rotation.y) * 0.07;
         helmet.rotation.x += (targetPitch - helmet.rotation.x) * 0.07;
-        helmet.position.y = 4.5 + Math.sin(time) * 0.08;
+        helmet.position.y = 7.5 + Math.sin(time) * 0.08;
       }
       // Pulso del emisivo (sensación de "AI breathing")
       const pulse = 0.9 + Math.sin(time * 1.6) * 0.5 + Math.sin(time * 5.3) * 0.1;
