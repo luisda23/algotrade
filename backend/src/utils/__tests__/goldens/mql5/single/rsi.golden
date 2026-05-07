@@ -1,0 +1,336 @@
+//+------------------------------------------------------------------+
+//|                                              TestBot.mq5 |
+//|                              Generado por YudBot · TEST_DATE |
+//|                                          https://yudbot.com |
+//|                                build: TEST_SHA |
+//+------------------------------------------------------------------+
+#property copyright "YudBot"
+#property link      "https://yudbot.com"
+#property version   "1.00"
+#property description "Bot de test"
+#property description "Estrategia: Momentum con detección de fuerza"
+#property description "Par: EURUSD · Apalancamiento: 1:30"
+
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+#include <Trade\SymbolInfo.mqh>
+
+input group    "═══ CONFIGURACIÓN GENERAL ═══"
+input string         InpSymbol      = "EURUSD";
+input ENUM_TIMEFRAMES InpTimeframe  = PERIOD_M15;
+input int            InpMagicNumber = 164114740;
+
+input group    "═══ TAMAÑO DE LOTE ═══"
+input bool     InpUseFixedLot      = false;
+input double   InpFixedLot         = 0.10;
+
+input group    "═══ GESTIÓN DE RIESGO ═══"
+input double   InpStopLoss         = 1.5;   // %
+input double   InpTakeProfit       = 3; // %
+input double   InpRiskPerTrade     = 2;
+input double   InpMaxDailyLoss     = 4;
+input int      InpLeverage         = 30;
+input bool     InpBreakEvenEnabled = false;
+input double   InpBreakEvenTrigger = 1; // SL → entry cuando profit ≥ esto
+input bool     InpTrailingEnabled  = false;
+input double   InpTrailingDistance = 1; // SL trailing detrás del precio
+
+input group    "═══ HORARIO DE OPERACIÓN ═══"
+input bool     InpUseTimeFilter    = true;
+input int      InpStartHour        = 8;
+input int      InpEndHour          = 22;
+
+input group    "═══ FILTRO DE NOTICIAS ═══"
+input bool     InpFilterNews       = false;
+input int      InpNewsMinutesBefore = 30;
+input int      InpNewsMinutesAfter  = 15;
+input ENUM_CALENDAR_EVENT_IMPORTANCE InpNewsMinImpact = CALENDAR_IMPORTANCE_HIGH;
+input bool     InpNewsFilterByName  = false;
+input string   InpNewsPatterns      = "Nonfarm Payrolls||Federal Funds Rate|FOMC||Consumer Price Index|CPI||Powell|FOMC Press||Gross Domestic Product|GDP||Retail Sales||Unemployment Rate||ISM||Main Refinancing|Deposit Facility|ECB Interest||ECB Press|Lagarde||Consumer Price Index|CPI|HICP||Gross Domestic Product|GDP||PMI||Bank Rate|BOE Interest||Consumer Price Index|CPI||Gross Domestic Product|GDP||BOJ Interest|Policy Rate";
+
+CTrade        trade;
+CPositionInfo position;
+CSymbolInfo   symbolInfo;
+
+double initialBalance;
+double dailyStartBalance;
+datetime lastDayCheck;
+
+int handleRSI;
+
+
+int OnInit()
+{
+   Print("═══════════════════════════════════════");
+   Print("  TestBot");
+   Print("  Generado por YudBot · TEST_DATE");
+   Print("═══════════════════════════════════════");
+
+   trade.SetExpertMagicNumber(InpMagicNumber);
+   trade.SetMarginMode();
+   trade.SetTypeFillingBySymbol(InpSymbol);
+   trade.SetDeviationInPoints(10);
+
+   if(!symbolInfo.Name(InpSymbol))
+   {
+      Print("Error: No se puede acceder al símbolo ", InpSymbol);
+      return(INIT_FAILED);
+   }
+
+   handleRSI = iRSI(InpSymbol, InpTimeframe, 14, PRICE_CLOSE);
+   if(handleRSI == INVALID_HANDLE) { Print("Error creando RSI"); return INIT_FAILED; }
+
+
+   initialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   dailyStartBalance = initialBalance;
+   lastDayCheck = TimeCurrent();
+
+   Print("Bot inicializado correctamente");
+   Print("Balance inicial: ", initialBalance);
+   Print("Apalancamiento: 1:", InpLeverage);
+
+   return(INIT_SUCCEEDED);
+}
+
+void OnDeinit(const int reason)
+{
+   IndicatorRelease(handleRSI);
+
+}
+
+bool EventMatchesPatterns(const string eventName, const string patterns)
+{
+   if(StringLen(patterns) == 0) return true;
+   string lname = eventName;
+   StringToLower(lname);
+   string parts[];
+   int n = StringSplit(patterns, '|', parts);
+   for(int i = 0; i < n; i++)
+   {
+      string p = parts[i];
+      if(StringLen(p) == 0) continue;
+      string lp = p;
+      StringToLower(lp);
+      if(StringFind(lname, lp) >= 0) return true;
+   }
+   return false;
+}
+
+bool IsNewsTime()
+{
+   if(!InpFilterNews) return false;
+   string base = StringSubstr(InpSymbol, 0, 3);
+   string quote = StringSubstr(InpSymbol, 3, 3);
+   datetime fromTime = TimeCurrent() - InpNewsMinutesAfter * 60;
+   datetime toTime   = TimeCurrent() + InpNewsMinutesBefore * 60;
+   string countries[2] = { base, quote };
+   for(int c = 0; c < 2; c++)
+   {
+      MqlCalendarValue values[];
+      int n = CalendarValueHistory(values, fromTime, toTime, NULL, countries[c]);
+      for(int i = 0; i < n; i++)
+      {
+         MqlCalendarEvent ev;
+         if(!CalendarEventById(values[i].event_id, ev)) continue;
+         if(ev.importance < InpNewsMinImpact) continue;
+         if(InpNewsFilterByName && !EventMatchesPatterns(ev.name, InpNewsPatterns)) continue;
+         long evTime = (long)values[i].time;
+         long now    = (long)TimeCurrent();
+         long diff   = evTime - now;
+         if(diff <= InpNewsMinutesBefore * 60 && diff >= -InpNewsMinutesAfter * 60) return true;
+      }
+   }
+   return false;
+}
+
+bool CheckDailyLoss()
+{
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   MqlDateTime lastDt;
+   TimeToStruct(lastDayCheck, lastDt);
+   if(dt.day != lastDt.day)
+   {
+      dailyStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      lastDayCheck = TimeCurrent();
+   }
+   double currentBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double dailyLossPct = ((dailyStartBalance - currentBalance) / dailyStartBalance) * 100.0;
+   if(dailyLossPct >= InpMaxDailyLoss)
+   {
+      Print("⚠️ Pérdida diaria máxima alcanzada (", dailyLossPct, "%) - Bot pausado");
+      return false;
+   }
+   return true;
+}
+
+bool IsTradingHours()
+{
+   if(!InpUseTimeFilter) return true;
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   return (dt.hour >= InpStartHour && dt.hour < InpEndHour);
+}
+
+double ClampLotToSymbol(double lot)
+{
+   double minLot  = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MIN);
+   double maxLot  = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MAX);
+   double stepLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_STEP);
+   if(stepLot <= 0) stepLot = 0.01;
+   lot = MathFloor(lot / stepLot) * stepLot;
+   if(lot < minLot) lot = minLot;
+   if(lot > maxLot) lot = maxLot;
+   return NormalizeDouble(lot, 2);
+}
+
+double CalculateLotSize(double stopLossPips)
+{
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double riskAmount = balance * (InpRiskPerTrade / 100.0);
+   double tickValue = SymbolInfoDouble(InpSymbol, SYMBOL_TRADE_TICK_VALUE);
+   if(tickValue <= 0 || stopLossPips <= 0) return ClampLotToSymbol(InpFixedLot);
+   double lot = riskAmount / (stopLossPips * tickValue);
+   return ClampLotToSymbol(lot);
+}
+
+double GetTradeLot(double stopLossPips)
+{
+   if(InpUseFixedLot) return ClampLotToSymbol(InpFixedLot);
+   return CalculateLotSize(stopLossPips);
+}
+
+// Convierte un valor en la unidad de riesgo activa (percent/pips/atr) a
+// distancia absoluta en precio. Lo usan break-even y trailing.
+double RiskUnitDistance(double val, double entry)
+{
+   return entry * (val / 100.0);
+   
+   
+}
+
+// Gestión de posiciones abiertas: break-even + trailing stop. Se ejecuta
+// CADA tick (no solo en barra nueva) porque el trailing tiene que seguir
+// el precio en tiempo real para reducir el riesgo de retroceso brusco.
+void ManagePositions()
+{
+   if(!InpBreakEvenEnabled && !InpTrailingEnabled) return;
+   for(int i = PositionsTotal() - 1; i >= 0; i--) {
+      if(!position.SelectByIndex(i)) continue;
+      if(position.Magic() != InpMagicNumber) continue;
+      if(position.Symbol() != InpSymbol) continue;
+
+      double entry = position.PriceOpen();
+      double currSL = position.StopLoss();
+      double currTP = position.TakeProfit();
+      bool isBuy = position.PositionType() == POSITION_TYPE_BUY;
+      double price = isBuy
+         ? SymbolInfoDouble(InpSymbol, SYMBOL_BID)
+         : SymbolInfoDouble(InpSymbol, SYMBOL_ASK);
+      double newSL = currSL;
+
+      // Break-even: si profit ≥ trigger, mover SL a entry. Una sola vez.
+      if(InpBreakEvenEnabled) {
+         double profit = isBuy ? (price - entry) : (entry - price);
+         double triggerDist = RiskUnitDistance(InpBreakEvenTrigger, entry);
+         if(triggerDist > 0 && profit >= triggerDist) {
+            // Solo mover si supone una mejora real (más cerca del precio
+            // que el SL actual). Para BUY, mejora = mayor; para SELL, menor.
+            if(isBuy && (currSL == 0 || entry > currSL)) newSL = entry;
+            if(!isBuy && (currSL == 0 || entry < currSL)) newSL = entry;
+         }
+      }
+
+      // Trailing: SL = price ± distance. Solo si va contra el SL actual.
+      if(InpTrailingEnabled) {
+         double dist = RiskUnitDistance(InpTrailingDistance, entry);
+         if(dist > 0) {
+            double trailSL = isBuy ? (price - dist) : (price + dist);
+            if(isBuy && trailSL > newSL) newSL = trailSL;
+            if(!isBuy && (newSL == 0 || trailSL < newSL)) newSL = trailSL;
+         }
+      }
+
+      if(newSL != currSL && newSL > 0) {
+         trade.PositionModify(position.Ticket(), newSL, currTP);
+      }
+   }
+}
+
+// Cuenta solo posiciones abiertas POR ESTE bot (mismo magic + símbolo). Sin
+// este filtro, PositionsTotal() incluye posiciones de otros EAs o trades
+// manuales y bloquearía al bot mientras existan.
+bool HasOwnPosition()
+{
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(position.SelectByIndex(i))
+      {
+         if(position.Magic() == InpMagicNumber && position.Symbol() == InpSymbol)
+            return true;
+      }
+   }
+   return false;
+}
+
+void OnTick()
+{
+   // Gestión de posiciones EN VIVO: el trailing tiene que seguir el precio
+   // tick a tick, no esperar al cierre de barra. No-op si BE/trailing off.
+   ManagePositions();
+
+   static datetime lastBarTime = 0;
+   datetime currentBarTime = (datetime)SeriesInfoInteger(InpSymbol, InpTimeframe, SERIES_LASTBAR_DATE);
+   if(currentBarTime == lastBarTime) return;
+   lastBarTime = currentBarTime;
+
+   // Filtros de bloqueo evaluados solo en barra nueva (más eficiente y con
+   // log claro para que sepas por qué el bot no operó este ciclo).
+   if(!CheckDailyLoss())  { Print("[skip] pérdida diaria máxima alcanzada"); return; }
+   if(!IsTradingHours())  { Print("[skip] fuera de horario (", InpStartHour, "-", InpEndHour, " hora del broker)"); return; }
+   if(IsNewsTime())       { Print("[skip] noticia de alto impacto cercana"); return; }
+   if(HasOwnPosition())   { Print("[skip] ya hay una posición abierta de este bot"); return; }
+
+   //--- Estrategia: momentum · indicadores: rsi
+   //--- Lógica: (al menos un trigger fire) AND (todos los filtros confirman)
+   double bidPrice = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
+   bool buySignal = false;
+   bool sellSignal = false;
+
+   double rsi[]; ArraySetAsSeries(rsi, true); CopyBuffer(handleRSI, 0, 0, 3, rsi);
+
+   if((((rsi[1] < 30 && rsi[2] >= 30))) && ((rsi[1] < 40))) buySignal = true;
+   if((((rsi[1] > 70 && rsi[2] <= 70))) && ((rsi[1] > 60))) sellSignal = true;
+
+   Print("[eval] bar=", TimeToString(currentBarTime, TIME_DATE|TIME_MINUTES), " buy=", buySignal, " sell=", sellSignal);
+
+   if(buySignal)
+   {
+      double ask = SymbolInfoDouble(InpSymbol, SYMBOL_ASK);
+      double sl = ask * (1 - InpStopLoss/100.0);
+      double tp = ask * (1 + InpTakeProfit/100.0);
+      double lot = GetTradeLot(MathAbs(ask - sl) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
+      if(!trade.Buy(lot, InpSymbol, ask, sl, tp, "TestBot BUY"))
+         Print("BUY rechazada: ", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription(), " (lot=", lot, " sl=", sl, " tp=", tp, ")");
+      else
+         Print("BUY enviada: lot=", lot, " sl=", sl, " tp=", tp);
+   }
+   else if(sellSignal)
+   {
+      double bid = SymbolInfoDouble(InpSymbol, SYMBOL_BID);
+      double sl = bid * (1 + InpStopLoss/100.0);
+      double tp = bid * (1 - InpTakeProfit/100.0);
+      double lot = GetTradeLot(MathAbs(sl - bid) / SymbolInfoDouble(InpSymbol, SYMBOL_POINT));
+      if(!trade.Sell(lot, InpSymbol, bid, sl, tp, "TestBot SELL"))
+         Print("SELL rechazada: ", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription(), " (lot=", lot, " sl=", sl, " tp=", tp, ")");
+      else
+         Print("SELL enviada: lot=", lot, " sl=", sl, " tp=", tp);
+   }
+}
+
+
+
+
+//+------------------------------------------------------------------+
+//| END OF FILE — Generado por YudBot                             |
+//+------------------------------------------------------------------+

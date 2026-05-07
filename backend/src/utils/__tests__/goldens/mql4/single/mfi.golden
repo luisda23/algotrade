@@ -1,0 +1,238 @@
+//+------------------------------------------------------------------+
+//|                                              TestBot.mq4 |
+//|                              Generado por YudBot · TEST_DATE |
+//|                                          https://yudbot.com |
+//|                                build: TEST_SHA |
+//+------------------------------------------------------------------+
+#property copyright "YudBot"
+#property link      "https://yudbot.com"
+#property version   "1.00"
+#property strict
+#property description "Bot de test"
+#property description "Estrategia: Momentum con detección de fuerza"
+#property description "Par: EURUSD · Apalancamiento: 1:30"
+
+extern string  _GENERAL              = "═══ CONFIGURACIÓN GENERAL ═══";
+extern string  InpSymbol             = "EURUSD";
+extern int     InpTimeframe          = PERIOD_M15;
+extern int     InpMagicNumber        = 164114740;
+extern int     InpSlippage           = 10;
+
+extern string  _LOT                  = "═══ TAMAÑO DE LOTE ═══";
+extern bool    InpUseFixedLot        = false;
+extern double  InpFixedLot           = 0.10;
+
+extern string  _RISK                 = "═══ GESTIÓN DE RIESGO ═══";
+extern double  InpStopLoss           = 1.5;   // %
+extern double  InpTakeProfit         = 3; // %
+extern double  InpRiskPerTrade       = 2;
+extern double  InpMaxDailyLoss       = 4;
+extern bool    InpBreakEvenEnabled   = false;
+extern double  InpBreakEvenTrigger   = 1;
+extern bool    InpTrailingEnabled    = false;
+extern double  InpTrailingDistance   = 1;
+extern int     InpLeverage           = 30;
+
+extern string  _TIME                 = "═══ HORARIO DE OPERACIÓN ═══";
+extern bool    InpUseTimeFilter      = true;
+extern int     InpStartHour          = 8;
+extern int     InpEndHour            = 22;
+
+double initialBalance;
+double dailyStartBalance;
+datetime lastDayCheck;
+int lastBarTime = 0;
+
+int OnInit()
+{
+   Print("═══════════════════════════════════════");
+   Print("  TestBot");
+   Print("  Generado por YudBot · TEST_DATE");
+   Print("═══════════════════════════════════════");
+
+   // Refuso operar sobre un chart de símbolo distinto al configurado: si
+   // generaste el bot para EURUSD y lo arrastras a un chart de GBPUSD, el
+   // EA debe abortar en lugar de operar silenciosamente en el par
+   // equivocado.
+   if(StringCompare(Symbol(), InpSymbol, false) != 0)
+   {
+      Print("Error: el bot está configurado para ", InpSymbol, " pero el chart es ", Symbol(), ". Adjúntalo a un chart de ", InpSymbol, ".");
+      return INIT_FAILED;
+   }
+
+   initialBalance = AccountBalance();
+   dailyStartBalance = initialBalance;
+   lastDayCheck = TimeCurrent();
+   Print("Bot inicializado correctamente");
+   Print("Balance inicial: ", initialBalance);
+   Print("Apalancamiento: 1:", InpLeverage);
+   return(INIT_SUCCEEDED);
+}
+
+void OnDeinit(const int reason) { Print("Bot detenido. Razón: ", reason); }
+
+bool CheckDailyLoss()
+{
+   datetime now = TimeCurrent();
+   // TimeDay solo devuelve día del mes (1-31). Comparar TimeDay(now) vs
+   // TimeDay(lastDayCheck) falla si entre ambos pasó exactamente un mes
+   // (mismo día numérico distinto mes). Comparamos year+month+day.
+   int nowKey  = TimeYear(now)*10000 + TimeMonth(now)*100 + TimeDay(now);
+   int lastKey = TimeYear(lastDayCheck)*10000 + TimeMonth(lastDayCheck)*100 + TimeDay(lastDayCheck);
+   if(nowKey != lastKey)
+   {
+      dailyStartBalance = AccountBalance();
+      lastDayCheck = now;
+   }
+   double dailyLossPct = ((dailyStartBalance - AccountBalance()) / dailyStartBalance) * 100.0;
+   if(dailyLossPct >= InpMaxDailyLoss)
+   {
+      Print("⚠️ Pérdida diaria máxima alcanzada (", dailyLossPct, "%) - Bot pausado");
+      return false;
+   }
+   return true;
+}
+
+bool IsTradingHours()
+{
+   if(!InpUseTimeFilter) return true;
+   int hour = TimeHour(TimeCurrent());
+   return (hour >= InpStartHour && hour < InpEndHour);
+}
+
+double ClampLotToSymbol(double lot)
+{
+   double minLot  = MarketInfo(Symbol(), MODE_MINLOT);
+   double maxLot  = MarketInfo(Symbol(), MODE_MAXLOT);
+   double stepLot = MarketInfo(Symbol(), MODE_LOTSTEP);
+   if(stepLot <= 0) stepLot = 0.01;
+   lot = MathFloor(lot / stepLot) * stepLot;
+   if(lot < minLot) lot = minLot;
+   if(lot > maxLot) lot = maxLot;
+   return NormalizeDouble(lot, 2);
+}
+
+double CalculateLotSize(double stopLossPips)
+{
+   double balance = AccountBalance();
+   double riskAmount = balance * (InpRiskPerTrade / 100.0);
+   double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
+   if(tickValue <= 0 || stopLossPips <= 0) return ClampLotToSymbol(InpFixedLot);
+   double lot = riskAmount / (stopLossPips * tickValue);
+   return ClampLotToSymbol(lot);
+}
+
+double GetTradeLot(double stopLossPips)
+{
+   if(InpUseFixedLot) return ClampLotToSymbol(InpFixedLot);
+   return CalculateLotSize(stopLossPips);
+}
+
+bool HasOpenPosition()
+{
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      if(OrderMagicNumber() == InpMagicNumber && OrderSymbol() == Symbol())
+         return true;
+   }
+   return false;
+}
+
+// Convierte un valor en la unit activa a distancia absoluta en precio.
+double RiskUnitDistance(double val, double entry)
+{
+   return entry * (val / 100.0);
+   
+   
+}
+
+// Gestión de posiciones abiertas: break-even + trailing stop. Cada tick.
+void ManagePositions()
+{
+   if(!InpBreakEvenEnabled && !InpTrailingEnabled) return;
+   for(int i = OrdersTotal() - 1; i >= 0; i--) {
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      if(OrderMagicNumber() != InpMagicNumber) continue;
+      if(OrderSymbol() != Symbol()) continue;
+
+      double entry = OrderOpenPrice();
+      double currSL = OrderStopLoss();
+      double currTP = OrderTakeProfit();
+      bool isBuy = OrderType() == OP_BUY;
+      double price = isBuy ? Bid : Ask;
+      double newSL = currSL;
+
+      if(InpBreakEvenEnabled) {
+         double profit = isBuy ? (price - entry) : (entry - price);
+         double triggerDist = RiskUnitDistance(InpBreakEvenTrigger, entry);
+         if(triggerDist > 0 && profit >= triggerDist) {
+            if(isBuy && (currSL == 0 || entry > currSL)) newSL = entry;
+            if(!isBuy && (currSL == 0 || entry < currSL)) newSL = entry;
+         }
+      }
+
+      if(InpTrailingEnabled) {
+         double dist = RiskUnitDistance(InpTrailingDistance, entry);
+         if(dist > 0) {
+            double trailSL = isBuy ? (price - dist) : (price + dist);
+            if(isBuy && trailSL > newSL) newSL = trailSL;
+            if(!isBuy && (newSL == 0 || trailSL < newSL)) newSL = trailSL;
+         }
+      }
+
+      if(newSL != currSL && newSL > 0) {
+         OrderModify(OrderTicket(), entry, newSL, currTP, 0, clrYellow);
+      }
+   }
+}
+
+void OnTick()
+{
+   ManagePositions();
+   if(Time[0] == lastBarTime) return;
+   lastBarTime = Time[0];
+
+   if(!CheckDailyLoss()) { Print("[skip] pérdida diaria máxima alcanzada"); return; }
+   if(!IsTradingHours()) { Print("[skip] fuera de horario (", InpStartHour, "-", InpEndHour, " hora del broker)"); return; }
+   if(HasOpenPosition()) { Print("[skip] ya hay una posición abierta de este bot"); return; }
+
+   //--- Estrategia: momentum · indicadores: mfi
+   //--- Lógica: (al menos un trigger fire) AND (todos los filtros confirman)
+   bool buySignal = false;
+   bool sellSignal = false;
+
+   double mfi1 = iMFI(Symbol(), InpTimeframe, 14, 1);
+   double mfi2 = iMFI(Symbol(), InpTimeframe, 14, 2);
+
+   if((((mfi1 < 20 && mfi2 >= 20))) && ((mfi1 < 50))) buySignal = true;
+   if((((mfi1 > 80 && mfi2 <= 80))) && ((mfi1 > 50))) sellSignal = true;
+
+   Print("[eval] bar=", TimeToString(Time[0], TIME_DATE|TIME_MINUTES), " buy=", buySignal, " sell=", sellSignal);
+
+   if(buySignal)
+   {
+      double sl = Ask * (1 - InpStopLoss/100.0);
+      double tp = Ask * (1 + InpTakeProfit/100.0);
+      double lot = GetTradeLot(MathAbs(Ask - sl) / Point);
+      int ticket = OrderSend(Symbol(), OP_BUY, lot, Ask, InpSlippage, sl, tp, "TestBot BUY", InpMagicNumber, 0, clrGreen);
+      if(ticket < 0) Print("Error al abrir BUY: ", GetLastError());
+      else Print("BUY abierta · Ticket: ", ticket, " · Lote: ", lot);
+   }
+   else if(sellSignal)
+   {
+      double sl = Bid * (1 + InpStopLoss/100.0);
+      double tp = Bid * (1 - InpTakeProfit/100.0);
+      double lot = GetTradeLot(MathAbs(sl - Bid) / Point);
+      int ticket = OrderSend(Symbol(), OP_SELL, lot, Bid, InpSlippage, sl, tp, "TestBot SELL", InpMagicNumber, 0, clrRed);
+      if(ticket < 0) Print("Error al abrir SELL: ", GetLastError());
+      else Print("SELL abierta · Ticket: ", ticket, " · Lote: ", lot);
+   }
+}
+
+
+
+
+//+------------------------------------------------------------------+
+//| END OF FILE — Generado por YudBot                             |
+//+------------------------------------------------------------------+
