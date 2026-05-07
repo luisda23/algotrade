@@ -181,8 +181,12 @@ section { position: relative; padding: 130px 32px; max-width: var(--max-w); marg
 .hero-decorative { position: absolute; inset: 0; pointer-events: none; opacity: 0.45; }
 .hero-decorative .bar { position: absolute; width: 1px; background: linear-gradient(to bottom, transparent, var(--border-strong) 50%, transparent); animation: barPulse 6s ease-in-out infinite; height: 100%; }
 @keyframes barPulse { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
-.hero-bg-canvas { position: absolute; inset: 0; pointer-events: none; opacity: 0.65; mix-blend-mode: screen; }
-[data-theme="light"] .hero-bg-canvas { mix-blend-mode: multiply; opacity: 0.5; }
+/* IMPORTANTE: el canvas Three.js maneja su propia transparencia (alpha:true
+   + clearAlpha:0). Cualquier mix-blend-mode aquí multiplica los píxeles
+   del canvas con el fondo y, con el helmet GLTF (modelo opaco con alpha
+   residual no totalmente 0 en bordes), pinta un cuadrado oscuro detrás
+   del casco en tema claro. NO REINTRODUCIR sin un test en ambos temas. */
+.hero-bg-canvas { position: absolute; inset: 0; pointer-events: none; }
 #hero-canvas { width: 100%; height: 100%; display: block; }
 .hero-content { position: relative; z-index: 2; max-width: 920px; text-align: center; }
 .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--text-dim); font-weight: 500; letter-spacing: 0.2px; margin-bottom: 28px; transition: border-color 0.3s ease; }
