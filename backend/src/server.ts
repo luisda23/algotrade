@@ -122,7 +122,10 @@ app.get("/health", async (_req: Request, res: Response) => {
       });
       if (r.status >= 500) throw new Error(`HTTP ${r.status}`);
     }, "resend"),
-    // 3. Lemon Squeezy API. /v1/stores requiere auth; mismo razonamiento.
+    // 3. Lemon Squeezy API. /v1/stores requiere auth; mismo razonamiento que
+    //    Resend: solo 5xx cuenta como caída real. Un 401/403 (API key vencida)
+    //    no debe tirar Railway healthcheck — la app sigue siendo capaz de
+    //    servir todo lo que no toca Lemon.
     timed(async () => {
       if (!process.env.LEMON_API_KEY) return;
       const r = await fetch("https://api.lemonsqueezy.com/v1/stores", {
@@ -132,7 +135,7 @@ app.get("/health", async (_req: Request, res: Response) => {
         },
         signal: AbortSignal.timeout(3000),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (r.status >= 500) throw new Error(`HTTP ${r.status}`);
     }, "lemon"),
   ]);
 

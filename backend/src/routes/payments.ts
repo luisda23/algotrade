@@ -745,11 +745,12 @@ router.post("/lemon-webhook", async (req: Request, res: Response) => {
 
     // El webhook es la fuente de verdad: si una orden llega como `paid`,
     // creamos el Bot inmediatamente (incluso si el usuario cerró el
-    // navegador y nunca vuelve a /verify).
+    // navegador y nunca vuelve a /verify). NUNCA incluir `order_refunded`
+    // aquí — el filtro `status === 'paid'` lo bloquea hoy, pero si Lemon
+    // cambia el shape del payload, nos arriesgaríamos a crear bots para
+    // órdenes ya reembolsadas.
     const isPaidOrder =
-      (event === "order_created" ||
-        event === "order_refunded" ||
-        event === "order_paid") &&
+      (event === "order_created" || event === "order_paid") &&
       status === "paid";
 
     if (isPaidOrder && orderId) {
