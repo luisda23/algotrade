@@ -1309,178 +1309,174 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     clearcoat: 0.6,
     clearcoatRoughness: 0.12,
   });
-  const matVisor = new THREE.MeshPhysicalMaterial({
-    color: visorHex(),
-    roughness: 0.04,
-    metalness: 0.7,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.0,
-    reflectivity: 1.0,
-  });
-
   const robot = new THREE.Group();
 
-  // ===== CABEZA (subgrupo — tracking cursor) =====
+  // ============================================
+  //  CASCO ESTILO IRON MAN — gigante y estático
+  // ============================================
+  // Sin cuerpo: solo el casco grande centrado. Faceplate pentagonal
+  // (ExtrudeGeometry de un Shape personalizado), cráneo trasero,
+  // visor de ojos brillantes con emissive + PointLight interna,
+  // grill de mandíbula, panel lines y línea central de la frente.
   const headGroup = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.95, 48, 48), matBody);
-  head.scale.set(1, 1.05, 0.95);
-  headGroup.add(head);
-  // Visor: caja delgada curvada al frente (achatada y ligeramente bowed)
-  const visorGeo = new THREE.SphereGeometry(0.96, 48, 48,
-    Math.PI * 0.20, Math.PI * 0.60,
-    Math.PI * 0.32, Math.PI * 0.32);
-  const visor = new THREE.Mesh(visorGeo, matVisor);
-  visor.rotation.y = Math.PI;
-  headGroup.add(visor);
-  // Marco del visor (anillo negro fino alrededor)
-  const visorFrame = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 8, 32, Math.PI), matAccent);
-  visorFrame.position.set(0, 0.02, 0.78);
-  visorFrame.rotation.x = Math.PI;
-  visorFrame.scale.set(1, 0.6, 1);
-  headGroup.add(visorFrame);
-  // Ear pieces — discos blancos con núcleo negro a cada lado
-  const earOuterGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.18, 32);
-  const earInnerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.20, 24);
-  [-1, 1].forEach(side => {
-    const earOuter = new THREE.Mesh(earOuterGeo, matBody);
-    earOuter.position.set(side * 0.95, -0.05, 0);
-    earOuter.rotation.z = Math.PI / 2;
-    headGroup.add(earOuter);
-    const earInner = new THREE.Mesh(earInnerGeo, matAccent);
-    earInner.position.set(side * 1.0, -0.05, 0);
-    earInner.rotation.z = Math.PI / 2;
-    headGroup.add(earInner);
+
+  // Material emisivo de los ojos — siempre blanco brillante en ambos temas
+  // para mantener el "clásico Iron Man glow". emissiveIntensity alto
+  // para que se vea luminoso incluso en zonas de sombra.
+  const matEye = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 2.6,
+    roughness: 0.4,
+    metalness: 0.0,
   });
-  headGroup.position.y = 2.6;
+
+  // ===== CRÁNEO TRASERO (medio domo) =====
+  const craniumGeo = new THREE.SphereGeometry(1.55, 40, 30,
+    0, Math.PI * 2,    // theta full
+    0, Math.PI * 0.62  // phi: solo la mitad superior + un poco
+  );
+  const cranium = new THREE.Mesh(craniumGeo, matBody);
+  cranium.scale.set(1.0, 1.05, 1.05);
+  cranium.position.y = 0.15;
+  cranium.position.z = -0.25;
+  headGroup.add(cranium);
+
+  // Domo lateral/inferior — completar la cabeza atrás
+  const backHead = new THREE.Mesh(new THREE.SphereGeometry(1.45, 40, 30), matBody);
+  backHead.scale.set(1.0, 1.0, 1.05);
+  backHead.position.set(0, 0, -0.4);
+  headGroup.add(backHead);
+
+  // ===== FACEPLATE PENTAGONAL (la cara icónica) =====
+  const maskShape = new THREE.Shape();
+  maskShape.moveTo(0, 1.55);
+  maskShape.lineTo(1.05, 1.05);     // sien derecha
+  maskShape.lineTo(1.30, 0.10);     // pómulo derecho
+  maskShape.lineTo(0.95, -0.85);    // mandíbula derecha
+  maskShape.lineTo(0.55, -1.30);    // mentón derecho
+  maskShape.lineTo(0,    -1.50);    // punta del mentón
+  maskShape.lineTo(-0.55, -1.30);
+  maskShape.lineTo(-0.95, -0.85);
+  maskShape.lineTo(-1.30, 0.10);
+  maskShape.lineTo(-1.05, 1.05);
+  maskShape.lineTo(0, 1.55);
+
+  const maskGeo = new THREE.ExtrudeGeometry(maskShape, {
+    depth: 0.55,
+    bevelEnabled: true,
+    bevelThickness: 0.18,
+    bevelSize: 0.12,
+    bevelSegments: 5,
+    curveSegments: 16,
+  });
+  const mask = new THREE.Mesh(maskGeo, matBody);
+  mask.position.z = 0.45;
+  headGroup.add(mask);
+
+  // ===== OJOS — ranuras anguladas brillantes =====
+  // Trapecio inclinado para el ojo derecho; espejado para el izquierdo.
+  // El borde exterior está ligeramente más alto que el interior, dándole
+  // ese aspecto característico "frowning" de Iron Man.
+  const eyeShape = new THREE.Shape();
+  eyeShape.moveTo(-0.36,  0.10);
+  eyeShape.lineTo( 0.36,  0.04);
+  eyeShape.lineTo( 0.36, -0.05);
+  eyeShape.lineTo(-0.36, -0.13);
+  eyeShape.lineTo(-0.36,  0.10);
+  const eyeGeo = new THREE.ExtrudeGeometry(eyeShape, {
+    depth: 0.06,
+    bevelEnabled: false,
+  });
+  const eyeR = new THREE.Mesh(eyeGeo, matEye);
+  eyeR.position.set(0.45, 0.45, 1.18);
+  headGroup.add(eyeR);
+  const eyeL = new THREE.Mesh(eyeGeo, matEye);
+  eyeL.position.set(-0.45, 0.45, 1.18);
+  eyeL.scale.x = -1; // espejar
+  headGroup.add(eyeL);
+
+  // Halo de luz interna en cada ojo — proyecta un poco de blanco sobre
+  // el faceplate alrededor, refuerza la sensación de "ojos encendidos".
+  const eyeGlowL = new THREE.PointLight(0xffffff, 0.6, 2.5, 2);
+  eyeGlowL.position.set(-0.45, 0.45, 1.45);
+  headGroup.add(eyeGlowL);
+  const eyeGlowR = new THREE.PointLight(0xffffff, 0.6, 2.5, 2);
+  eyeGlowR.position.set(0.45, 0.45, 1.45);
+  headGroup.add(eyeGlowR);
+
+  // ===== GRILL DE MANDÍBULA (5 barras horizontales negras) =====
+  const grillMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0a0a0a,
+    roughness: 0.65,
+    metalness: 0.4,
+  });
+  for (let i = 0; i < 5; i++) {
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.025, 0.06),
+      grillMat,
+    );
+    bar.position.set(0, -0.62 - i * 0.07, 1.13);
+    headGroup.add(bar);
+  }
+
+  // ===== LÍNEA CENTRAL DE LA FRENTE (panel ridge vertical) =====
+  const foreheadRidge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.55, 0.04),
+    grillMat,
+  );
+  foreheadRidge.position.set(0, 1.05, 1.20);
+  headGroup.add(foreheadRidge);
+
+  // ===== PANEL LINES SUTILES EN POMULOS =====
+  // Dos líneas inclinadas a cada lado del faceplate sugiriendo separación
+  // entre placas — añade riqueza visual sin meter más geometría real.
+  [-1, 1].forEach(side => {
+    const cheek = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.50, 0.03),
+      grillMat,
+    );
+    cheek.position.set(side * 0.85, -0.10, 1.18);
+    cheek.rotation.z = side * 0.18;
+    headGroup.add(cheek);
+  });
+
+  // ===== CONECTOR DEL CUELLO (pequeño borde inferior) =====
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.65, 0.18, 32),
+    matAccent,
+  );
+  collar.position.y = -1.55;
+  headGroup.add(collar);
+
+  // Escala final: que sea grande (ocupar el centro del hero)
+  headGroup.scale.set(1.7, 1.7, 1.7);
   robot.add(headGroup);
 
-  // ===== CUELLO =====
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.30, 16), matAccent);
-  neck.position.y = 1.7;
-  robot.add(neck);
-
-  // ===== TORSO (capsulado: caja con esferas top y bottom) =====
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 64, 48), matBody);
-  chest.scale.set(1.25, 1.0, 0.85);
-  chest.position.y = 1.05;
-  robot.add(chest);
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 48), matBody);
-  waist.position.y = 0.20;
-  robot.add(waist);
-  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 48, 36), matBody);
-  pelvis.scale.set(1.15, 0.7, 0.9);
-  pelvis.position.y = -0.10;
-  robot.add(pelvis);
-  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), matAccent);
-  hipBlock.scale.set(1, 1.2, 0.9);
-  hipBlock.position.set(0, -0.3, 0.2);
-  robot.add(hipBlock);
-
-  // ===== BRAZOS =====
-  // Helper: una articulación negra (anillo)
-  const jointGeo = new THREE.SphereGeometry(0.12, 16, 16);
-  const buildArm = (side) => { // side: -1 izquierda, +1 derecha
-    const arm = new THREE.Group();
-    arm.position.set(side * 1.20, 1.45, 0);
-
-    // Hombro — esfera blanca
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), matBody);
-    arm.add(shoulder);
-    // Hombro pad negro (encima)
-    const shoulderPad = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 24,
-      0, Math.PI * 2, 0, Math.PI / 2), matAccent);
-    shoulderPad.position.y = 0.0;
-    arm.add(shoulderPad);
-    // Bíceps
-    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.7, 16), matBody);
-    upperArm.position.y = -0.5;
-    arm.add(upperArm);
-    // Codo
-    const elbow = new THREE.Mesh(jointGeo, matAccent);
-    elbow.scale.set(1.5, 1, 1.5);
-    elbow.position.y = -0.9;
-    arm.add(elbow);
-    // Antebrazo
-    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.10, 0.7, 16), matBody);
-    forearm.position.y = -1.30;
-    arm.add(forearm);
-    // Muñeca
-    const wrist = new THREE.Mesh(jointGeo, matAccent);
-    wrist.scale.set(1.3, 0.8, 1.3);
-    wrist.position.y = -1.70;
-    arm.add(wrist);
-    // Mano — esfera achatada
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), matBody);
-    hand.scale.set(1, 1.2, 0.6);
-    hand.position.y = -1.90;
-    arm.add(hand);
-
-    return arm;
-  };
-  robot.add(buildArm(-1));
-  robot.add(buildArm( 1));
-
-  // ===== PIERNAS =====
-  const buildLeg = (side) => {
-    const leg = new THREE.Group();
-    leg.position.set(side * 0.45, -0.45, 0);
-
-    // Cadera-muslo (negra como en la imagen ref)
-    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.30, 20, 20), matAccent);
-    hip.position.y = 0;
-    leg.add(hip);
-    // Muslo
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.20, 0.85, 24), matBody);
-    thigh.position.y = -0.55;
-    leg.add(thigh);
-    // Rodilla
-    const knee = new THREE.Mesh(jointGeo, matAccent);
-    knee.scale.set(1.6, 1.2, 1.6);
-    knee.position.y = -1.05;
-    leg.add(knee);
-    // Pantorrilla
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.75, 20), matBody);
-    shin.position.y = -1.50;
-    leg.add(shin);
-    // Tobillo
-    const ankle = new THREE.Mesh(jointGeo, matAccent);
-    ankle.scale.set(1.2, 0.6, 1.2);
-    ankle.position.y = -1.95;
-    leg.add(ankle);
-    // Pie — cono truncado ancho hacia abajo
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 0.55, 24), matBody);
-    foot.position.set(0, -2.30, 0.10);
-    leg.add(foot);
-
-    return leg;
-  };
-  robot.add(buildLeg(-1));
-  robot.add(buildLeg( 1));
-
-  robot.position.y = 0;
+  robot.position.y = 1;
   scene.add(robot);
 
-  // Sombra de contacto: disco oscuro plano con falloff radial. No es una
-  // shadow real (no hay shadow map activo) — es un cheat visual que ancla
-  // el robot al "suelo" y elimina la sensación de flotar en vacío.
-  const shadowCanvas = document.createElement('canvas');
-  shadowCanvas.width = shadowCanvas.height = 256;
-  const sctx = shadowCanvas.getContext('2d');
-  const grad = sctx.createRadialGradient(128, 128, 10, 128, 128, 128);
-  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
-  grad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  sctx.fillStyle = grad;
-  sctx.fillRect(0, 0, 256, 256);
-  const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+  // Halo radial bajo el casco — sustituye a la sombra de contacto del
+  // cuerpo entero. Es un brillo difuso que sugiere que el casco flota
+  // sobre algo, sin pretender ser una sombra real.
+  const haloCanvas = document.createElement('canvas');
+  haloCanvas.width = haloCanvas.height = 256;
+  const hctx = haloCanvas.getContext('2d');
+  const haloGrad = hctx.createRadialGradient(128, 128, 5, 128, 128, 128);
+  haloGrad.addColorStop(0,   'rgba(0,0,0,0.45)');
+  haloGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
+  haloGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  hctx.fillStyle = haloGrad;
+  hctx.fillRect(0, 0, 256, 256);
+  const shadowTex = new THREE.CanvasTexture(haloCanvas);
   const shadowMat = new THREE.MeshBasicMaterial({
     map: shadowTex,
     transparent: true,
     depthWrite: false,
   });
-  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.5), shadowMat);
+  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2), shadowMat);
   groundShadow.rotation.x = -Math.PI / 2;
-  groundShadow.position.y = -2.7;
+  groundShadow.position.y = -2.0;
   scene.add(groundShadow);
 
   // Re-color when theme changes
@@ -1490,9 +1486,8 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     dotMaterial.color.setHex(c);
     matBody.color.setHex(bodyHex());
     matAccent.color.setHex(accentHex());
-    matVisor.color.setHex(visorHex());
-    // En tema claro la sombra debe ser muy sutil para no ensuciar el suelo blanco
-    shadowMat.opacity = isLight() ? 0.35 : 0.7;
+    grillMat.color.setHex(isLight() ? 0xf2f2f4 : 0x0a0a0a);
+    shadowMat.opacity = isLight() ? 0.25 : 0.6;
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1534,19 +1529,19 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
 
-    // Robot — cabeza sigue al cursor, torso sway leve, bob vertical
-    const targetYaw   =  mouseX * 0.65;
-    const targetPitch = -mouseY * 0.40;
+    // Casco — sigue al cursor con yaw + pitch + ligero tilt en Z para
+    // que el seguimiento se sienta vivo y no robótico-rígido.
+    const targetYaw   =  mouseX * 0.85;
+    const targetPitch = -mouseY * 0.55;
+    const targetTilt  =  mouseX * -0.12;
     headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
     headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
-    robot.rotation.y += (mouseX * 0.15 - robot.rotation.y) * 0.04;
-    const bob = Math.sin(time * 0.5) * 0.12;
-    robot.position.y = bob;
-    // Sombra: cuando el robot sube, la sombra se difumina y se encoge
-    // ligeramente, simulando que la luz del key llega más al suelo.
-    const lift = (bob + 0.12) / 0.24; // 0..1
-    groundShadow.scale.setScalar(1 - lift * 0.12);
-    shadowMat.opacity = (isLight() ? 0.35 : 0.7) * (1 - lift * 0.25);
+    headGroup.rotation.z += (targetTilt  - headGroup.rotation.z) * 0.06;
+    const bob = Math.sin(time * 0.5) * 0.10;
+    robot.position.y = 1 + bob;
+    // Halo bajo el casco — pulso de opacidad sutil con el bob
+    const lift = (bob + 0.10) / 0.20;
+    shadowMat.opacity = (isLight() ? 0.25 : 0.6) * (1 - lift * 0.3);
 
     renderer.render(scene, camera);
   }

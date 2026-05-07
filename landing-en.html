@@ -764,153 +764,154 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     clearcoat: 0.6,
     clearcoatRoughness: 0.12,
   });
-  const matVisor = new THREE.MeshPhysicalMaterial({
-    color: visorHex(),
-    roughness: 0.04,
-    metalness: 0.7,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.0,
-    reflectivity: 1.0,
-  });
-
   const robot = new THREE.Group();
 
-  // ===== HEAD (cursor-tracking subgroup) =====
+  // ============================================
+  //  Iron-Man-style giant helmet (no body)
+  // ============================================
   const headGroup = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.95, 48, 48), matBody);
-  head.scale.set(1, 1.05, 0.95);
-  headGroup.add(head);
-  const visorGeo = new THREE.SphereGeometry(0.96, 48, 48,
-    Math.PI * 0.20, Math.PI * 0.60,
-    Math.PI * 0.32, Math.PI * 0.32);
-  const visor = new THREE.Mesh(visorGeo, matVisor);
-  visor.rotation.y = Math.PI;
-  headGroup.add(visor);
-  const visorFrame = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 8, 32, Math.PI), matAccent);
-  visorFrame.position.set(0, 0.02, 0.78);
-  visorFrame.rotation.x = Math.PI;
-  visorFrame.scale.set(1, 0.6, 1);
-  headGroup.add(visorFrame);
-  const earOuterGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.18, 32);
-  const earInnerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.20, 24);
-  [-1, 1].forEach(side => {
-    const earOuter = new THREE.Mesh(earOuterGeo, matBody);
-    earOuter.position.set(side * 0.95, -0.05, 0);
-    earOuter.rotation.z = Math.PI / 2;
-    headGroup.add(earOuter);
-    const earInner = new THREE.Mesh(earInnerGeo, matAccent);
-    earInner.position.set(side * 1.0, -0.05, 0);
-    earInner.rotation.z = Math.PI / 2;
-    headGroup.add(earInner);
+
+  const matEye = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 2.6,
+    roughness: 0.4,
+    metalness: 0.0,
   });
-  headGroup.position.y = 2.6;
+
+  // Cranium (rear half-dome) + a back filler sphere
+  const craniumGeo = new THREE.SphereGeometry(1.55, 40, 30,
+    0, Math.PI * 2,
+    0, Math.PI * 0.62);
+  const cranium = new THREE.Mesh(craniumGeo, matBody);
+  cranium.scale.set(1.0, 1.05, 1.05);
+  cranium.position.y = 0.15;
+  cranium.position.z = -0.25;
+  headGroup.add(cranium);
+  const backHead = new THREE.Mesh(new THREE.SphereGeometry(1.45, 40, 30), matBody);
+  backHead.scale.set(1.0, 1.0, 1.05);
+  backHead.position.set(0, 0, -0.4);
+  headGroup.add(backHead);
+
+  // Faceplate — pentagonal extruded shape (the iconic outline)
+  const maskShape = new THREE.Shape();
+  maskShape.moveTo(0, 1.55);
+  maskShape.lineTo(1.05, 1.05);
+  maskShape.lineTo(1.30, 0.10);
+  maskShape.lineTo(0.95, -0.85);
+  maskShape.lineTo(0.55, -1.30);
+  maskShape.lineTo(0,    -1.50);
+  maskShape.lineTo(-0.55, -1.30);
+  maskShape.lineTo(-0.95, -0.85);
+  maskShape.lineTo(-1.30, 0.10);
+  maskShape.lineTo(-1.05, 1.05);
+  maskShape.lineTo(0, 1.55);
+
+  const maskGeo = new THREE.ExtrudeGeometry(maskShape, {
+    depth: 0.55,
+    bevelEnabled: true,
+    bevelThickness: 0.18,
+    bevelSize: 0.12,
+    bevelSegments: 5,
+    curveSegments: 16,
+  });
+  const mask = new THREE.Mesh(maskGeo, matBody);
+  mask.position.z = 0.45;
+  headGroup.add(mask);
+
+  // Glowing angled eye slits
+  const eyeShape = new THREE.Shape();
+  eyeShape.moveTo(-0.36,  0.10);
+  eyeShape.lineTo( 0.36,  0.04);
+  eyeShape.lineTo( 0.36, -0.05);
+  eyeShape.lineTo(-0.36, -0.13);
+  eyeShape.lineTo(-0.36,  0.10);
+  const eyeGeo = new THREE.ExtrudeGeometry(eyeShape, {
+    depth: 0.06,
+    bevelEnabled: false,
+  });
+  const eyeR = new THREE.Mesh(eyeGeo, matEye);
+  eyeR.position.set(0.45, 0.45, 1.18);
+  headGroup.add(eyeR);
+  const eyeL = new THREE.Mesh(eyeGeo, matEye);
+  eyeL.position.set(-0.45, 0.45, 1.18);
+  eyeL.scale.x = -1;
+  headGroup.add(eyeL);
+
+  const eyeGlowL = new THREE.PointLight(0xffffff, 0.6, 2.5, 2);
+  eyeGlowL.position.set(-0.45, 0.45, 1.45);
+  headGroup.add(eyeGlowL);
+  const eyeGlowR = new THREE.PointLight(0xffffff, 0.6, 2.5, 2);
+  eyeGlowR.position.set(0.45, 0.45, 1.45);
+  headGroup.add(eyeGlowR);
+
+  // Mouth grill — 5 horizontal slats
+  const grillMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0a0a0a,
+    roughness: 0.65,
+    metalness: 0.4,
+  });
+  for (let i = 0; i < 5; i++) {
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.025, 0.06),
+      grillMat,
+    );
+    bar.position.set(0, -0.62 - i * 0.07, 1.13);
+    headGroup.add(bar);
+  }
+
+  // Forehead vertical ridge
+  const foreheadRidge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.55, 0.04),
+    grillMat,
+  );
+  foreheadRidge.position.set(0, 1.05, 1.20);
+  headGroup.add(foreheadRidge);
+
+  // Cheek panel lines (slight angled grooves)
+  [-1, 1].forEach(side => {
+    const cheek = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.50, 0.03),
+      grillMat,
+    );
+    cheek.position.set(side * 0.85, -0.10, 1.18);
+    cheek.rotation.z = side * 0.18;
+    headGroup.add(cheek);
+  });
+
+  // Neck collar (bottom edge)
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.65, 0.18, 32),
+    matAccent,
+  );
+  collar.position.y = -1.55;
+  headGroup.add(collar);
+
+  headGroup.scale.set(1.7, 1.7, 1.7);
   robot.add(headGroup);
 
-  // ===== NECK =====
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.30, 16), matAccent);
-  neck.position.y = 1.7;
-  robot.add(neck);
-
-  // ===== TORSO =====
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 64, 48), matBody);
-  chest.scale.set(1.25, 1.0, 0.85);
-  chest.position.y = 1.05;
-  robot.add(chest);
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 48), matBody);
-  waist.position.y = 0.20;
-  robot.add(waist);
-  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 48, 36), matBody);
-  pelvis.scale.set(1.15, 0.7, 0.9);
-  pelvis.position.y = -0.10;
-  robot.add(pelvis);
-  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), matAccent);
-  hipBlock.scale.set(1, 1.2, 0.9);
-  hipBlock.position.set(0, -0.3, 0.2);
-  robot.add(hipBlock);
-
-  // ===== ARMS =====
-  const jointGeo = new THREE.SphereGeometry(0.12, 16, 16);
-  const buildArm = (side) => {
-    const arm = new THREE.Group();
-    arm.position.set(side * 1.20, 1.45, 0);
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), matBody);
-    arm.add(shoulder);
-    const shoulderPad = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 24,
-      0, Math.PI * 2, 0, Math.PI / 2), matAccent);
-    arm.add(shoulderPad);
-    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.7, 16), matBody);
-    upperArm.position.y = -0.5;
-    arm.add(upperArm);
-    const elbow = new THREE.Mesh(jointGeo, matAccent);
-    elbow.scale.set(1.5, 1, 1.5);
-    elbow.position.y = -0.9;
-    arm.add(elbow);
-    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.10, 0.7, 16), matBody);
-    forearm.position.y = -1.30;
-    arm.add(forearm);
-    const wrist = new THREE.Mesh(jointGeo, matAccent);
-    wrist.scale.set(1.3, 0.8, 1.3);
-    wrist.position.y = -1.70;
-    arm.add(wrist);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), matBody);
-    hand.scale.set(1, 1.2, 0.6);
-    hand.position.y = -1.90;
-    arm.add(hand);
-    return arm;
-  };
-  robot.add(buildArm(-1));
-  robot.add(buildArm( 1));
-
-  // ===== LEGS =====
-  const buildLeg = (side) => {
-    const leg = new THREE.Group();
-    leg.position.set(side * 0.45, -0.45, 0);
-    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.30, 20, 20), matAccent);
-    leg.add(hip);
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.20, 0.85, 24), matBody);
-    thigh.position.y = -0.55;
-    leg.add(thigh);
-    const knee = new THREE.Mesh(jointGeo, matAccent);
-    knee.scale.set(1.6, 1.2, 1.6);
-    knee.position.y = -1.05;
-    leg.add(knee);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.75, 20), matBody);
-    shin.position.y = -1.50;
-    leg.add(shin);
-    const ankle = new THREE.Mesh(jointGeo, matAccent);
-    ankle.scale.set(1.2, 0.6, 1.2);
-    ankle.position.y = -1.95;
-    leg.add(ankle);
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 0.55, 24), matBody);
-    foot.position.set(0, -2.30, 0.10);
-    leg.add(foot);
-    return leg;
-  };
-  robot.add(buildLeg(-1));
-  robot.add(buildLeg( 1));
-
-  robot.position.y = 0;
+  robot.position.y = 1;
   scene.add(robot);
 
-  // Contact shadow under feet — radial alpha disc, anchors the figure
-  const shadowCanvas = document.createElement('canvas');
-  shadowCanvas.width = shadowCanvas.height = 256;
-  const sctx = shadowCanvas.getContext('2d');
-  const grad = sctx.createRadialGradient(128, 128, 10, 128, 128, 128);
-  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
-  grad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  sctx.fillStyle = grad;
-  sctx.fillRect(0, 0, 256, 256);
-  const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+  // Soft halo under the helmet — diffuse glow, not a contact shadow
+  const haloCanvas = document.createElement('canvas');
+  haloCanvas.width = haloCanvas.height = 256;
+  const hctx = haloCanvas.getContext('2d');
+  const haloGrad = hctx.createRadialGradient(128, 128, 5, 128, 128, 128);
+  haloGrad.addColorStop(0,   'rgba(0,0,0,0.45)');
+  haloGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
+  haloGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  hctx.fillStyle = haloGrad;
+  hctx.fillRect(0, 0, 256, 256);
+  const shadowTex = new THREE.CanvasTexture(haloCanvas);
   const shadowMat = new THREE.MeshBasicMaterial({
     map: shadowTex,
     transparent: true,
     depthWrite: false,
   });
-  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.5), shadowMat);
+  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2), shadowMat);
   groundShadow.rotation.x = -Math.PI / 2;
-  groundShadow.position.y = -2.7;
+  groundShadow.position.y = -2.0;
   scene.add(groundShadow);
 
   const themeObserver = new MutationObserver(() => {
@@ -919,8 +920,8 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     dotMaterial.color.setHex(c);
     matBody.color.setHex(bodyHex());
     matAccent.color.setHex(accentHex());
-    matVisor.color.setHex(visorHex());
-    shadowMat.opacity = isLight() ? 0.35 : 0.7;
+    grillMat.color.setHex(isLight() ? 0xf2f2f4 : 0x0a0a0a);
+    shadowMat.opacity = isLight() ? 0.25 : 0.6;
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -953,17 +954,17 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
 
-    // Robot — head tracks cursor, body sways subtly, gentle bob
-    const targetYaw   =  mouseX * 0.65;
-    const targetPitch = -mouseY * 0.40;
+    // Helmet — yaw + pitch tracking with a slight Z tilt for life
+    const targetYaw   =  mouseX * 0.85;
+    const targetPitch = -mouseY * 0.55;
+    const targetTilt  =  mouseX * -0.12;
     headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
     headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
-    robot.rotation.y += (mouseX * 0.15 - robot.rotation.y) * 0.04;
-    const bob = Math.sin(time * 0.5) * 0.12;
-    robot.position.y = bob;
-    const lift = (bob + 0.12) / 0.24;
-    groundShadow.scale.setScalar(1 - lift * 0.12);
-    shadowMat.opacity = (isLight() ? 0.35 : 0.7) * (1 - lift * 0.25);
+    headGroup.rotation.z += (targetTilt  - headGroup.rotation.z) * 0.06;
+    const bob = Math.sin(time * 0.5) * 0.10;
+    robot.position.y = 1 + bob;
+    const lift = (bob + 0.10) / 0.20;
+    shadowMat.opacity = (isLight() ? 0.25 : 0.6) * (1 - lift * 0.3);
 
     renderer.render(scene, camera);
   }
