@@ -254,11 +254,16 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; flex-direction: column; justify-content: center;
   padding: 140px 32px 100px;
   overflow: hidden;
+  /* isolation: corta cualquier blend-mode/filter que un ancestro hubiera
+     metido por error; el hero queda en su propio stacking context. */
+  isolation: isolate;
 }
 .hero-bg-canvas {
   position: absolute; inset: 0; z-index: 0;
   pointer-events: none;
+  background: transparent;
 }
+#hero-canvas { background: transparent; }
 .hero-grid-bg {
   position: absolute; inset: 0;
   background-image:
