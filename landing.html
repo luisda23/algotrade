@@ -1237,31 +1237,86 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   scene.add(dot);
 
   // ──────────────────────────────────────────────
-  //  ROBOT — humanoide procedural completo
+  //  ROBOT — humanoide PBR con plástico lacado
   // ──────────────────────────────────────────────
-  // Cabeza con visor + ear pieces (estilo headphones), cuello, torso
-  // pinch-en-cintura, brazos articulados (hombro-bíceps-codo-antebrazo-
-  // mano), piernas (cadera-muslo-rodilla-pantorrilla-pie). Plástico
-  // blanco brillante con anillos negros en cada articulación.
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  keyLight.position.set(7, 12, 9);
+  // Materiales MeshPhysicalMaterial con clearcoat (el "barniz brillante"
+  // sobre la superficie blanca, igual que un casco de moto o un Tesla
+  // recién pulido). Setup de luces estilo estudio fotográfico: key
+  // arriba-derecha, fill suave abajo-frente, rim atrás-izquierda, y dos
+  // point lights cercanos para crear los highlights blancos especulares
+  // que dan la sensación de fotografía 3D real.
+
+  // === LUCES ESTUDIO ===
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444466, 0.55);
+  scene.add(hemi);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  keyLight.position.set(8, 14, 10);
   scene.add(keyLight);
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.55);
-  rimLight.position.set(-8, 5, -4);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.85);
+  rimLight.position.set(-9, 6, -6);
   scene.add(rimLight);
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
-  fillLight.position.set(0, -6, 5);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.45);
+  fillLight.position.set(0, -4, 6);
   scene.add(fillLight);
+  // Two close point lights — produce the bright specular streaks on
+  // visor and rounded body parts that read as "studio photography"
+  const pointHi = new THREE.PointLight(0xffffff, 0.9, 18, 2);
+  pointHi.position.set(2.5, 4, 4);
+  scene.add(pointHi);
+  const pointSide = new THREE.PointLight(0xffffff, 0.6, 18, 2);
+  pointSide.position.set(-3, 1, 5);
+  scene.add(pointSide);
 
+  // === ENVIRONMENT MAP procedural ===
+  // El clearcoat sin envMap solo refleja luces directas — se ve plano.
+  // Generamos una environment map cube con gradiente blanco arriba / gris
+  // medio en horizonte / oscuro abajo (estilo estudio fotográfico). Los
+  // materiales con clearcoat la muestrean y aparecen los reflejos
+  // brillantes que dan la sensación de "render real".
+  const envCanvas = document.createElement('canvas');
+  envCanvas.width = 256; envCanvas.height = 256;
+  const ectx = envCanvas.getContext('2d');
+  const envGrad = ectx.createLinearGradient(0, 0, 0, 256);
+  envGrad.addColorStop(0,    '#ffffff');
+  envGrad.addColorStop(0.45, '#cdcdd0');
+  envGrad.addColorStop(0.55, '#7a7a82');
+  envGrad.addColorStop(1,    '#1a1a1e');
+  ectx.fillStyle = envGrad;
+  ectx.fillRect(0, 0, 256, 256);
+  const envTex = new THREE.CanvasTexture(envCanvas);
+  envTex.mapping = THREE.EquirectangularReflectionMapping;
+  envTex.encoding = THREE.sRGBEncoding;
+  scene.environment = envTex;
+
+  // === MATERIALES PBR ===
   const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
-  const bodyHex   = () => isLight() ? 0x1a1a1a : 0xf5f5f5;
-  const accentHex = () => isLight() ? 0xf5f5f5 : 0x121212;
-  const visorHex  = () => isLight() ? 0x000000 : 0x0a0a0a;
+  const bodyHex   = () => isLight() ? 0x202022 : 0xf2f2f4;
+  const accentHex = () => isLight() ? 0xf2f2f4 : 0x101012;
+  const visorHex  = () => isLight() ? 0x050505 : 0x070708;
 
-  const matBody   = new THREE.MeshPhongMaterial({ color: bodyHex(),   shininess: 140, specular: 0x555555 });
-  const matAccent = new THREE.MeshPhongMaterial({ color: accentHex(), shininess: 100, specular: 0x222222 });
-  const matVisor  = new THREE.MeshPhongMaterial({ color: visorHex(),  shininess: 250, specular: 0xffffff });
+  const matBody = new THREE.MeshPhysicalMaterial({
+    color: bodyHex(),
+    roughness: 0.32,
+    metalness: 0.05,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.06,
+    reflectivity: 0.65,
+  });
+  const matAccent = new THREE.MeshPhysicalMaterial({
+    color: accentHex(),
+    roughness: 0.45,
+    metalness: 0.25,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.12,
+  });
+  const matVisor = new THREE.MeshPhysicalMaterial({
+    color: visorHex(),
+    roughness: 0.04,
+    metalness: 0.7,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.0,
+    reflectivity: 1.0,
+  });
 
   const robot = new THREE.Group();
 
@@ -1305,22 +1360,18 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   robot.add(neck);
 
   // ===== TORSO (capsulado: caja con esferas top y bottom) =====
-  // Pecho ancho
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), matBody);
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 64, 48), matBody);
   chest.scale.set(1.25, 1.0, 0.85);
   chest.position.y = 1.05;
   robot.add(chest);
-  // Cintura (más estrecha)
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 24), matBody);
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 48), matBody);
   waist.position.y = 0.20;
   robot.add(waist);
-  // Pelvis con bloque negro central (como la imagen ref)
-  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), matBody);
+  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 48, 36), matBody);
   pelvis.scale.set(1.15, 0.7, 0.9);
   pelvis.position.y = -0.10;
   robot.add(pelvis);
-  // Bloque negro central de cadera (entrepierna)
-  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), matAccent);
+  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), matAccent);
   hipBlock.scale.set(1, 1.2, 0.9);
   hipBlock.position.set(0, -0.3, 0.2);
   robot.add(hipBlock);
@@ -1409,6 +1460,29 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   robot.position.y = 0;
   scene.add(robot);
 
+  // Sombra de contacto: disco oscuro plano con falloff radial. No es una
+  // shadow real (no hay shadow map activo) — es un cheat visual que ancla
+  // el robot al "suelo" y elimina la sensación de flotar en vacío.
+  const shadowCanvas = document.createElement('canvas');
+  shadowCanvas.width = shadowCanvas.height = 256;
+  const sctx = shadowCanvas.getContext('2d');
+  const grad = sctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, 256, 256);
+  const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+  const shadowMat = new THREE.MeshBasicMaterial({
+    map: shadowTex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.5), shadowMat);
+  groundShadow.rotation.x = -Math.PI / 2;
+  groundShadow.position.y = -2.7;
+  scene.add(groundShadow);
+
   // Re-color when theme changes
   const themeObserver = new MutationObserver(() => {
     const c = themeColor();
@@ -1417,6 +1491,8 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     matBody.color.setHex(bodyHex());
     matAccent.color.setHex(accentHex());
     matVisor.color.setHex(visorHex());
+    // En tema claro la sombra debe ser muy sutil para no ensuciar el suelo blanco
+    shadowMat.opacity = isLight() ? 0.35 : 0.7;
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1458,14 +1534,19 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
 
-    // Robot — cabeza sigue al cursor (yaw + pitch), torso un sway
-    // muy leve. Bob vertical pequeño para que respire sin "bailar".
+    // Robot — cabeza sigue al cursor, torso sway leve, bob vertical
     const targetYaw   =  mouseX * 0.65;
     const targetPitch = -mouseY * 0.40;
     headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
     headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
     robot.rotation.y += (mouseX * 0.15 - robot.rotation.y) * 0.04;
-    robot.position.y = Math.sin(time * 0.5) * 0.12;
+    const bob = Math.sin(time * 0.5) * 0.12;
+    robot.position.y = bob;
+    // Sombra: cuando el robot sube, la sombra se difumina y se encoge
+    // ligeramente, simulando que la luz del key llega más al suelo.
+    const lift = (bob + 0.12) / 0.24; // 0..1
+    groundShadow.scale.setScalar(1 - lift * 0.12);
+    shadowMat.opacity = (isLight() ? 0.35 : 0.7) * (1 - lift * 0.25);
 
     renderer.render(scene, camera);
   }

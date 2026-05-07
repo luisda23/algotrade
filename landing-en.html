@@ -705,29 +705,73 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   const dot = new THREE.Mesh(dotGeometry, dotMaterial);
   scene.add(dot);
 
-  // Full humanoid robot — head with visor + ear pieces, neck, torso,
-  // articulated arms (shoulder-bicep-elbow-forearm-hand), legs
-  // (hip-thigh-knee-shin-foot). Glossy white plastic with black joint
-  // accents. Materials flip with the data-theme attribute.
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  keyLight.position.set(7, 12, 9);
+  // Full humanoid robot — PBR clearcoat plastic, studio lighting and a
+  // procedural environment map for realistic specular reflections.
+
+  // === STUDIO LIGHTING ===
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444466, 0.55);
+  scene.add(hemi);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  keyLight.position.set(8, 14, 10);
   scene.add(keyLight);
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.55);
-  rimLight.position.set(-8, 5, -4);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.85);
+  rimLight.position.set(-9, 6, -6);
   scene.add(rimLight);
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
-  fillLight.position.set(0, -6, 5);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.45);
+  fillLight.position.set(0, -4, 6);
   scene.add(fillLight);
+  const pointHi = new THREE.PointLight(0xffffff, 0.9, 18, 2);
+  pointHi.position.set(2.5, 4, 4);
+  scene.add(pointHi);
+  const pointSide = new THREE.PointLight(0xffffff, 0.6, 18, 2);
+  pointSide.position.set(-3, 1, 5);
+  scene.add(pointSide);
 
+  // === PROCEDURAL ENVIRONMENT (gradient sky / horizon / floor) ===
+  const envCanvas = document.createElement('canvas');
+  envCanvas.width = 256; envCanvas.height = 256;
+  const ectx = envCanvas.getContext('2d');
+  const envGrad = ectx.createLinearGradient(0, 0, 0, 256);
+  envGrad.addColorStop(0,    '#ffffff');
+  envGrad.addColorStop(0.45, '#cdcdd0');
+  envGrad.addColorStop(0.55, '#7a7a82');
+  envGrad.addColorStop(1,    '#1a1a1e');
+  ectx.fillStyle = envGrad;
+  ectx.fillRect(0, 0, 256, 256);
+  const envTex = new THREE.CanvasTexture(envCanvas);
+  envTex.mapping = THREE.EquirectangularReflectionMapping;
+  envTex.encoding = THREE.sRGBEncoding;
+  scene.environment = envTex;
+
+  // === PBR MATERIALS ===
   const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
-  const bodyHex   = () => isLight() ? 0x1a1a1a : 0xf5f5f5;
-  const accentHex = () => isLight() ? 0xf5f5f5 : 0x121212;
-  const visorHex  = () => isLight() ? 0x000000 : 0x0a0a0a;
+  const bodyHex   = () => isLight() ? 0x202022 : 0xf2f2f4;
+  const accentHex = () => isLight() ? 0xf2f2f4 : 0x101012;
+  const visorHex  = () => isLight() ? 0x050505 : 0x070708;
 
-  const matBody   = new THREE.MeshPhongMaterial({ color: bodyHex(),   shininess: 140, specular: 0x555555 });
-  const matAccent = new THREE.MeshPhongMaterial({ color: accentHex(), shininess: 100, specular: 0x222222 });
-  const matVisor  = new THREE.MeshPhongMaterial({ color: visorHex(),  shininess: 250, specular: 0xffffff });
+  const matBody = new THREE.MeshPhysicalMaterial({
+    color: bodyHex(),
+    roughness: 0.32,
+    metalness: 0.05,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.06,
+    reflectivity: 0.65,
+  });
+  const matAccent = new THREE.MeshPhysicalMaterial({
+    color: accentHex(),
+    roughness: 0.45,
+    metalness: 0.25,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.12,
+  });
+  const matVisor = new THREE.MeshPhysicalMaterial({
+    color: visorHex(),
+    roughness: 0.04,
+    metalness: 0.7,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.0,
+    reflectivity: 1.0,
+  });
 
   const robot = new THREE.Group();
 
@@ -768,18 +812,18 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   robot.add(neck);
 
   // ===== TORSO =====
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), matBody);
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 64, 48), matBody);
   chest.scale.set(1.25, 1.0, 0.85);
   chest.position.y = 1.05;
   robot.add(chest);
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 24), matBody);
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 48), matBody);
   waist.position.y = 0.20;
   robot.add(waist);
-  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), matBody);
+  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 48, 36), matBody);
   pelvis.scale.set(1.15, 0.7, 0.9);
   pelvis.position.y = -0.10;
   robot.add(pelvis);
-  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), matAccent);
+  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), matAccent);
   hipBlock.scale.set(1, 1.2, 0.9);
   hipBlock.position.set(0, -0.3, 0.2);
   robot.add(hipBlock);
@@ -848,6 +892,27 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   robot.position.y = 0;
   scene.add(robot);
 
+  // Contact shadow under feet — radial alpha disc, anchors the figure
+  const shadowCanvas = document.createElement('canvas');
+  shadowCanvas.width = shadowCanvas.height = 256;
+  const sctx = shadowCanvas.getContext('2d');
+  const grad = sctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, 256, 256);
+  const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+  const shadowMat = new THREE.MeshBasicMaterial({
+    map: shadowTex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const groundShadow = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.5), shadowMat);
+  groundShadow.rotation.x = -Math.PI / 2;
+  groundShadow.position.y = -2.7;
+  scene.add(groundShadow);
+
   const themeObserver = new MutationObserver(() => {
     const c = themeColor();
     material.color.setHex(c);
@@ -855,6 +920,7 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     matBody.color.setHex(bodyHex());
     matAccent.color.setHex(accentHex());
     matVisor.color.setHex(visorHex());
+    shadowMat.opacity = isLight() ? 0.35 : 0.7;
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -893,7 +959,11 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
     headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
     robot.rotation.y += (mouseX * 0.15 - robot.rotation.y) * 0.04;
-    robot.position.y = Math.sin(time * 0.5) * 0.12;
+    const bob = Math.sin(time * 0.5) * 0.12;
+    robot.position.y = bob;
+    const lift = (bob + 0.12) / 0.24;
+    groundShadow.scale.setScalar(1 - lift * 0.12);
+    shadowMat.opacity = (isLight() ? 0.35 : 0.7) * (1 - lift * 0.25);
 
     renderer.render(scene, camera);
   }
