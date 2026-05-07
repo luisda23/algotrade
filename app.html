@@ -989,6 +989,50 @@ svg { display: block; }
   display: inline-block;
 }
 
+/* ===================== POLISH ===================== */
+/* Press feedback en botones — feedback táctil sin cambiar layout */
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.985); transition-duration: 0.08s; }
+.btn-primary:active:not(:disabled) { box-shadow: 0 4px 12px rgba(127,127,127,0.12); }
+
+/* Card depth sutil cuando ya están en hover (sólo .card-hover) */
+.card-hover { box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
+.card-hover:hover { box-shadow: 0 14px 38px rgba(0,0,0,0.12), 0 0 1px rgba(255,255,255,0.04); }
+:root[data-theme="light"] .card-hover:hover { box-shadow: 0 14px 30px rgba(0,0,0,0.06); }
+
+/* Skeleton shimmer — usar .skeleton para bloques de carga */
+@keyframes skeletonShimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+.skeleton {
+  background: var(--bg-elev);
+  background-image: linear-gradient(90deg, var(--bg-elev) 0px, var(--bg-card) 60px, var(--bg-elev) 120px);
+  background-size: 600px 100%;
+  background-repeat: no-repeat;
+  border-radius: 8px;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  color: transparent;
+}
+
+/* Focus ring accesible — anillo sutil sin romper el look */
+.btn:focus-visible, .input:focus-visible, .wizard-cta:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Wizard progress: pulso suave cuando una barra acaba de marcarse done */
+.wizard-progress-bar { transition: background-color 0.4s var(--ease); }
+
+/* Tap-area en links del nav y bot rows en mobile */
+@media (hover: none) {
+  .card-hover:hover { transform: none; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .btn:active:not(:disabled) { transform: none; }
+}
+
 /* ===================== UTILS ===================== */
 .hidden { display: none !important; }
 .flex { display: flex; }

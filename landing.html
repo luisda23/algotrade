@@ -748,6 +748,59 @@ footer {
   font-size: 13px; color: var(--text-mute);
 }
 
+/* ============ POLISH UPGRADES ============ */
+
+/* Mouse-spotlight on cards. Inline style sets --mx / --my from JS. */
+.step, .feature {
+  background-image: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.05), transparent 60%);
+}
+:root[data-theme="light"] .step, :root[data-theme="light"] .feature {
+  background-image: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(0,0,0,0.04), transparent 60%);
+}
+.step:hover, .feature:hover {
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 60px rgba(255,255,255,0.04);
+}
+:root[data-theme="light"] .step:hover, :root[data-theme="light"] .feature:hover {
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08), 0 0 60px rgba(0,0,0,0.02);
+}
+
+/* Cursor halo — soft glow that follows the cursor inside the hero. Subtle
+   premium touch sin caer en cursor-blur exagerado. */
+.cursor-halo {
+  position: fixed; pointer-events: none;
+  top: 0; left: 0;
+  width: 420px; height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.10), transparent 70%);
+  filter: blur(24px);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.5s ease;
+  z-index: 1;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+:root[data-theme="light"] .cursor-halo {
+  background: radial-gradient(circle, rgba(0,0,0,0.06), transparent 70%);
+  mix-blend-mode: multiply;
+}
+
+/* Hero badge gana textura glass */
+.hero-badge {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* CTA final con respiración en el glow del fondo */
+.cta-final::before {
+  animation: ctaPulse 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes ctaPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.82; transform: scale(1.05); }
+}
+
 /* ============ RESPONSIVE ============ */
 @media (max-width: 768px) {
   section { padding: 90px 20px; }
@@ -755,6 +808,12 @@ footer {
   .nav { padding: 14px 20px; }
   .step, .feature { padding: 28px 24px; }
   .price-card { padding: 40px 28px; }
+  .cursor-halo { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-halo { display: none; }
+  .cta-final::before { animation: none; }
 }
 
 /* prefers reduced motion */
@@ -1167,11 +1226,24 @@ loadThreeJS().then(() => {
   const dot = new THREE.Mesh(dotGeometry, dotMaterial);
   scene.add(dot);
 
+  // Orbe wireframe central — anclaje visual del hero
+  const orbGeo = new THREE.IcosahedronGeometry(2.2, 1);
+  const orbMat = new THREE.MeshBasicMaterial({
+    color: themeColor(),
+    wireframe: true,
+    transparent: true,
+    opacity: 0.55,
+  });
+  const orb = new THREE.Mesh(orbGeo, orbMat);
+  orb.position.y = 5;
+  scene.add(orb);
+
   // Re-color when theme changes
   const themeObserver = new MutationObserver(() => {
     const c = themeColor();
     material.color.setHex(c);
     dotMaterial.color.setHex(c);
+    orbMat.color.setHex(c);
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1212,6 +1284,14 @@ loadThreeJS().then(() => {
 
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
+
+    // Orbe: rotación constante + pulso suave + reactivo al ratón
+    orb.rotation.x += 0.003;
+    orb.rotation.y += 0.005;
+    const pulse = 1 + Math.sin(time * 0.8) * 0.04;
+    orb.scale.setScalar(pulse);
+    orb.position.y = 5 + Math.sin(time * 0.6) * 0.3;
+    orb.position.x += (mouseX * 0.6 - orb.position.x) * 0.04;
 
     renderer.render(scene, camera);
   }
@@ -1309,6 +1389,41 @@ loadThreeJS().then(() => {
     });
   }, { threshold: 0.4 });
   els.forEach(el => obs.observe(el));
+})();
+
+// ====================================================
+// CURSOR HALO — sigue al ratón dentro del hero
+// ====================================================
+(function cursorHalo() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(max-width: 768px)').matches) return;
+  const hero = document.querySelector('.hero');
+  if (!hero) return;
+  const halo = document.createElement('div');
+  halo.className = 'cursor-halo';
+  document.body.appendChild(halo);
+  let active = false;
+  hero.addEventListener('mouseenter', () => { halo.style.opacity = '1'; active = true; });
+  hero.addEventListener('mouseleave', () => { halo.style.opacity = '0'; active = false; });
+  document.addEventListener('mousemove', (e) => {
+    if (!active) return;
+    halo.style.left = e.clientX + 'px';
+    halo.style.top = e.clientY + 'px';
+  }, { passive: true });
+})();
+
+// ====================================================
+// SPOTLIGHT en cards — radial gradient sigue al cursor
+// ====================================================
+(function cardSpotlight() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelectorAll('.step, .feature').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    }, { passive: true });
+  });
 })();
 
 // ============ THEME TOGGLE ============
