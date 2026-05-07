@@ -1409,7 +1409,7 @@ if (!window._skipHeroCanvas) {
     grid.rotation.x = -Math.PI / 2.5;
     scene.add(grid);
 
-    const dotMat = new THREE.MeshBasicMaterial({ color: themeColor() });
+    const dotMat = new THREE.MeshBasicMaterial({ color: themeColor(), transparent: true });
     const dot = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), dotMat);
     scene.add(dot);
 
@@ -1492,19 +1492,45 @@ if (!window._skipHeroCanvas) {
     scene.add(hudGroup);
 
     function applyThemeToScene() {
-      const hudHex = isLight() ? 0x0a0a0a : 0xffffff;
+      const light = isLight();
+      const hudHex = light ? 0x0a0a0a : 0xffffff;
       ringInnerMat.color.setHex(hudHex);
       ringOuterMat.color.setHex(hudHex);
       tickLongMat.color.setHex(hudHex);
       tickShortMat.color.setHex(hudHex);
-      if (isLight()) {
+
+      // Atenuar capas decorativas en tema claro: el ojo humano ve mucho
+      // más contraste sobre blanco que sobre negro, así que bajar opacidad
+      // mantiene la sensación "etéreo" sin abrumar.
+      const hudMul = light ? 0.35 : 1;
+      ringInnerMat.opacity = 0.18 * hudMul;
+      ringOuterMat.opacity = 0.40 * hudMul;
+      tickLongMat.opacity  = 0.55 * hudMul;
+      tickShortMat.opacity = 0.22 * hudMul;
+      gridMat.opacity = light ? 0.06 : 0.18;
+      dotMat.opacity = light ? 0.5 : 1;
+
+      if (light) {
         bloom.strength = 0.42;
         bloom.threshold = 0.86;
-        for (const m of helmetMats) m.envMapIntensity = 1.0;
+        // Helmet plateado: en fondo blanco un casco negro absorbe la luz
+        // y se ve "muerto". Plateado pulido refleja el environment y se
+        // siente más vivo (manteniendo el look monocromo).
+        for (const m of helmetMats) {
+          m.envMapIntensity = 1.0;
+          m.color.setHex(0xe8e8ec);
+          m.metalness = 0.85;
+          m.roughness = 0.22;
+        }
       } else {
         bloom.strength = 0.55;
         bloom.threshold = 0.82;
-        for (const m of helmetMats) m.envMapIntensity = 1.5;
+        for (const m of helmetMats) {
+          m.envMapIntensity = 1.5;
+          m.color.setHex(0x070708);
+          m.metalness = 0.7;
+          m.roughness = 0.16;
+        }
       }
     }
 
