@@ -321,7 +321,10 @@ input, textarea, select { font-family: inherit; color: inherit; }
 @media (max-width: 1023px) {
   .mobile-top { display: flex; }
   .mobile-bottom { display: flex; }
-  main { padding-bottom: 80px; }
+  main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .mobile-top .brand { padding: 0; }
+  .lang-toggle-mobile,
+  .theme-toggle-mobile { min-height: 44px; min-width: 44px; }
 }
 
 /* Main content */
@@ -434,6 +437,11 @@ main {
   font-size: 15px; font-weight: 500;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
+}
+/* iOS Safari hace auto-zoom en cualquier input con font-size < 16px al
+   focusear. Forzamos 16px en mobile para evitar el zoom + layout shift. */
+@media (max-width: 1023px) {
+  .input { font-size: 16px; }
 }
 .input:focus {
   border-color: var(--text-mute);
@@ -1113,7 +1121,11 @@ const BACKEND_URL = (window.location.hostname === 'localhost' || window.location
   ? 'http://localhost:5000'
   : 'https://algotrade-backend-production-5f1f.up.railway.app';
 const API = BACKEND_URL + '/api';
-const APP_LANG = 'en';
+// IMPORTANTE: window.APP_LANG (no const). i18n.js lee window.APP_LANG para
+// elegir idioma de los códigos del backend; un const block-scoped no se
+// publica al objeto global y la traducción cae siempre al fallback ES.
+window.APP_LANG = 'en';
+const APP_LANG = window.APP_LANG;
 
 const state = {
   user: null,
@@ -1175,14 +1187,21 @@ function loadAuth() {
   } catch (e) {}
 }
 function saveAuth(token, user) {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
+  // Safari iOS Private throws QuotaExceededError on setItem. Without
+  // try/catch the login aborts silently. In-memory state still works,
+  // we just lose persistence across reloads.
+  try {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+  } catch (_) {}
   state.token = token;
   state.user = user;
 }
 function clearAuth() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  } catch (_) {}
   state.token = null;
   state.user = null;
   state.bots = [];
@@ -3260,7 +3279,7 @@ async function startCheckout() {
   // localStorage is only a UI fallback (so the wizard can repopulate if
   // the user reopens it before paying). The backend already has the
   // truth in `pending_bots` via the checkout-custom call below.
-  localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig));
+  try { localStorage.setItem('pendingBotConfig', JSON.stringify(botConfig)); } catch (_) {}
 
   try {
     // Send the full bot config to the backend: it persists it as

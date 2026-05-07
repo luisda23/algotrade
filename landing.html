@@ -1163,7 +1163,14 @@ function loadThreeJS() {
   });
 }
 
-loadThreeJS().then(() => {
+// Skip the canvas entirely on mobile (drena batería) y cuando el usuario ha
+// pedido reducir movimiento. La página queda funcional sin canvas — el resto
+// de capas decorativas (grid, bars) ya cubren el hueco visual.
+const _skipHeroCanvas =
+  window.matchMedia('(max-width: 768px)').matches ||
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (!_skipHeroCanvas) loadThreeJS().then(() => {
   const canvas = document.getElementById('hero-canvas');
   if (!canvas || typeof THREE === 'undefined') return;
 
