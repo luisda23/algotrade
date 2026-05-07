@@ -750,7 +750,10 @@ svg { display: block; }
 }
 .bots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  /* min(320px, 100%) impide overflow horizontal en pantallas <360px:
+     auto-fill respeta el min, así que en móviles estrechos colapsa a
+     1 columna del ancho del contenedor en lugar de 320px fijos. */
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 14px;
 }
 .bot-card {
@@ -925,6 +928,10 @@ svg { display: block; }
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
+/* Timeframe grid: 7 botones en desktop, colapsa a 4 en mobile estrecho
+   para que las celdas no queden de 38px (donde el subtítulo se trunca). */
+.tf-grid { grid-template-columns: repeat(7, 1fr); }
+@media (max-width: 600px) { .tf-grid { grid-template-columns: repeat(4, 1fr); } }
 .option-card {
   padding: 18px 16px;
   border-radius: 14px;
@@ -2612,7 +2619,7 @@ function renderStepRisk() {
     <div style="margin-bottom:24px">
       <div class="field-label">Timeframe del análisis</div>
       <div class="text-dim mt-2" style="font-size:12px;margin-top:0;margin-bottom:10px">${tfHint ? `${tfHint} · puedes cambiarlo en MetaTrader luego` : 'El bot usará este timeframe para sus indicadores'}</div>
-      <div class="option-grid" style="grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px">
+      <div class="option-grid tf-grid" style="gap:6px;margin-bottom:8px">
         ${TIMEFRAMES.map(t => `
           <button class="option-card mono ${d.timeframe === t.id ? 'selected' : ''}" data-timeframe="${t.id}" style="font-size:14px;padding:14px 6px;flex-direction:column;gap:2px">
             <div style="font-weight:800">${t.label}</div>

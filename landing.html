@@ -697,7 +697,10 @@ section { position: relative; padding: 140px 32px; }
   font-size: 15px; color: var(--text-dim); line-height: 1.65;
 }
 .faq-item.open .faq-a {
-  max-height: 400px; padding-top: 20px;
+  /* 1000px da margen para respuestas largas (la de FTMO + lista de brokers
+     supera 400px en mobile estrecho a 15px/1.65). El navegador no renderiza
+     espacio extra cuando el contenido es menor — solo limita la animación. */
+  max-height: 1000px; padding-top: 20px;
 }
 
 /* ============ FINAL CTA ============ */

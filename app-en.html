@@ -746,7 +746,7 @@ svg { display: block; }
 }
 .bots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 14px;
 }
 .bot-card {
@@ -921,6 +921,8 @@ svg { display: block; }
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
+.tf-grid { grid-template-columns: repeat(7, 1fr); }
+@media (max-width: 600px) { .tf-grid { grid-template-columns: repeat(4, 1fr); } }
 .option-card {
   padding: 18px 16px;
   border-radius: 14px;
@@ -2599,7 +2601,7 @@ function renderStepRisk() {
     <div style="margin-bottom:24px">
       <div class="field-label">Analysis timeframe</div>
       <div class="text-dim mt-2" style="font-size:12px;margin-top:0;margin-bottom:10px">${tfHint ? `${tfHint} · you can change it later in MetaTrader` : 'The bot will use this timeframe for its indicators'}</div>
-      <div class="option-grid" style="grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px">
+      <div class="option-grid tf-grid" style="gap:6px;margin-bottom:8px">
         ${TIMEFRAMES.map(t => `
           <button class="option-card mono ${d.timeframe === t.id ? 'selected' : ''}" data-timeframe="${t.id}" style="font-size:14px;padding:14px 6px;flex-direction:column;gap:2px">
             <div style="font-weight:800">${t.label}</div>
@@ -3402,7 +3404,7 @@ function loadGuide(root) {
         </div>
         <div style="flex:1">
           <div class="h3">Watch video tutorial</div>
-          <div class="text-dim mt-2" style="font-size:13px">Step-by-step tutorial on YouTube</div>
+          <div class="text-dim mt-2" style="font-size:13px">Step-by-step tutorial on YouTube · narrated in Spanish (auto-translate subtitles available)</div>
         </div>
         ${I.arrow}
       </div>
