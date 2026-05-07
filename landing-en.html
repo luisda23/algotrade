@@ -868,12 +868,25 @@ if (!window._skipHeroCanvas) {
     coreLight.position.set(0, 4.6, 0.6);
     scene.add(coreLight);
 
-    // Postprocessing
+    // Postprocessing — bloom and envMap are theme-aware
+    const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.7, 0.82);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
+
+    function applyThemeToScene() {
+      if (isLight()) {
+        bloom.strength = 0.42;
+        bloom.threshold = 0.86;
+        for (const m of helmetMats) m.envMapIntensity = 1.0;
+      } else {
+        bloom.strength = 0.55;
+        bloom.threshold = 0.82;
+        for (const m of helmetMats) m.envMapIntensity = 1.5;
+      }
+    }
 
     // Helmet
     const helmetGroup = new THREE.Group();
@@ -906,6 +919,7 @@ if (!window._skipHeroCanvas) {
         helmet.scale.setScalar(4.5);
         helmet.rotation.y = -0.25;
         helmetGroup.add(helmet);
+        applyThemeToScene();
       },
       undefined,
       (err) => console.warn('[hero3d] helmet load failed', err),
@@ -915,8 +929,10 @@ if (!window._skipHeroCanvas) {
       const c = themeColor();
       gridMat.color.setHex(c);
       dotMat.color.setHex(c);
+      applyThemeToScene();
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    applyThemeToScene();
 
     let mouseX = 0, mouseY = 0;
     window.addEventListener('mousemove', (e) => {
