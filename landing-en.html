@@ -346,6 +346,34 @@ footer { border-top: 1px solid var(--border); padding: 60px 32px 50px; max-width
   .cta-final::before { animation: none; }
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ============================================================
+   FORCE HERO ALWAYS DARK — see landing.html for explanation
+   ============================================================ */
+.hero {
+  background: #000000;
+  --bg: #000000;
+  --bg-card: #0A0A0A;
+  --bg-elev: #141414;
+  --text: #FFFFFF;
+  --text-dim: rgba(255,255,255,0.65);
+  --text-mute: rgba(255,255,255,0.4);
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.16);
+  --accent: #FFFFFF;
+}
+:root[data-theme="light"] .nav:not(.scrolled) {
+  --text: #FFFFFF;
+  --text-dim: rgba(255,255,255,0.65);
+  --text-mute: rgba(255,255,255,0.4);
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.16);
+  --bg: #000000;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-elev: rgba(255,255,255,0.10);
+}
+:root[data-theme="light"] .nav:not(.scrolled) .logo-on-light { display: none; }
+:root[data-theme="light"] .nav:not(.scrolled) .logo-on-dark { display: inline-block; vertical-align: middle; }
 </style>
 </head>
 
