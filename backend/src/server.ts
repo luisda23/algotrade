@@ -74,7 +74,14 @@ const VERCEL_PREVIEW_RE = VERCEL_TEAM_SLUG
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Postman, curl, server-to-server
+      // origin === undefined ocurre con: Postman/curl, server-to-server,
+      // mismo-origen estricto, y archivos abiertos con file:// (que envían
+      // Origin: null que cors() normaliza a undefined). Lo permitimos porque
+      // cualquier ruta autenticada exige JWT en Authorization, así que un
+      // navegador con file:// no puede pivotar sin haber robado antes el
+      // token. Si se añadiera una ruta sensible sin JWT, hay que filtrar
+      // este caso o restringirlo a NODE_ENV !== 'production'.
+      if (!origin) return callback(null, true);
 
       // Whitelist explícita
       if (allowedOrigins.includes(origin)) return callback(null, true);

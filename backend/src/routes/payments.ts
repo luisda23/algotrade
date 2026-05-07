@@ -1,10 +1,26 @@
 import { Router, Response, Request } from "express";
+import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { prisma } from "../server";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { errResp, okResp, RC } from "../utils/responses";
 
 const router = Router();
+
+// Defensa en profundidad para el webhook de Lemon Squeezy. Lemon firma cada
+// request con HMAC y nuestra capa de idempotencia (lemonOrderId UNIQUE)
+// evita la creación de bots duplicados ante reintentos. Pero un atacante
+// que descubra la URL pública aún puede intentar martillearla con basura
+// para forzar verificaciones de firma (CPU). 120 req/min por IP es más
+// que suficiente para el tráfico real (Lemon raramente reintenta más de
+// 5 veces en 5 min) y un orden de magnitud por debajo del coste DoS.
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { received: false, error: "rate_limited" },
+});
 
 const LEMON_API_KEY = process.env.LEMON_API_KEY || "";
 const LEMON_STORE_ID = process.env.LEMON_STORE_ID || "";
@@ -710,160 +726,164 @@ router.post(
   },
 );
 
-router.post("/lemon-webhook", async (req: Request, res: Response) => {
-  try {
-    if (!LEMON_WEBHOOK_SECRET) {
-      console.error("LEMON_WEBHOOK_SECRET no configurado");
-      return res.status(500).send("Webhook no configurado");
-    }
-
-    const signature = (req.headers["x-signature"] || "") as string;
-    const rawBody: Buffer | undefined = (req as any).rawBody;
-    if (!rawBody || !signature) return res.status(401).send("Firma faltante");
-
-    const expected = crypto
-      .createHmac("sha256", LEMON_WEBHOOK_SECRET)
-      .update(rawBody)
-      .digest("hex");
-
-    const sigBuf = Buffer.from(signature, "hex");
-    const expBuf = Buffer.from(expected, "hex");
-    if (
-      sigBuf.length !== expBuf.length ||
-      !crypto.timingSafeEqual(sigBuf, expBuf)
-    ) {
-      return res.status(401).send("Firma inválida");
-    }
-
-    const event = (req.body?.meta?.event_name || "").toString();
-    const orderId = req.body?.data?.id;
-    const attrs = req.body?.data?.attributes || {};
-    const status = attrs.status;
-    console.log(
-      `[lemon-webhook] event=${event} order_id=${orderId} status=${status}`,
-    );
-
-    // El webhook es la fuente de verdad: si una orden llega como `paid`,
-    // creamos el Bot inmediatamente (incluso si el usuario cerró el
-    // navegador y nunca vuelve a /verify). NUNCA incluir `order_refunded`
-    // aquí — el filtro `status === 'paid'` lo bloquea hoy, pero si Lemon
-    // cambia el shape del payload, nos arriesgaríamos a crear bots para
-    // órdenes ya reembolsadas.
-    const isPaidOrder =
-      (event === "order_created" || event === "order_paid") &&
-      status === "paid";
-
-    if (isPaidOrder && orderId) {
-      const pendingBotId =
-        attrs?.first_order_item?.custom_data?.pending_bot_id ||
-        attrs?.custom_data?.pending_bot_id;
-      const customUserId =
-        attrs?.first_order_item?.custom_data?.user_id ||
-        attrs?.custom_data?.user_id;
-      const customBotName =
-        attrs?.first_order_item?.custom_data?.bot_name ||
-        attrs?.custom_data?.bot_name ||
-        "Mi Bot";
-
-      const orderKey = String(orderId);
-      const existing = await findBotByLemonOrderId(orderKey);
-      if (existing) {
-        // Ya existe — /verify del frontend ganó la carrera o reentrega del webhook.
-        console.log(
-          `[lemon-webhook] bot ya existía orderId=${orderKey}, no-op`,
-        );
-        return res.json({ received: true, idempotent: true });
+router.post(
+  "/lemon-webhook",
+  webhookLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      if (!LEMON_WEBHOOK_SECRET) {
+        console.error("LEMON_WEBHOOK_SECRET no configurado");
+        return res.status(500).send("Webhook no configurado");
       }
 
-      // Caso A: tenemos pending_bot_id → materializar Bot con la config real.
-      if (pendingBotId && customUserId) {
-        const pending = await prisma.pendingBot.findUnique({
-          where: { id: pendingBotId },
-        });
-        if (pending && pending.userId === customUserId) {
+      const signature = (req.headers["x-signature"] || "") as string;
+      const rawBody: Buffer | undefined = (req as any).rawBody;
+      if (!rawBody || !signature) return res.status(401).send("Firma faltante");
+
+      const expected = crypto
+        .createHmac("sha256", LEMON_WEBHOOK_SECRET)
+        .update(rawBody)
+        .digest("hex");
+
+      const sigBuf = Buffer.from(signature, "hex");
+      const expBuf = Buffer.from(expected, "hex");
+      if (
+        sigBuf.length !== expBuf.length ||
+        !crypto.timingSafeEqual(sigBuf, expBuf)
+      ) {
+        return res.status(401).send("Firma inválida");
+      }
+
+      const event = (req.body?.meta?.event_name || "").toString();
+      const orderId = req.body?.data?.id;
+      const attrs = req.body?.data?.attributes || {};
+      const status = attrs.status;
+      console.log(
+        `[lemon-webhook] event=${event} order_id=${orderId} status=${status}`,
+      );
+
+      // El webhook es la fuente de verdad: si una orden llega como `paid`,
+      // creamos el Bot inmediatamente (incluso si el usuario cerró el
+      // navegador y nunca vuelve a /verify). NUNCA incluir `order_refunded`
+      // aquí — el filtro `status === 'paid'` lo bloquea hoy, pero si Lemon
+      // cambia el shape del payload, nos arriesgaríamos a crear bots para
+      // órdenes ya reembolsadas.
+      const isPaidOrder =
+        (event === "order_created" || event === "order_paid") &&
+        status === "paid";
+
+      if (isPaidOrder && orderId) {
+        const pendingBotId =
+          attrs?.first_order_item?.custom_data?.pending_bot_id ||
+          attrs?.custom_data?.pending_bot_id;
+        const customUserId =
+          attrs?.first_order_item?.custom_data?.user_id ||
+          attrs?.custom_data?.user_id;
+        const customBotName =
+          attrs?.first_order_item?.custom_data?.bot_name ||
+          attrs?.custom_data?.bot_name ||
+          "Mi Bot";
+
+        const orderKey = String(orderId);
+        const existing = await findBotByLemonOrderId(orderKey);
+        if (existing) {
+          // Ya existe — /verify del frontend ganó la carrera o reentrega del webhook.
+          console.log(
+            `[lemon-webhook] bot ya existía orderId=${orderKey}, no-op`,
+          );
+          return res.json({ received: true, idempotent: true });
+        }
+
+        // Caso A: tenemos pending_bot_id → materializar Bot con la config real.
+        if (pendingBotId && customUserId) {
+          const pending = await prisma.pendingBot.findUnique({
+            where: { id: pendingBotId },
+          });
+          if (pending && pending.userId === customUserId) {
+            try {
+              const cfg: any = pending.config;
+              const bot = await prisma.bot.create({
+                data: {
+                  userId: pending.userId,
+                  name: cfg.name,
+                  description: cfg.description || "",
+                  strategy: cfg.strategy,
+                  lemonOrderId: orderKey,
+                  parameters: {
+                    ...cfg.parameters,
+                    lemonOrderId: orderKey,
+                    lemonOrderNumber: String(attrs.order_number || ""),
+                  },
+                },
+              });
+              // Limpiar el PendingBot — su trabajo terminó.
+              await prisma.pendingBot.delete({ where: { id: pendingBotId } });
+              console.log(
+                `[lemon-webhook] bot creado desde PendingBot id=${bot.id}`,
+              );
+              return res.json({ received: true, botId: bot.id });
+            } catch (e: any) {
+              // P2002 = otro flujo (posiblemente /verify) ganó la carrera y ya
+              // creó el bot. Idempotente: lo dejamos pasar.
+              if (e?.code !== "P2002")
+                console.error("[lemon-webhook] create bot fail:", e);
+            }
+          } else if (!pending) {
+            console.warn(
+              `[lemon-webhook] PendingBot no encontrado id=${pendingBotId} (caducado?)`,
+            );
+          }
+        }
+
+        // Caso B: no hay pendingBotId pero sí user_id → bot fallback con defaults.
+        // Mismo patrón que /recover. Cubre flujos legacy donde el frontend no
+        // mandó botConfig al checkout.
+        if (customUserId) {
           try {
-            const cfg: any = pending.config;
             const bot = await prisma.bot.create({
               data: {
-                userId: pending.userId,
-                name: cfg.name,
-                description: cfg.description || "",
-                strategy: cfg.strategy,
+                userId: customUserId,
+                name: String(customBotName).slice(0, 60),
+                description: "Bot creado desde webhook · puedes editarlo",
+                strategy: "momentum",
                 lemonOrderId: orderKey,
                 parameters: {
-                  ...cfg.parameters,
+                  market: "forex",
+                  pair: "EURUSD",
+                  leverage: 30,
+                  indicators: ["rsi", "ema"],
+                  timeframe: "M15",
+                  lot: { mode: "auto", fixedLot: 0.1 },
+                  risk: {
+                    unit: "percent",
+                    stopLoss: 1.5,
+                    takeProfit: 3.0,
+                    posSize: 2,
+                    dailyLoss: 4,
+                  },
+                  news: { enabled: false },
+                  funded: { enabled: false, firm: null },
                   lemonOrderId: orderKey,
                   lemonOrderNumber: String(attrs.order_number || ""),
+                  webhookFallback: true,
                 },
               },
             });
-            // Limpiar el PendingBot — su trabajo terminó.
-            await prisma.pendingBot.delete({ where: { id: pendingBotId } });
-            console.log(
-              `[lemon-webhook] bot creado desde PendingBot id=${bot.id}`,
-            );
-            return res.json({ received: true, botId: bot.id });
+            console.log(`[lemon-webhook] bot fallback creado id=${bot.id}`);
+            return res.json({ received: true, botId: bot.id, fallback: true });
           } catch (e: any) {
-            // P2002 = otro flujo (posiblemente /verify) ganó la carrera y ya
-            // creó el bot. Idempotente: lo dejamos pasar.
             if (e?.code !== "P2002")
-              console.error("[lemon-webhook] create bot fail:", e);
+              console.error("[lemon-webhook] fallback create fail:", e);
           }
-        } else if (!pending) {
-          console.warn(
-            `[lemon-webhook] PendingBot no encontrado id=${pendingBotId} (caducado?)`,
-          );
         }
       }
 
-      // Caso B: no hay pendingBotId pero sí user_id → bot fallback con defaults.
-      // Mismo patrón que /recover. Cubre flujos legacy donde el frontend no
-      // mandó botConfig al checkout.
-      if (customUserId) {
-        try {
-          const bot = await prisma.bot.create({
-            data: {
-              userId: customUserId,
-              name: String(customBotName).slice(0, 60),
-              description: "Bot creado desde webhook · puedes editarlo",
-              strategy: "momentum",
-              lemonOrderId: orderKey,
-              parameters: {
-                market: "forex",
-                pair: "EURUSD",
-                leverage: 30,
-                indicators: ["rsi", "ema"],
-                timeframe: "M15",
-                lot: { mode: "auto", fixedLot: 0.1 },
-                risk: {
-                  unit: "percent",
-                  stopLoss: 1.5,
-                  takeProfit: 3.0,
-                  posSize: 2,
-                  dailyLoss: 4,
-                },
-                news: { enabled: false },
-                funded: { enabled: false, firm: null },
-                lemonOrderId: orderKey,
-                lemonOrderNumber: String(attrs.order_number || ""),
-                webhookFallback: true,
-              },
-            },
-          });
-          console.log(`[lemon-webhook] bot fallback creado id=${bot.id}`);
-          return res.json({ received: true, botId: bot.id, fallback: true });
-        } catch (e: any) {
-          if (e?.code !== "P2002")
-            console.error("[lemon-webhook] fallback create fail:", e);
-        }
-      }
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error("Webhook error:", error);
+      res.status(500).send("Error procesando webhook");
     }
-
-    res.json({ received: true });
-  } catch (error: any) {
-    console.error("Webhook error:", error);
-    res.status(500).send("Error procesando webhook");
-  }
-});
+  },
+);
 
 export default router;

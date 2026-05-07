@@ -252,9 +252,9 @@ section { position: relative; padding: 130px 32px; max-width: var(--max-w); marg
 .price-card { max-width: 480px; margin: 0 auto; padding: 56px 44px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 22px; text-align: center; position: relative; overflow: hidden; }
 .price-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, var(--text), transparent); opacity: 0.3; }
 .price-tag { display: inline-block; padding: 5px 12px; background: var(--text); color: var(--bg); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 28px; }
-.price-amount { display: flex; align-items: baseline; justify-content: center; gap: 4px; font-family: 'Inter Tight'; font-size: 88px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; }
-.price-amount .currency { font-size: 36px; color: var(--text-dim); font-weight: 700; }
-.price-amount .cents { font-size: 36px; color: var(--text-dim); font-weight: 700; }
+.price-amount { display: flex; align-items: baseline; justify-content: center; gap: 4px; font-family: 'Inter Tight'; font-size: clamp(64px, 10vw, 88px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; }
+.price-amount .currency { font-size: clamp(28px, 4vw, 36px); color: var(--text-dim); font-weight: 700; }
+.price-amount .cents { font-size: clamp(28px, 4vw, 36px); color: var(--text-dim); font-weight: 700; }
 .price-period { font-size: 13px; color: var(--text-mute); font-weight: 500; margin-bottom: 38px; }
 .price-features { list-style: none; text-align: left; margin: 0 0 36px; }
 .price-features li { display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 14px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
@@ -662,6 +662,13 @@ window.addEventListener('scroll', () => {
 window._skipHeroCanvas =
   window.matchMedia('(max-width: 768px)').matches ||
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// When we skip, hide the canvas: the browser otherwise assigns its
+// default SVG size (300x150) and the empty rect leaks into layout.
+if (window._skipHeroCanvas) {
+  const _c = document.getElementById('hero-canvas');
+  if (_c) _c.style.display = 'none';
+}
 
 (function heroBars() {
   const container = document.getElementById('hero-bars');

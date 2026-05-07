@@ -1171,6 +1171,14 @@ window._skipHeroCanvas =
   window.matchMedia('(max-width: 768px)').matches ||
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Si saltamos el canvas, ocultarlo del flujo. Sin esto el navegador
+// le asigna su tamaño SVG default (300×150) y queda como un cuadrado
+// invisible pero ocupando espacio en algunas combinaciones.
+if (window._skipHeroCanvas) {
+  const _c = document.getElementById('hero-canvas');
+  if (_c) _c.style.display = 'none';
+}
+
 // ====================================================
 // HERO bars decorativas (background)
 // ====================================================
