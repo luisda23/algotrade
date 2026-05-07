@@ -60,7 +60,7 @@
     'auth.email_taken_during_change':   { es: 'Ese email se ha registrado mientras esperabas. Prueba con otro.',en: 'That email was registered while you waited. Try another.' },
 
     // ───── Auth: rate limits ─────
-    'rate.login':                       { es: 'Demasiados intentos de login. Espera 15 minutos antes de volver a intentarlo.', en: 'Too many login attempts. Wait 15 minutes before trying again.' },
+    'rate.login':                       { es: 'Demasiados intentos de login. Espera 5 minutos antes de volver a intentarlo.', en: 'Too many login attempts. Wait 5 minutes before trying again.' },
     'rate.signup':                      { es: 'Demasiadas cuentas creadas desde esta IP. Espera una hora.',     en: 'Too many accounts created from this IP. Wait one hour.' },
     'rate.forgot':                      { es: 'Demasiadas solicitudes. Espera una hora.',                       en: 'Too many requests. Wait one hour.' },
     'rate.code':                        { es: 'Demasiados intentos de código. Espera unos minutos.',            en: 'Too many code attempts. Wait a few minutes.' },
