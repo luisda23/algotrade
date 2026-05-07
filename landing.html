@@ -1237,80 +1237,176 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
   scene.add(dot);
 
   // ──────────────────────────────────────────────
-  //  ROBOT (sustituye al orbe icosaédrico anterior)
+  //  ROBOT — humanoide procedural completo
   // ──────────────────────────────────────────────
-  // Construcción procedural con primitivas Three.js. La cabeza es un
-  // subgrupo independiente del cuerpo: rota más con el cursor para dar
-  // sensación de "el robot te está mirando" mientras el cuerpo solo
-  // sway leve. Materiales monocromáticos que se invierten con el tema.
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
-  keyLight.position.set(6, 10, 8);
+  // Cabeza con visor + ear pieces (estilo headphones), cuello, torso
+  // pinch-en-cintura, brazos articulados (hombro-bíceps-codo-antebrazo-
+  // mano), piernas (cadera-muslo-rodilla-pantorrilla-pie). Plástico
+  // blanco brillante con anillos negros en cada articulación.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  keyLight.position.set(7, 12, 9);
   scene.add(keyLight);
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
-  rimLight.position.set(-6, 4, -5);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.55);
+  rimLight.position.set(-8, 5, -4);
   scene.add(rimLight);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+  fillLight.position.set(0, -6, 5);
+  scene.add(fillLight);
 
   const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
-  const bodyHex   = () => isLight() ? 0x1a1a1a : 0xf2f2f2;
+  const bodyHex   = () => isLight() ? 0x1a1a1a : 0xf5f5f5;
+  const accentHex = () => isLight() ? 0xf5f5f5 : 0x121212;
   const visorHex  = () => isLight() ? 0x000000 : 0x0a0a0a;
-  const accentHex = () => isLight() ? 0x000000 : 0xffffff;
 
-  const matBody  = new THREE.MeshPhongMaterial({ color: bodyHex(), shininess: 90, specular: 0x333333 });
-  const matVisor = new THREE.MeshPhongMaterial({ color: visorHex(), shininess: 220, specular: 0xffffff });
-  const matEye   = new THREE.MeshBasicMaterial({ color: accentHex() });
+  const matBody   = new THREE.MeshPhongMaterial({ color: bodyHex(),   shininess: 140, specular: 0x555555 });
+  const matAccent = new THREE.MeshPhongMaterial({ color: accentHex(), shininess: 100, specular: 0x222222 });
+  const matVisor  = new THREE.MeshPhongMaterial({ color: visorHex(),  shininess: 250, specular: 0xffffff });
 
   const robot = new THREE.Group();
 
-  // Cabeza (subgrupo — tracking cursor)
+  // ===== CABEZA (subgrupo — tracking cursor) =====
   const headGroup = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.4, 48, 48), matBody);
-  head.scale.set(1, 1.08, 0.95);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.95, 48, 48), matBody);
+  head.scale.set(1, 1.05, 0.95);
   headGroup.add(head);
-
-  // Visor curvo frontal — porción de esfera ligeramente mayor
-  const visorGeo = new THREE.SphereGeometry(1.42, 48, 48, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.18, Math.PI * 0.55);
+  // Visor: caja delgada curvada al frente (achatada y ligeramente bowed)
+  const visorGeo = new THREE.SphereGeometry(0.96, 48, 48,
+    Math.PI * 0.20, Math.PI * 0.60,
+    Math.PI * 0.32, Math.PI * 0.32);
   const visor = new THREE.Mesh(visorGeo, matVisor);
-  visor.rotation.y = Math.PI; // mirar al frente del observador
+  visor.rotation.y = Math.PI;
   headGroup.add(visor);
-
-  // Ojo emisivo — desplazado al lado izquierdo del visor (perfil)
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), matEye);
-  eye.position.set(-0.5, 0.05, 1.3);
-  headGroup.add(eye);
-
-  headGroup.position.y = 1.7;
+  // Marco del visor (anillo negro fino alrededor)
+  const visorFrame = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 8, 32, Math.PI), matAccent);
+  visorFrame.position.set(0, 0.02, 0.78);
+  visorFrame.rotation.x = Math.PI;
+  visorFrame.scale.set(1, 0.6, 1);
+  headGroup.add(visorFrame);
+  // Ear pieces — discos blancos con núcleo negro a cada lado
+  const earOuterGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.18, 32);
+  const earInnerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.20, 24);
+  [-1, 1].forEach(side => {
+    const earOuter = new THREE.Mesh(earOuterGeo, matBody);
+    earOuter.position.set(side * 0.95, -0.05, 0);
+    earOuter.rotation.z = Math.PI / 2;
+    headGroup.add(earOuter);
+    const earInner = new THREE.Mesh(earInnerGeo, matAccent);
+    earInner.position.set(side * 1.0, -0.05, 0);
+    earInner.rotation.z = Math.PI / 2;
+    headGroup.add(earInner);
+  });
+  headGroup.position.y = 2.6;
   robot.add(headGroup);
 
-  // Cuello
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.55, 0.55, 24), matBody);
-  neck.position.y = 0.55;
+  // ===== CUELLO =====
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.30, 16), matAccent);
+  neck.position.y = 1.7;
   robot.add(neck);
 
-  // Torso — caja redondeada falsa: box + capsule por encima
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.7, 1.25), matBody);
-  torso.position.y = -0.4;
-  robot.add(torso);
+  // ===== TORSO (capsulado: caja con esferas top y bottom) =====
+  // Pecho ancho
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), matBody);
+  chest.scale.set(1.25, 1.0, 0.85);
+  chest.position.y = 1.05;
+  robot.add(chest);
+  // Cintura (más estrecha)
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 24), matBody);
+  waist.position.y = 0.20;
+  robot.add(waist);
+  // Pelvis con bloque negro central (como la imagen ref)
+  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), matBody);
+  pelvis.scale.set(1.15, 0.7, 0.9);
+  pelvis.position.y = -0.10;
+  robot.add(pelvis);
+  // Bloque negro central de cadera (entrepierna)
+  const hipBlock = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), matAccent);
+  hipBlock.scale.set(1, 1.2, 0.9);
+  hipBlock.position.set(0, -0.3, 0.2);
+  robot.add(hipBlock);
 
-  // Hombros — esferas grandes a los lados del torso
-  const shoulderGeo = new THREE.SphereGeometry(0.7, 32, 32);
-  const lShoulder = new THREE.Mesh(shoulderGeo, matBody);
-  lShoulder.position.set(-1.25, 0.25, 0);
-  robot.add(lShoulder);
-  const rShoulder = new THREE.Mesh(shoulderGeo, matBody);
-  rShoulder.position.set(1.25, 0.25, 0);
-  robot.add(rShoulder);
+  // ===== BRAZOS =====
+  // Helper: una articulación negra (anillo)
+  const jointGeo = new THREE.SphereGeometry(0.12, 16, 16);
+  const buildArm = (side) => { // side: -1 izquierda, +1 derecha
+    const arm = new THREE.Group();
+    arm.position.set(side * 1.20, 1.45, 0);
 
-  // Detalle pecho — lente circular oscura como en la referencia
-  const chestRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.07, 16, 32), matBody);
-  chestRing.position.set(0.55, -0.3, 0.65);
-  chestRing.rotation.x = 0;
-  robot.add(chestRing);
-  const chestLens = new THREE.Mesh(new THREE.CircleGeometry(0.38, 32), matVisor);
-  chestLens.position.set(0.55, -0.3, 0.66);
-  robot.add(chestLens);
+    // Hombro — esfera blanca
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), matBody);
+    arm.add(shoulder);
+    // Hombro pad negro (encima)
+    const shoulderPad = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 24,
+      0, Math.PI * 2, 0, Math.PI / 2), matAccent);
+    shoulderPad.position.y = 0.0;
+    arm.add(shoulderPad);
+    // Bíceps
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.7, 16), matBody);
+    upperArm.position.y = -0.5;
+    arm.add(upperArm);
+    // Codo
+    const elbow = new THREE.Mesh(jointGeo, matAccent);
+    elbow.scale.set(1.5, 1, 1.5);
+    elbow.position.y = -0.9;
+    arm.add(elbow);
+    // Antebrazo
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.10, 0.7, 16), matBody);
+    forearm.position.y = -1.30;
+    arm.add(forearm);
+    // Muñeca
+    const wrist = new THREE.Mesh(jointGeo, matAccent);
+    wrist.scale.set(1.3, 0.8, 1.3);
+    wrist.position.y = -1.70;
+    arm.add(wrist);
+    // Mano — esfera achatada
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), matBody);
+    hand.scale.set(1, 1.2, 0.6);
+    hand.position.y = -1.90;
+    arm.add(hand);
 
-  robot.position.y = 4;
+    return arm;
+  };
+  robot.add(buildArm(-1));
+  robot.add(buildArm( 1));
+
+  // ===== PIERNAS =====
+  const buildLeg = (side) => {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.45, -0.45, 0);
+
+    // Cadera-muslo (negra como en la imagen ref)
+    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.30, 20, 20), matAccent);
+    hip.position.y = 0;
+    leg.add(hip);
+    // Muslo
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.20, 0.85, 24), matBody);
+    thigh.position.y = -0.55;
+    leg.add(thigh);
+    // Rodilla
+    const knee = new THREE.Mesh(jointGeo, matAccent);
+    knee.scale.set(1.6, 1.2, 1.6);
+    knee.position.y = -1.05;
+    leg.add(knee);
+    // Pantorrilla
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.75, 20), matBody);
+    shin.position.y = -1.50;
+    leg.add(shin);
+    // Tobillo
+    const ankle = new THREE.Mesh(jointGeo, matAccent);
+    ankle.scale.set(1.2, 0.6, 1.2);
+    ankle.position.y = -1.95;
+    leg.add(ankle);
+    // Pie — cono truncado ancho hacia abajo
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 0.55, 24), matBody);
+    foot.position.set(0, -2.30, 0.10);
+    leg.add(foot);
+
+    return leg;
+  };
+  robot.add(buildLeg(-1));
+  robot.add(buildLeg( 1));
+
+  robot.position.y = 0;
   scene.add(robot);
 
   // Re-color when theme changes
@@ -1319,8 +1415,8 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     material.color.setHex(c);
     dotMaterial.color.setHex(c);
     matBody.color.setHex(bodyHex());
+    matAccent.color.setHex(accentHex());
     matVisor.color.setHex(visorHex());
-    matEye.color.setHex(accentHex());
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1362,15 +1458,14 @@ if (!_skipHeroCanvas) loadThreeJS().then(() => {
     mesh.rotation.z += (mouseX * 0.1 - mesh.rotation.z) * 0.05;
     mesh.position.y = -2 + mouseY * 0.5;
 
-    // Robot — la cabeza sigue al cursor (yaw + pitch); el cuerpo
-    // hace un sway sutil para que no parezca rígido. Lerp suave para
-    // evitar que cualquier movimiento brusco del cursor lo brusque.
-    const targetYaw   =  mouseX * 0.7;
-    const targetPitch = -mouseY * 0.45;
+    // Robot — cabeza sigue al cursor (yaw + pitch), torso un sway
+    // muy leve. Bob vertical pequeño para que respire sin "bailar".
+    const targetYaw   =  mouseX * 0.65;
+    const targetPitch = -mouseY * 0.40;
     headGroup.rotation.y += (targetYaw   - headGroup.rotation.y) * 0.08;
     headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.08;
-    robot.rotation.y += (mouseX * 0.18 - robot.rotation.y) * 0.04;
-    robot.position.y = 4 + Math.sin(time * 0.5) * 0.15;
+    robot.rotation.y += (mouseX * 0.15 - robot.rotation.y) * 0.04;
+    robot.position.y = Math.sin(time * 0.5) * 0.12;
 
     renderer.render(scene, camera);
   }
