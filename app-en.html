@@ -761,6 +761,20 @@ svg { display: block; }
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+.bot-detail-avatar {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--text); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 9px; flex-shrink: 0;
+}
+.bot-detail-avatar svg { width: 100%; height: 100%; }
+.bot-build-avatar {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: var(--text); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px; flex-shrink: 0;
+}
+.bot-build-avatar svg { width: 100%; height: 100%; }
 .avatar-tile {
   position: relative;
   aspect-ratio: 1 / 1;
@@ -2913,7 +2927,7 @@ function renderStepGenerate() {
   return `
     <div class="card card-pad-lg" id="generate-list">
       <div class="flex items-center gap-3" style="margin-bottom:18px">
-        <div style="width:46px;height:46px;border-radius:12px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:6px">
+        <div class="bot-build-avatar">
           ${getAvatarSVG(state.wizard.data.avatar)}
         </div>
         <div>
@@ -4032,7 +4046,7 @@ function loadBotDetail(root) {
     <div class="container container-narrow">
       <button class="btn btn-soft fade-up" id="back-to-dash" style="margin-bottom:24px">${I.arrowLeft} Back</button>
       <div class="fade-up" style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
-        <div style="width:64px;height:64px;border-radius:16px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:9px;flex-shrink:0">
+        <div class="bot-detail-avatar">
           ${getAvatarSVG(bot.parameters?.avatar)}
         </div>
         <div style="min-width:0;flex:1">
