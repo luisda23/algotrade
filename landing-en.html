@@ -795,34 +795,21 @@ if (window._skipHeroCanvas) {
 })();
 </script>
 
-<!-- Hero 3D module — see landing.html for the comment block. -->
+<!-- Hero 3D module — armillary sphere. See landing.html for the
+     full Spanish comment block. Single-color geometry tied to
+     var(--text), works on white and black backgrounds. -->
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { GLTFLoader }       from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
-import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
 
 if (!window._skipHeroCanvas) {
   const canvas = document.getElementById('hero-canvas');
   if (canvas) {
-    const renderer = new THREE.WebGLRenderer({
-      canvas, antialias: true, alpha: true, premultipliedAlpha: false,
-    });
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setClearColor(0x000000, 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -830,12 +817,10 @@ if (!window._skipHeroCanvas) {
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 2, 18);
 
-    // Studio environment via RoomEnvironment (soft reflections)
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+    const themeColor = () =>
+      document.documentElement.getAttribute('data-theme') === 'light' ? 0x000000 : 0xffffff;
 
-    // Wave grid (preserved)
+    // Wave grid (background)
     const cols = 60, rows = 30, spacing = 0.5;
     const positions = [], indices = [];
     for (let i = 0; i < rows; i++) {
@@ -852,10 +837,6 @@ if (!window._skipHeroCanvas) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setIndex(indices);
-
-    const themeColor = () =>
-      document.documentElement.getAttribute('data-theme') === 'light' ? 0x000000 : 0xffffff;
-
     const gridMat = new THREE.LineBasicMaterial({ color: themeColor(), transparent: true, opacity: 0.18 });
     const grid = new THREE.LineSegments(geometry, gridMat);
     grid.rotation.x = -Math.PI / 2.5;
@@ -865,83 +846,56 @@ if (!window._skipHeroCanvas) {
     const dot = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), dotMat);
     scene.add(dot);
 
-    // Lights
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(8, 10, 6);
-    scene.add(key);
-    const rim = new THREE.SpotLight(0xffffff, 6, 40, Math.PI / 5, 0.4, 1.2);
-    rim.position.set(-10, 6, -8);
-    rim.target.position.set(0, 7.5, 0);
-    scene.add(rim, rim.target);
-    scene.add(new THREE.AmbientLight(0x101418, 0.4));
-    // Fill below — opens up shadows on neck/jaw of the helmet
-    const fillBelow = new THREE.PointLight(0xffffff, 0.6, 24);
-    fillBelow.position.set(0, 0.5, 5);
-    scene.add(fillBelow);
+    // Armillary sphere
+    const armillary = new THREE.Group();
+    armillary.position.set(0, 6.5, 0);
+    armillary.scale.setScalar(2.4);
+    scene.add(armillary);
 
-    // Eye light — subtle highlight near the visor
-    const eyeLight = new THREE.PointLight(0xffffff, 0.4, 4.5);
-    eyeLight.position.set(0, 7.6, 0.9);
-    scene.add(eyeLight);
+    const ringMat = new THREE.MeshBasicMaterial({ color: themeColor(), transparent: true, opacity: 0.85 });
+    const ringGeo = new THREE.TorusGeometry(1, 0.008, 6, 160);
 
-    // Postprocessing — RGBA target + clearAlpha 0 so the canvas stays
-    // transparent over the page background. Without these the composer
-    // paints a black rectangle behind the helmet on light themes.
-    const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
-      window.innerWidth, window.innerHeight,
-      { type: THREE.HalfFloatType, format: THREE.RGBAFormat },
-    ));
-    const renderPass = new RenderPass(scene, camera);
-    renderPass.clearAlpha = 0;
-    composer.addPass(renderPass);
-    // Soft bloom: without emissive the helmet glows only from environment
-    // reflections, so a very light highlight is enough.
-    const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.35, 0.5, 0.9);
-    composer.addPass(bloom);
-    composer.addPass(new OutputPass());
+    const ring1 = new THREE.Mesh(ringGeo, ringMat);
+    armillary.add(ring1);
+    const ring2 = new THREE.Mesh(ringGeo, ringMat);
+    ring2.rotation.x = Math.PI / 2;
+    armillary.add(ring2);
+    const ring3 = new THREE.Mesh(ringGeo, ringMat);
+    ring3.rotation.y = Math.PI / 2;
+    armillary.add(ring3);
 
-    // Helmet — gunmetal polished, preserves the model's original
-    // metalness/roughness/AO/normal maps instead of stomping them.
-    const helmetGroup = new THREE.Group();
-    scene.add(helmetGroup);
-    let helmet = null;
-    const helmetMats = [];
-    new GLTFLoader().load(
-      'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      (gltf) => {
-        helmet = gltf.scene;
-        helmet.traverse((o) => {
-          if (!o.isMesh) return;
-          const orig = o.material;
-          o.material = new THREE.MeshPhysicalMaterial({
-            color: 0x14161a,
-            metalness: 0.92,
-            roughness: 0.28,
-            clearcoat: 0.7,
-            clearcoatRoughness: 0.12,
-            envMapIntensity: 1.35,
-            normalMap: orig.normalMap || null,
-            normalScale: orig.normalScale ? orig.normalScale.clone() : new THREE.Vector2(1, 1),
-            metalnessMap: orig.metalnessMap || null,
-            roughnessMap: orig.roughnessMap || null,
-            aoMap: orig.aoMap || null,
-            aoMapIntensity: 0.9,
-          });
-          helmetMats.push(o.material);
-        });
-        helmet.position.y = 7.5;
-        helmet.scale.setScalar(3.5);
-        helmet.rotation.y = -0.25;
-        helmetGroup.add(helmet);
-      },
-      undefined,
-      (err) => console.warn('[hero3d] helmet load failed', err),
-    );
+    const ringOuterMat = new THREE.MeshBasicMaterial({ color: themeColor(), transparent: true, opacity: 0.45 });
+    const ringOuterGeo = new THREE.TorusGeometry(1.18, 0.003, 6, 200);
+    const ringOuter = new THREE.Mesh(ringOuterGeo, ringOuterMat);
+    ringOuter.rotation.x = Math.PI / 3;
+    armillary.add(ringOuter);
+
+    const coreMat = new THREE.MeshBasicMaterial({ color: themeColor() });
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.085, 32, 32), coreMat);
+    armillary.add(core);
+
+    const haloMat = new THREE.MeshBasicMaterial({ color: themeColor(), transparent: true, opacity: 0.18 });
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.20, 32, 32), haloMat);
+    armillary.add(halo);
+
+    const orbiterMat = new THREE.MeshBasicMaterial({ color: themeColor() });
+    const orbiterGeo = new THREE.SphereGeometry(0.028, 16, 16);
+    const orbiters = [];
+    for (let i = 0; i < 4; i++) {
+      const o = new THREE.Mesh(orbiterGeo, orbiterMat);
+      armillary.add(o);
+      orbiters.push({ mesh: o, axis: i, phase: i * Math.PI / 2 });
+    }
 
     const themeObserver = new MutationObserver(() => {
       const c = themeColor();
       gridMat.color.setHex(c);
       dotMat.color.setHex(c);
+      ringMat.color.setHex(c);
+      ringOuterMat.color.setHex(c);
+      coreMat.color.setHex(c);
+      haloMat.color.setHex(c);
+      orbiterMat.color.setHex(c);
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -979,24 +933,42 @@ if (!window._skipHeroCanvas) {
       grid.rotation.z += (mouseX * 0.1 - grid.rotation.z) * 0.05;
       grid.position.y = -2 + mouseY * 0.5;
 
-      if (helmet) {
-        const targetYaw   = mouseX * 0.7 - 0.20;
-        const targetPitch = -mouseY * 0.4;
-        helmet.rotation.y += (targetYaw   - helmet.rotation.y) * 0.07;
-        helmet.rotation.x += (targetPitch - helmet.rotation.x) * 0.07;
-        helmet.position.y = 7.5 + Math.sin(time) * 0.08;
+      ring1.rotation.z = time * 0.30;
+      ring2.rotation.x = Math.PI / 2 + time * 0.42;
+      ring3.rotation.y = Math.PI / 2 + time * 0.25;
+      ringOuter.rotation.z = -time * 0.15;
+
+      const corePulse = 1 + Math.sin(time * 0.9) * 0.18;
+      core.scale.setScalar(corePulse);
+      halo.scale.setScalar(1 + Math.sin(time * 0.6 + 0.5) * 0.25);
+      haloMat.opacity = 0.16 + Math.sin(time * 0.6) * 0.06;
+
+      for (const ob of orbiters) {
+        const angle = time * (0.55 + ob.axis * 0.07) + ob.phase;
+        if (ob.axis === 0) {
+          ob.mesh.position.set(Math.cos(angle), Math.sin(angle * 0.3) * 0.05, Math.sin(angle));
+        } else if (ob.axis === 1) {
+          ob.mesh.position.set(Math.cos(angle), Math.sin(angle), 0);
+        } else if (ob.axis === 2) {
+          ob.mesh.position.set(0, Math.cos(angle), Math.sin(angle));
+        } else {
+          const a = time * 0.20 + Math.PI;
+          ob.mesh.position.set(Math.cos(a) * 1.18, Math.sin(a * 0.5) * 0.6, Math.sin(a) * 1.18);
+        }
       }
-      composer.render();
+
+      armillary.rotation.y += (mouseX * 0.55 - armillary.rotation.y) * 0.05;
+      armillary.rotation.x += (-mouseY * 0.30 - armillary.rotation.x) * 0.05;
+      armillary.position.y = 6.5 + Math.sin(time * 0.6) * 0.10;
+
+      renderer.render(scene, camera);
     }
     animate();
 
     window.addEventListener('resize', () => {
-      const w = window.innerWidth, h = window.innerHeight;
-      camera.aspect = w / h;
+      camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-      composer.setSize(w, h);
-      bloom.setSize(w, h);
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
   }
 }
